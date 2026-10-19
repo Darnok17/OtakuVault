@@ -1,42 +1,34 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-// Module-level flag survives Strict Mode's double-mount, Fast Refresh,
-// and any other React re-execution. One boot per page load.
+// Module-level flag survives Strict Mode's double-mount and Fast Refresh.
 let bootStarted = false;
 
 export default function HomeClient() {
-    useEffect(() => {
-        console.log("[boot] useEffect fired");
-        console.log("[boot] bootStarted =", bootStarted);
-        console.log("[boot] sessionStorage.booted =", sessionStorage.getItem("booted"));
+  const router = useRouter();
 
-    // Strict Mode double-mount guard — silent no-op, the first invocation
-    // is already running the boot. Do NOT touch body classes.
+  useEffect(() => {
+    // ─── Strict Mode guard (silent no-op) ───────────────────────
     if (bootStarted) {
-        console.log("[boot] second invocation — doing nothing");
-        return;
+      return;
     }
 
-    // Prior-session guard — only runs on page loads where boot already
-    // completed in a previous session.
+    // ─── Prior-session guard ────────────────────────────────────
     if (sessionStorage.getItem("booted")) {
-        console.log("[boot] prior session completed — skipping animation");
-        document.body.classList.remove("booting");
-        document.body.classList.add("boot-complete", "post-boot");
-        return;
+      document.body.classList.remove("booting");
+      document.body.classList.add("boot-complete", "post-boot");
+      setupScrollReveal();
+      setupStatCounters();
+      return;
     }
 
-  bootStarted = true;
-  console.log("[boot] starting animation");
-  document.body.classList.add("booting");
+    bootStarted = true;
+    document.body.classList.add("booting");
 
     // ─── Build the overlay in plain DOM (outside React's tree) ──
-    // Done this way so React never tries to reconcile with our
-    // appendChild / remove calls — which was the source of
-    // "Failed to execute insertBefore/removeChild" errors.
-    document.getElementById("bootOverlay")?.remove(); // belt + suspenders
+    document.getElementById("bootOverlay")?.remove();
 
     const overlay = document.createElement("div");
     overlay.id = "bootOverlay";
@@ -275,6 +267,9 @@ export default function HomeClient() {
           }, 1250);
           setTimeout(() => {
             document.body.classList.add("post-boot");
+            // Wire up scroll reveal + stat counters once boot settles
+            setupScrollReveal();
+            setupStatCounters();
           }, 2600);
         });
       });
@@ -289,6 +284,52 @@ export default function HomeClient() {
       document.body.classList.add("boot-complete", "post-boot");
       overlay.classList.add("done");
       setTimeout(() => overlay.remove(), 400);
+      setupScrollReveal();
+      setupStatCounters();
+    }
+
+    // ─── Scroll reveal for feature sections ─────────────────────
+    function setupScrollReveal() {
+      const revealTargets = document.querySelectorAll(
+        ".home-features .feat, .home-features .feat-stats, .home-features .feat-cta"
+      );
+      if (!revealTargets.length) return;
+      const revealIO = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in-view");
+            revealIO.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.18, rootMargin: "0px 0px -40px 0px" });
+      revealTargets.forEach((el) => revealIO.observe(el));
+    }
+
+    // ─── Stat counter animation ─────────────────────────────────
+    function setupStatCounters() {
+      const bigs = document.querySelectorAll<HTMLElement>(".stat-big[data-count]");
+      if (!bigs.length) return;
+      const statIO = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          statIO.unobserve(entry.target);
+          const el = entry.target as HTMLElement;
+          const targetVal = parseInt(el.dataset.count || "0", 10);
+          const DURATION = 1400;
+          const start = performance.now();
+          const tick = (now: number) => {
+            const t = Math.min(1, (now - start) / DURATION);
+            const eased = 1 - Math.pow(1 - t, 3);
+            const value = Math.round(targetVal * eased);
+            el.textContent = targetVal >= 1000
+              ? value.toLocaleString() + (t === 1 ? "+" : "")
+              : String(value);
+            if (t < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
+      }, { threshold: 0.5 });
+      bigs.forEach((el) => statIO.observe(el));
     }
 
     // ─── Dev shortcut: Alt+B replays the boot ───────────────────
@@ -301,13 +342,18 @@ export default function HomeClient() {
     };
     document.addEventListener("keydown", devReset);
 
-    // Give fonts + layout a frame to settle, then kick it off
+    // Give fonts + layout a frame to settle, then kick off the boot
     requestAnimationFrame(() => requestAnimationFrame(runBoot));
-
-    // Intentionally no cleanup return — the module-level `bootStarted`
-    // flag prevents re-execution, and the overlay cleans itself up at
-    // the end of morphToLayout or skip().
   }, []);
+
+  // Helper for tile navigation (click + Enter/Space keyboard)
+  const go = (href: string) => () => router.push(href);
+  const goKey = (href: string) => (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      router.push(href);
+    }
+  };
 
   return (
     <>
@@ -321,7 +367,13 @@ export default function HomeClient() {
           </div>
           <div className="home-tiles">
             {/* Your Collection */}
-            <div className="home-tile" data-page="collection" role="button" tabIndex={0}>
+            <div
+              className="home-tile"
+              role="button"
+              tabIndex={0}
+              onClick={go("/collection")}
+              onKeyDown={goKey("/collection")}
+            >
               <span className="home-tile-corner tl"></span>
               <span className="home-tile-corner tr"></span>
               <span className="home-tile-corner bl"></span>
@@ -339,7 +391,13 @@ export default function HomeClient() {
               <div className="home-tile-enter">Enter</div>
             </div>
             {/* Index */}
-            <div className="home-tile" data-page="index" role="button" tabIndex={0}>
+            <div
+              className="home-tile"
+              role="button"
+              tabIndex={0}
+              onClick={go("/index-page")}
+              onKeyDown={goKey("/index-page")}
+            >
               <span className="home-tile-corner tl"></span>
               <span className="home-tile-corner tr"></span>
               <span className="home-tile-corner bl"></span>
@@ -357,7 +415,13 @@ export default function HomeClient() {
               <div className="home-tile-enter">Browse</div>
             </div>
             {/* Store */}
-            <div className="home-tile" data-page="store" role="button" tabIndex={0}>
+            <div
+              className="home-tile"
+              role="button"
+              tabIndex={0}
+              onClick={go("/store")}
+              onKeyDown={goKey("/store")}
+            >
               <span className="home-tile-corner tl"></span>
               <span className="home-tile-corner tr"></span>
               <span className="home-tile-corner bl"></span>
@@ -530,7 +594,7 @@ export default function HomeClient() {
             <div className="feat-cta-eyebrow">◆ Ready ◆</div>
             <h2 className="feat-cta-title">Begin Your Vault</h2>
             <p className="feat-cta-body">Everything above — tracker, moodboards, index, the whole aesthetic — is already yours. One click.</p>
-            <button className="feat-cta-btn" data-page="collection" type="button">
+            <button className="feat-cta-btn" type="button" onClick={go("/collection")}>
               <span>Enter Your Collection</span>
               <span className="feat-cta-arrow">❯</span>
             </button>
