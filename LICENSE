@@ -1,0 +1,40 @@
+OtakuVault — Proprietary License
+Copyright (c) 2026 Conrad Seegert. All rights reserved.
+
+This repository and its contents (source code, assets, design, documentation,
+and any derivatives thereof — collectively, the "Work") are the exclusive
+property of the copyright holder.
+
+Permission is NOT granted to:
+
+  (a) copy, reproduce, redistribute, publish, or sublicense the Work in
+      whole or in part, in any form or by any means;
+  (b) modify, adapt, translate, port, or create derivative works based on
+      the Work;
+  (c) use the Work, or any portion of it, in any commercial product, service,
+      or offering;
+  (d) remove or alter any proprietary notices, labels, or marks on the Work;
+  (e) sell, rent, lease, lend, or otherwise transfer the Work to any third
+      party;
+  (f) use the Work to train, fine-tune, or evaluate any machine learning
+      model, artificial intelligence system, or dataset without prior written
+      consent from the copyright holder.
+
+Permission IS granted to:
+
+  (a) view the source code via the public GitHub repository for the purposes
+      of personal study and portfolio review;
+  (b) link to the public repository or deployed site from third-party
+      content, provided such links are not misleading as to attribution.
+
+Any use of the Work beyond the permissions granted above requires explicit,
+prior, written consent from the copyright holder. Requests may be directed
+to the email address on the owner's GitHub profile.
+
+THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING
+FROM, OUT OF, OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
+IN THE WORK.
