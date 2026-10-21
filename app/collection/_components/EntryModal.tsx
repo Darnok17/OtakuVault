@@ -28,7 +28,7 @@ export default function EntryModal({
   };
 
   return (
-    <div className="modal-overlay" style={{ display: "flex" }} onClick={onClose}>
+    <div className="modal-overlay open" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 540 }}>
         <button className="close-modal" type="button" onClick={onClose}>✕</button>
         <div className="modal-title">{isEdit ? "Edit Entry" : "Add New Entry"}</div>
