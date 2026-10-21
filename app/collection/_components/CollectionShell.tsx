@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useEntriesStore } from "@/lib/store";
 import type { Entry, EntryStatus, EntryType } from "@/lib/types";
+import DeleteUndoToast, { UNDO_MS, type PendingDelete } from "./DeleteUndoToast";
 import EmptyState from "./EmptyState";
 import EntryCard from "./EntryCard";
 import EntryModal from "./EntryModal";
@@ -12,6 +13,7 @@ export default function CollectionShell() {
   const addEntry = useEntriesStore((s) => s.addEntry);
   const updateEntry = useEntriesStore((s) => s.updateEntry);
   const removeEntry = useEntriesStore((s) => s.deleteEntry);
+  const restoreEntry = useEntriesStore((s) => s.restoreEntry);
   const [activeType, setActiveType] = useState<"all" | EntryType | "watchlist">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | EntryStatus>("all");
   const [sort, setSort] = useState("rating-desc");
@@ -19,10 +21,18 @@ export default function CollectionShell() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Entry | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [pendingDeletes, setPendingDeletes] = useState<PendingDelete[]>([]);
+  const deleteTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   // Load from localStorage (or seed) on mount
   useEffect(() => {
     useEntriesStore.persist.rehydrate();
+  }, []);
+
+  // Entries are already removed from the store, so leaving the page makes pending deletes final.
+  useEffect(() => {
+    const timers = deleteTimers.current;
+    return () => timers.forEach(clearTimeout);
   }, []);
 
   // Stats (exclude plan-to + dropped)
@@ -89,8 +99,24 @@ export default function CollectionShell() {
   };
 
   const deleteEntry = (id: string) => {
-    if (!confirm("Delete this entry?")) return;
+    const index = entries.findIndex((e) => e.id === id);
+    if (index === -1) return;
+    const entry = entries[index];
     removeEntry(id);
+    setPendingDeletes((p) => [...p, { entry, index }]);
+    deleteTimers.current.set(id, setTimeout(() => {
+      deleteTimers.current.delete(id);
+      setPendingDeletes((p) => p.filter((d) => d.entry.id !== id));
+    }, UNDO_MS));
+  };
+
+  const undoDelete = (id: string) => {
+    const pending = pendingDeletes.find((d) => d.entry.id === id);
+    if (!pending) return;
+    clearTimeout(deleteTimers.current.get(id));
+    deleteTimers.current.delete(id);
+    restoreEntry(pending.entry, pending.index);
+    setPendingDeletes((p) => p.filter((d) => d.entry.id !== id));
   };
 
   const empty = entries.filter((e) => e.status !== "plan-to").length === 0;
@@ -226,6 +252,7 @@ export default function CollectionShell() {
       </div>
 
       {showModal && <EntryModal entry={editing} onSave={saveEntry} onClose={closeModal} />}
+      <DeleteUndoToast items={pendingDeletes} onUndo={undoDelete} />
     </section>
   );
 }

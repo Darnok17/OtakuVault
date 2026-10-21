@@ -27,6 +27,7 @@ type EntriesState = {
   addEntry: (entry: Entry) => void;
   updateEntry: (id: string, patch: Partial<Entry>) => void;
   deleteEntry: (id: string) => void;
+  restoreEntry: (entry: Entry, index: number) => void;
   setEntries: (entries: Entry[]) => void;
 };
 
@@ -41,6 +42,14 @@ export const useEntriesStore = create<EntriesState>()(
       updateEntry: (id, patch) =>
         set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, ...patch } : e)) })),
       deleteEntry: (id) => set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
+      // Re-insert a deleted entry at its old position (used by undo).
+      restoreEntry: (entry, index) =>
+        set((s) => {
+          if (s.entries.some((e) => e.id === entry.id)) return s;
+          const entries = [...s.entries];
+          entries.splice(Math.min(index, entries.length), 0, entry);
+          return { entries };
+        }),
       setEntries: (entries) => set({ entries }),
     }),
     {

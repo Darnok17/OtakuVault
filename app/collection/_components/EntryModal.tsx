@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Entry, EntryStatus, EntryType } from "@/lib/types";
-import Stars from "./Stars";
+import StarRating from "./StarRating";
 
 export default function EntryModal({
   entry, onSave, onClose,
@@ -95,13 +95,10 @@ export default function EntryModal({
             <textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={3} style={{ ...inputStyle, resize: "vertical" }} />
           </label>
 
-          <label style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
-            <span style={labelStyle}>Rating (0–5, half stars allowed)</span>
-            <div style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
-              <input type="number" value={form.rating} min={0} max={5} step={0.5} onChange={(e) => set("rating", Number(e.target.value))} style={{ ...inputStyle, width: 100 }} />
-              <Stars rating={form.rating} />
-            </div>
-          </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
+            <span style={labelStyle}>Rating</span>
+            <StarRating value={form.rating} onChange={(r) => set("rating", r)} />
+          </div>
 
           <div style={{ display: "flex", gap: ".75rem", marginTop: ".5rem" }}>
             <button type="button" className="btn btn-ghost" onClick={onClose} style={{ flex: 1 }}>Cancel</button>
