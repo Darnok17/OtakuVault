@@ -203,40 +203,42 @@ Visit **http://localhost:3000** and watch the boot sequence.
 
 ## Project Structure
 
+```
 otakuvault/
 ├── app/
-│ ├── _components/ # Shared components (SiteNav, HomeClient)
-│ ├── collection/
-│ │ ├── _components/ # Collection shell, cards, modal, stars
-│ │ └── [entryId]/moodboard/ # Full moodboard route
-│ ├── index-page/ # The Index (discovery)
-│ ├── forum/
-│ ├── store/
-│ ├── login/
-│ ├── signup/
-│ ├── api/
-│ │ ├── auth/[...all]/ # Better-Auth handler
-│ │ └── webhooks/stripe/ # Stripe webhook
-│ ├── actions/ # Server Actions (entries, moodboards, etc.)
-│ ├── layout.tsx
-│ ├── page.tsx # Home
-│ └── globals.css # Full custom design system
+│   ├── _components/            # Shared components (SiteNav, HomeClient)
+│   ├── collection/
+│   │   ├── _components/        # Collection shell, cards, modal, stars
+│   │   └── [entryId]/moodboard/  # Full moodboard route
+│   ├── index-page/             # The Index (discovery)
+│   ├── forum/
+│   ├── store/
+│   ├── login/
+│   ├── signup/
+│   ├── api/
+│   │   ├── auth/[...all]/      # Better-Auth handler
+│   │   └── webhooks/stripe/    # Stripe webhook
+│   ├── actions/                # Server Actions (entries, moodboards, etc.)
+│   ├── layout.tsx
+│   ├── page.tsx                # Home
+│   └── globals.css             # Full custom design system
 ├── lib/
-│ ├── db/
-│ │ ├── schema.ts # Drizzle tables
-│ │ └── index.ts # DB client
-│ ├── auth.ts # Better-Auth config
-│ ├── auth-client.ts
-│ ├── anilist.ts # AniList GraphQL wrapper
-│ ├── storage.ts # File upload abstraction
-│ ├── store.ts # Zustand entries store
-│ └── types.ts # Shared TypeScript types
-├── public/ # Static assets + uploaded images (dev)
-├── docker-compose.yml # Local Postgres
+│   ├── db/
+│   │   ├── schema.ts           # Drizzle tables
+│   │   └── index.ts            # DB client
+│   ├── auth.ts                 # Better-Auth config
+│   ├── auth-client.ts
+│   ├── anilist.ts              # AniList GraphQL wrapper
+│   ├── storage.ts              # File upload abstraction
+│   ├── store.ts                # Zustand entries store
+│   └── types.ts                # Shared TypeScript types
+├── public/                     # Static assets + uploaded images (dev)
+├── docker-compose.yml          # Local Postgres
 ├── drizzle.config.ts
-├── middleware.ts # Auth-protected routes
+├── middleware.ts               # Auth-protected routes
 ├── next.config.ts
 └── package.json
+```
 
 ---
 
