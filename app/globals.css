@@ -3573,6 +3573,27 @@
     will-change:left, top;
     transition:none;
   }
+  /* Sortable wrappers (dnd-kit slot → Framer Motion layer → .card): pass the grid cell's height down */
+  .card-slot,.card-motion{display:flex;flex-direction:column;min-width:0;}
+  .card-motion{flex:1;}
+  .card-motion > .card{flex:1;}
+
+  /* dnd-kit DragOverlay: the lifted copy that follows the pointer */
+  .drag-overlay{height:100%;display:flex;flex-direction:column;cursor:grabbing;}
+  .drag-overlay .card{
+    flex:1;
+    transform:rotate(-2.5deg) scale(1.03);
+    box-shadow:
+      0 24px 60px rgba(0,0,0,.65),
+      0 8px 18px rgba(0,0,0,.5),
+      0 0 0 1px rgba(0,212,170,.5),
+      0 0 24px rgba(0,212,170,.25);
+    border-color:var(--accent3);
+    animation:none;
+  }
+  .drag-overlay .card-actions{display:none;}
+  .drag-overlay .drag-handle{opacity:1;color:var(--accent3);border-color:var(--accent3);}
+
   .card-ghost .drag-handle,
   .card-ghost .card-actions{display:none;}
   .card-ghost::after{
@@ -3719,6 +3740,21 @@
   .cover-upload-area:hover .cover-placeholder-inner span:first-child{opacity:1;transform:scale(1.1);}
   .cover-placeholder-inner span:last-child{font-family:var(--font-space-mono),monospace;font-size:.52rem;letter-spacing:.08em;opacity:.7;text-transform:uppercase;}
   #coverFileInput{display:none;}
+  .cover-upload-area:focus-visible{outline:none;border-color:var(--accent2);box-shadow:0 0 0 2px rgba(123,94,167,.45);}
+  .cover-upload-area.drag-over{
+    border-color:var(--accent3);border-style:solid;background:rgba(0,212,170,.07);
+    box-shadow:0 0 24px rgba(0,212,170,.25);
+  }
+  .cover-upload-area.drag-over .cover-placeholder-inner{color:var(--accent3);}
+  .cover-upload-area.drag-over .cover-upload-overlay{opacity:1;}
+  .cover-remove-btn{
+    font-family:var(--font-space-mono),monospace;
+    background:none;border:1px solid var(--border);color:var(--text-dim);
+    cursor:pointer;font-size:.55rem;letter-spacing:.12em;
+    padding:3px 8px;border-radius:4px;text-transform:uppercase;transition:all .15s;
+  }
+  .cover-remove-btn:hover{color:var(--accent);border-color:var(--accent);}
+  .cover-upload-error{font-family:var(--font-space-mono),monospace;font-size:.62rem;color:var(--accent);}
 
   /* API search section */
   .api-search-section{
@@ -4325,6 +4361,56 @@
   .bc-char-portrait:hover .char-placeholder{opacity:.9;transform:scale(1.08);}
   .bc-char-portrait img{width:100%;height:100%;object-fit:cover;display:block;}
   .bc-ep-head{display:flex;align-items:baseline;gap:.5rem;}
+
+  /* ── Moodboard route additions ── */
+  .bc-open-link{
+    display:inline-block;margin-top:.4rem;
+    font-family:var(--font-space-mono),monospace;font-size:.6rem;letter-spacing:.08em;
+    color:var(--accent3);text-decoration:none;
+  }
+  .bc-open-link:hover{text-shadow:0 0 8px rgba(0,212,170,.5);}
+
+  /* Left-drag on empty canvas draws a marquee, so the resting cursor is an arrow;
+     holding space switches to the hand. */
+  .board-viewport.select-mode{cursor:default;}
+  .board-viewport.space-pan{cursor:grab;}
+  .board-viewport.panning{cursor:grabbing;}
+  .board-viewport .bc{user-select:none;}
+  /* Edge handles sit outside the card, so the card can't clip; the header/body clip instead. */
+  .board-viewport .bc{overflow:visible;}
+  .board-viewport .bc:not([data-type="bubble"]) > .bc-head{border-radius:9px 9px 0 0;}
+  .board-viewport .bc:not([data-type="bubble"]) > .bc-body{border-radius:0 0 9px 9px;overflow:hidden;}
+  .board-viewport.wiring,.board-viewport.wiring *{cursor:crosshair !important;}
+  .board-viewport .bc .bc-edit{user-select:text;}
+
+  .board-crumbs{display:flex;align-items:baseline;gap:.55rem;min-width:0;}
+  .board-crumbs .crumb-link,
+  .board-crumbs .crumb-current{
+    font-family:var(--font-space-mono),monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;
+    flex-shrink:0;
+  }
+  .board-crumbs .crumb-link{color:var(--text-dim);text-decoration:none;transition:color .15s;}
+  .board-crumbs .crumb-link:hover{color:var(--accent3);}
+  .board-crumbs .crumb-current{color:var(--accent3);}
+  .board-crumbs .crumb-sep{color:var(--text-faint);font-size:.6rem;flex-shrink:0;}
+  .board-crumbs .crumb-entry{min-width:0;}
+
+  .board-empty{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    font-family:var(--font-space-mono),monospace;font-size:.7rem;letter-spacing:.08em;
+    color:var(--text-faint);pointer-events:none;text-align:center;
+  }
+  .board-missing{
+    margin:auto;display:flex;flex-direction:column;align-items:center;gap:1rem;
+    font-family:var(--font-space-mono),monospace;font-size:.75rem;color:var(--text-dim);
+    text-decoration:none;
+  }
+  .board-missing .board-back{text-decoration:none;}
+
+  @media (max-width:640px){
+    .board-crumbs .crumb-link,.board-crumbs .crumb-sep:first-of-type{display:none;}
+    .board-help{display:none;}
+  }
 
   /* Make the main-grid cards show a pointer cursor to signal they open the board */
   .card-cover-wrap, .card-title{cursor:pointer;}

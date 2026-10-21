@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Entry, EntryStatus, EntryType } from "@/lib/types";
+import CoverDropZone from "./CoverDropZone";
 import StarRating from "./StarRating";
 
 export default function EntryModal({
@@ -19,7 +20,8 @@ export default function EntryModal({
     progressCurrent: 0, progressTotal: 0, created: Date.now(),
   });
 
-  const set = <K extends keyof Entry>(k: K, v: Entry[K]) => setForm({ ...form, [k]: v });
+  // Functional update: the cover image is set asynchronously, after compression finishes.
+  const set = <K extends keyof Entry>(k: K, v: Entry[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +30,8 @@ export default function EntryModal({
   };
 
   return (
-    <div className="modal-overlay open" onClick={onClose}>
+    // Swallow file drops that miss the zone so the browser doesn't navigate away and lose the form.
+    <div className="modal-overlay open" onClick={onClose} onDragOver={(e) => e.preventDefault()} onDrop={(e) => e.preventDefault()}>
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 540 }}>
         <button className="close-modal" type="button" onClick={onClose}>✕</button>
         <div className="modal-title">{isEdit ? "Edit Entry" : "Add New Entry"}</div>
@@ -66,15 +69,14 @@ export default function EntryModal({
             <input type="text" value={form.genre} onChange={(e) => set("genre", e.target.value)} placeholder="Action, Fantasy" style={inputStyle} />
           </label>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".75rem" }}>
-            <label style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
-              <span style={labelStyle}>Total episodes/chapters</span>
-              <input type="text" value={form.totalEps} onChange={(e) => set("totalEps", e.target.value)} placeholder="24 eps" style={inputStyle} />
-            </label>
-            <label style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
-              <span style={labelStyle}>Cover image URL</span>
-              <input type="url" value={form.imageUrl} onChange={(e) => set("imageUrl", e.target.value)} placeholder="https://…" style={inputStyle} />
-            </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
+            <span style={labelStyle}>Total episodes/chapters</span>
+            <input type="text" value={form.totalEps} onChange={(e) => set("totalEps", e.target.value)} placeholder="24 eps" style={inputStyle} />
+          </label>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
+            <span style={labelStyle}>Cover image</span>
+            <CoverDropZone value={form.imageUrl} onChange={(url) => set("imageUrl", url)} inputStyle={inputStyle} />
           </div>
 
           {(form.status === "watching" || form.status === "dropped") && (

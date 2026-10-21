@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { arrayMove } from "@dnd-kit/sortable";
 import { useEntriesStore } from "@/lib/store";
 import type { Entry, EntryStatus, EntryType } from "@/lib/types";
 import DeleteUndoToast, { UNDO_MS, type PendingDelete } from "./DeleteUndoToast";
+import CardGrid from "./CardGrid";
 import EmptyState from "./EmptyState";
-import EntryCard from "./EntryCard";
 import EntryModal from "./EntryModal";
+
+// Order inside a rating tier: manually placed cards by position, unplaced (new) ones first, newest first.
+const byManualOrder = (a: Entry, b: Entry) =>
+  ((a.manualOrder ?? -1) - (b.manualOrder ?? -1)) || (b.created - a.created);
 
 export default function CollectionShell() {
   const entries = useEntriesStore((s) => s.entries);
@@ -14,6 +19,8 @@ export default function CollectionShell() {
   const updateEntry = useEntriesStore((s) => s.updateEntry);
   const removeEntry = useEntriesStore((s) => s.deleteEntry);
   const restoreEntry = useEntriesStore((s) => s.restoreEntry);
+  const reorderTier = useEntriesStore((s) => s.reorderTier);
+  const deleteMoodboard = useEntriesStore((s) => s.deleteMoodboard);
   const [activeType, setActiveType] = useState<"all" | EntryType | "watchlist">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | EntryStatus>("all");
   const [sort, setSort] = useState("rating-desc");
@@ -32,7 +39,10 @@ export default function CollectionShell() {
   // Entries are already removed from the store, so leaving the page makes pending deletes final.
   useEffect(() => {
     const timers = deleteTimers.current;
-    return () => timers.forEach(clearTimeout);
+    return () => timers.forEach((t, id) => {
+      clearTimeout(t);
+      useEntriesStore.getState().deleteMoodboard(id);
+    });
   }, []);
 
   // Stats (exclude plan-to + dropped)
@@ -70,8 +80,8 @@ export default function CollectionShell() {
       switch (sort) {
         case "newest":      return b.created - a.created;
         case "oldest":      return a.created - b.created;
-        case "rating-desc": return (b.rating - a.rating) || (b.created - a.created);
-        case "rating-asc":  return (a.rating - b.rating) || (b.created - a.created);
+        case "rating-desc": return (b.rating - a.rating) || byManualOrder(a, b);
+        case "rating-asc":  return (a.rating - b.rating) || byManualOrder(a, b);
         case "title-asc":   return a.title.localeCompare(b.title);
         case "title-desc":  return b.title.localeCompare(a.title);
         default:            return 0;
@@ -93,7 +103,9 @@ export default function CollectionShell() {
   const closeModal = () => { setShowModal(false); setEditing(null); };
 
   const saveEntry = (e: Entry) => {
-    if (entries.some((p) => p.id === e.id)) updateEntry(e.id, e);
+    const prev = entries.find((p) => p.id === e.id);
+    // Moving to another tier drops the old tier position.
+    if (prev) updateEntry(e.id, prev.rating !== e.rating || prev.type !== e.type ? { ...e, manualOrder: undefined } : e);
     else addEntry(e);
     closeModal();
   };
@@ -106,8 +118,26 @@ export default function CollectionShell() {
     setPendingDeletes((p) => [...p, { entry, index }]);
     deleteTimers.current.set(id, setTimeout(() => {
       deleteTimers.current.delete(id);
+      // The delete is final now, so the entry's moodboard goes too (kept until then so Undo restores it).
+      deleteMoodboard(id);
       setPendingDeletes((p) => p.filter((d) => d.entry.id !== id));
     }, UNDO_MS));
+  };
+
+  // Drag reordering is only meaningful when cards are grouped by rating.
+  const reorderable = activeType !== "watchlist" && sort.startsWith("rating");
+
+  // Reorder within the full tier (not just visible cards) so filtered-out entries keep their slots.
+  const reorderCard = (activeId: string, overId: string) => {
+    const moved = entries.find((e) => e.id === activeId);
+    if (!moved) return;
+    const tier = entries
+      .filter((e) => e.type === moved.type && e.rating === moved.rating && e.status !== "plan-to")
+      .sort(byManualOrder);
+    const from = tier.findIndex((e) => e.id === activeId);
+    const to = tier.findIndex((e) => e.id === overId);
+    if (from === -1 || to === -1) return;
+    reorderTier(arrayMove(tier, from, to).map((e) => e.id));
   };
 
   const undoDelete = (id: string) => {
@@ -240,11 +270,14 @@ export default function CollectionShell() {
                     {s.items.length} entr{s.items.length === 1 ? "y" : "ies"}
                   </span>
                 </div>
-                <div className={`card-grid ${view === "list" ? "view-list" : ""}`}>
-                  {s.items.map((e, i) => (
-                    <EntryCard key={e.id} entry={e} rank={i + 1} onEdit={openEdit} onDelete={deleteEntry} />
-                  ))}
-                </div>
+                <CardGrid
+                  items={s.items}
+                  view={view}
+                  reorderable={reorderable}
+                  onEdit={openEdit}
+                  onDelete={deleteEntry}
+                  onReorder={reorderCard}
+                />
               </div>
             )
           )}

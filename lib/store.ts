@@ -1,6 +1,7 @@
+import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Entry } from "./types";
+import type { Entry, MoodNode, MoodWire, Moodboard } from "./types";
 
 const DEMO: Omit<Entry, "id" | "created">[] = [
   { title:"Fullmetal Alchemist: Brotherhood", type:"anime", status:"completed", genre:"Action, Adventure", totalEps:"64 eps", notes:"A true masterpiece from start to finish.", rating:5, imageUrl:"", progressCurrent:0, progressTotal:0 },
@@ -28,8 +29,28 @@ type EntriesState = {
   updateEntry: (id: string, patch: Partial<Entry>) => void;
   deleteEntry: (id: string) => void;
   restoreEntry: (entry: Entry, index: number) => void;
+  reorderTier: (orderedIds: string[]) => void;
   setEntries: (entries: Entry[]) => void;
+
+  moodboards: Record<string, Moodboard>;
+  addNode: (entryId: string, node: MoodNode) => void;
+  updateNodeData: (entryId: string, nodeId: string, patch: Record<string, string>) => void;
+  patchNodes: (entryId: string, patches: Record<string, Partial<Omit<MoodNode, "id">>>) => void;
+  deleteNodes: (entryId: string, nodeIds: string[]) => void;
+  addWire: (entryId: string, wire: MoodWire) => void;
+  deleteWires: (entryId: string, wireIds: string[]) => void;
+  setBoard: (entryId: string, board: Moodboard) => void;
+  deleteMoodboard: (entryId: string) => void;
 };
+
+export const EMPTY_BOARD: Moodboard = { nodes: [], wires: [] };
+
+// Applies fn to one entry's board, creating the board if it doesn't exist yet.
+const patchBoard = (
+  boards: Record<string, Moodboard>,
+  entryId: string,
+  fn: (b: Moodboard) => Moodboard
+) => ({ moodboards: { ...boards, [entryId]: fn(boards[entryId] ?? EMPTY_BOARD) } });
 
 // Set during hydration when nothing was stored yet, so the seed gets written once.
 let seededOnHydrate = false;
@@ -50,11 +71,57 @@ export const useEntriesStore = create<EntriesState>()(
           entries.splice(Math.min(index, entries.length), 0, entry);
           return { entries };
         }),
+      // Persist a rating tier's new order as manualOrder = position in orderedIds.
+      reorderTier: (orderedIds) =>
+        set((s) => {
+          const order = new Map(orderedIds.map((id, i) => [id, i]));
+          return {
+            entries: s.entries.map((e) => (order.has(e.id) ? { ...e, manualOrder: order.get(e.id) } : e)),
+          };
+        }),
       setEntries: (entries) => set({ entries }),
+
+      moodboards: {},
+      addNode: (entryId, node) =>
+        set((s) => patchBoard(s.moodboards, entryId, (b) => ({ ...b, nodes: [...b.nodes, node] }))),
+      updateNodeData: (entryId, nodeId, patch) =>
+        set((s) => patchBoard(s.moodboards, entryId, (b) => ({
+          ...b,
+          nodes: b.nodes.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, ...patch } } : n)),
+        }))),
+      patchNodes: (entryId, patches) =>
+        set((s) => patchBoard(s.moodboards, entryId, (b) => ({
+          ...b,
+          nodes: b.nodes.map((n) => (patches[n.id] ? { ...n, ...patches[n.id] } : n)),
+        }))),
+      // Also drops any wires attached to the removed nodes.
+      deleteNodes: (entryId, nodeIds) =>
+        set((s) => {
+          const gone = new Set(nodeIds);
+          return patchBoard(s.moodboards, entryId, (b) => ({
+            nodes: b.nodes.filter((n) => !gone.has(n.id)),
+            wires: b.wires.filter((w) => !gone.has(w.from) && !gone.has(w.to)),
+          }));
+        }),
+      addWire: (entryId, wire) =>
+        set((s) => patchBoard(s.moodboards, entryId, (b) => ({ ...b, wires: [...b.wires, wire] }))),
+      deleteWires: (entryId, wireIds) =>
+        set((s) => {
+          const gone = new Set(wireIds);
+          return patchBoard(s.moodboards, entryId, (b) => ({ ...b, wires: b.wires.filter((w) => !gone.has(w.id)) }));
+        }),
+      setBoard: (entryId, board) =>
+        set((s) => ({ moodboards: { ...s.moodboards, [entryId]: board } })),
+      deleteMoodboard: (entryId) =>
+        set((s) => {
+          const moodboards = { ...s.moodboards };
+          delete moodboards[entryId];
+          return { moodboards };
+        }),
     }),
     {
       name: "otakuvault.v1",
-      partialize: (s) => ({ entries: s.entries }),
+      partialize: (s) => ({ entries: s.entries, moodboards: s.moodboards }),
       // Hydrate manually from a client effect so server and first client render match.
       skipHydration: true,
       merge: (persisted, current) => {
@@ -71,3 +138,11 @@ export const useEntriesStore = create<EntriesState>()(
     }
   )
 );
+
+// True once the persisted state has been loaded into the store (always false on the server).
+export const useEntriesHydrated = () =>
+  useSyncExternalStore(
+    (cb) => useEntriesStore.persist.onFinishHydration(cb),
+    () => useEntriesStore.persist.hasHydrated(),
+    () => false
+  );

@@ -1,14 +1,25 @@
 "use client";
 
+import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export default function SiteNav() {
+function ActiveLink({ href, children }: { href: string; children: ReactNode }) {
   const path = usePathname();
-  const isActive = (href: string) => path === href;
-  const linkClass = (href: string) =>
-    `nav-link ${isActive(href) ? "active" : ""}`;
+  return <Link href={href} className={`nav-link ${path === href ? "active" : ""}`}>{children}</Link>;
+}
 
+// usePathname suspends while prerendering routes with dynamic params (e.g. a moodboard),
+// so each link reads it inside its own boundary and falls back to the inactive link.
+function NavLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Suspense fallback={<Link href={href} className="nav-link">{children}</Link>}>
+      <ActiveLink href={href}>{children}</ActiveLink>
+    </Suspense>
+  );
+}
+
+export default function SiteNav() {
   return (
     <nav className="site-nav">
       <Link href="/" className="site-nav-brand">
@@ -16,11 +27,11 @@ export default function SiteNav() {
         <span className="logo-sub">Personal Collection Tracker</span>
       </Link>
       <div className="site-nav-links">
-        <Link href="/" className={linkClass("/")}>Home</Link>
-        <Link href="/collection" className={linkClass("/collection")}>Your Collection</Link>
-        <Link href="/index-page" className={linkClass("/index-page")}>Index</Link>
-        <Link href="/forum" className={linkClass("/forum")}>Forum</Link>
-        <Link href="/store" className={linkClass("/store")}>Store</Link>
+        <NavLink href="/">Home</NavLink>
+        <NavLink href="/collection">Your Collection</NavLink>
+        <NavLink href="/index-page">Index</NavLink>
+        <NavLink href="/forum">Forum</NavLink>
+        <NavLink href="/store">Store</NavLink>
         <div className="auth-cta-group">
           <Link href="/login" className="nav-link nav-login">Log In</Link>
           <Link href="/signup" className="nav-link nav-signup">Sign Up</Link>
