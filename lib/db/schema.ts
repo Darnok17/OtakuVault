@@ -10,14 +10,15 @@ const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull(
 const updatedAt = () =>
   timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date());
 
-/* ---------- Auth (Better-Auth stubs; reconcile with its generated schema later) ---------- */
+/* ---------- Auth (Better-Auth; field mapping lives in lib/auth.ts) ---------- */
 
 export const users = pgTable("users", {
   id: id(),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull().default(false),
   username: text("username").unique(),
-  displayName: text("display_name"),
+  // Better-Auth's `name` and `image` fields map onto these.
+  displayName: text("display_name").notNull(),
   avatar: text("avatar"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -41,7 +42,9 @@ export const accounts = pgTable("accounts", {
   accountId: text("account_id").notNull(),
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
   accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
   scope: text("scope"),
   password: text("password"),
   createdAt: createdAt(),
@@ -50,6 +53,16 @@ export const accounts = pgTable("accounts", {
   index("accounts_user_id_idx").on(t.userId),
   unique("accounts_provider_account_uq").on(t.providerId, t.accountId),
 ]);
+
+// Email verification / password reset tokens.
+export const verifications = pgTable("verifications", {
+  id: id(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (t) => [index("verifications_identifier_idx").on(t.identifier)]);
 
 /* ---------- Collection ---------- */
 
