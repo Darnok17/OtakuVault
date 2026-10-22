@@ -1,8 +1,8 @@
 "use client";
 
-import { memo, useRef, type ChangeEvent } from "react";
+import { memo, useRef, useState, type ChangeEvent } from "react";
 import type { MoodNode } from "@/lib/types";
-import { compressImage } from "@/lib/image";
+import { uploadImageFile } from "@/lib/image";
 import { BUBBLE_COLORS, BUBBLE_STYLES, CUSTOM_COLORS, CUSTOM_ICONS, NODE_TYPES } from "./nodeTypes";
 
 type Patch = (patch: Record<string, string>) => void;
@@ -46,22 +46,37 @@ function Line({ field, data, onPatch, className = "", placeholder, style }: {
   );
 }
 
-// Click-to-upload image slot; the file is compressed before it's stored.
+// Click-to-upload image slot. The file goes to storage first; the node keeps only its URL,
+// and only once the upload succeeds (a failure leaves the slot as it was).
 function ImageSlot({ field, data, onPatch, className, empty }: {
   field: string; data: MoodNode["data"]; onPatch: Patch; className: string; empty: React.ReactNode;
 }) {
   const input = useRef<HTMLInputElement>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [error, setError] = useState("");
   const src = data[field];
   const pick = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file || !file.type.startsWith("image/")) return;
-    try { onPatch({ [field]: await compressImage(file) }); } catch { /* unreadable image: leave slot as is */ }
+    if (!file || status) return;
+    setError("");
+    try {
+      onPatch({ [field]: await uploadImageFile(file, "moodboard", (s) => setStatus(s === "preparing" ? "preparing…" : "uploading…")) });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setStatus(null);
+    }
   };
   return (
     <>
-      <div className={`${className} ${src ? "loaded" : ""}`} onClick={() => input.current?.click()}>
+      <div className={`${className} ${src ? "loaded" : ""} ${status ? "uploading" : ""}`} aria-busy={!!status} onClick={() => input.current?.click()}>
         {src ? <img src={src} alt="" draggable={false} /> : empty}
+        {(status || error) && (
+          <span className={`bc-upload-status ${error ? "error" : ""}`} role={error ? "alert" : "status"}>
+            &gt; {status ?? error}
+          </span>
+        )}
       </div>
       <input ref={input} type="file" accept="image/*" hidden onChange={pick} />
     </>

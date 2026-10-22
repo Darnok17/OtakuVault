@@ -3932,6 +3932,23 @@
   }
   .cover-remove-btn:hover{color:var(--accent);border-color:var(--accent);}
   .cover-upload-error{font-family:var(--font-space-mono),monospace;font-size:.62rem;color:var(--accent);}
+  /* Upload in flight: dim the zone, keep the overlay up, and run a bar along the bottom.
+     Server Actions don't report byte progress, so the bar shows the stage, not a percentage. */
+  .cover-upload-area.uploading{cursor:progress;border-color:var(--accent3);}
+  .cover-upload-area.uploading .cover-upload-overlay{opacity:1;}
+  .cover-upload-area.uploading img{filter:brightness(.55);transform:none;}
+  .cover-upload-progress{
+    position:absolute;left:0;right:0;bottom:0;height:3px;z-index:2;overflow:hidden;
+    background:rgba(0,212,170,.15);
+  }
+  .cover-upload-progress span{
+    position:absolute;top:0;bottom:0;left:0;width:40%;
+    background:var(--accent3);box-shadow:0 0 8px var(--accent3);
+    animation:uploadSweep 1.1s ease-in-out infinite;
+  }
+  .cover-upload-progress[data-stage="preparing"] span{width:25%;opacity:.6;}
+  @keyframes uploadSweep{from{transform:translateX(-100%);}to{transform:translateX(250%);}}
+  @media (prefers-reduced-motion:reduce){.cover-upload-progress span{animation:none;width:100%;opacity:.6;}}
 
   /* API search section */
   .api-search-section{
@@ -4523,6 +4540,15 @@
   }
   .bc-image-slot:hover{background:var(--border);}
   .bc-image-slot img{width:100%;height:100%;object-fit:cover;display:block;}
+  .bc-image-slot.uploading,.bc-char-portrait.uploading{cursor:progress;}
+  .bc-image-slot.uploading img,.bc-char-portrait.uploading img{filter:brightness(.5);}
+  .bc-upload-status{
+    position:absolute;left:.4rem;right:.4rem;bottom:.4rem;z-index:1;
+    padding:.2rem .4rem;border-radius:3px;background:rgba(10,10,15,.85);
+    font-family:var(--font-space-mono),monospace;font-size:.55rem;letter-spacing:.06em;text-transform:none;
+    color:var(--accent3);text-align:left;
+  }
+  .bc-upload-status.error{color:#ff8a9c;}
   .bc-char-portrait{
     width:100%;aspect-ratio:3/4;background:var(--surface3);
     display:flex;align-items:center;justify-content:center;

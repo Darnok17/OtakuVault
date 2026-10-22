@@ -20,12 +20,15 @@ export default function EntryModal({
     progressCurrent: 0, progressTotal: 0, created: Date.now(),
   });
 
-  // Functional update: the cover image is set asynchronously, after compression finishes.
+  const [uploading, setUploading] = useState(false);
+
+  // Functional update: the cover image is set asynchronously, after the upload finishes.
   const set = <K extends keyof Entry>(k: K, v: Entry[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim()) return;
+    // Saving mid-upload would drop the new cover.
+    if (!form.title.trim() || uploading) return;
     onSave(form);
   };
 
@@ -76,7 +79,7 @@ export default function EntryModal({
 
           <div style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
             <span style={labelStyle}>Cover image</span>
-            <CoverDropZone value={form.imageUrl} onChange={(url) => set("imageUrl", url)} inputStyle={inputStyle} />
+            <CoverDropZone value={form.imageUrl} onChange={(url) => set("imageUrl", url)} inputStyle={inputStyle} onBusyChange={setUploading} />
           </div>
 
           {(form.status === "watching" || form.status === "dropped") && (
@@ -104,7 +107,7 @@ export default function EntryModal({
 
           <div style={{ display: "flex", gap: ".75rem", marginTop: ".5rem" }}>
             <button type="button" className="btn btn-ghost" onClick={onClose} style={{ flex: 1 }}>Cancel</button>
-            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{isEdit ? "Save Changes" : "Add Entry"}</button>
+            <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>{uploading ? "Uploading…" : isEdit ? "Save Changes" : "Add Entry"}</button>
           </div>
         </form>
       </div>

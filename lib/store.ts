@@ -219,7 +219,15 @@ export const useEntriesStore = create<EntriesState>()(
       if (!get().restoreEntryLocal(restored, index)) return;
       sync(
         // The delete cascaded the moodboard row; hand back the board it returned.
-        () => restoreEntryAction(restored, deletedBoards.get(restored.id)),
+        async () => {
+          const saved = await restoreEntryAction(restored, deletedBoards.get(restored.id));
+          // Pre-upload base64 images are stored as uploads on restore, so adopt the stored cover
+          // and reload the board from the DB on its next visit.
+          if (saved && saved.imageUrl !== restored.imageUrl) {
+            set((s) => ({ entries: s.entries.map((e) => (e.id === saved.id ? { ...e, imageUrl: saved.imageUrl } : e)) }));
+          }
+          get().deleteMoodboard(restored.id);
+        },
         () => set((s) => ({ entries: s.entries.filter((e) => e.id !== restored.id) }))
       );
     },
