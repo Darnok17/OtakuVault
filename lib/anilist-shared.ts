@@ -22,6 +22,8 @@ export type Title = {
   popularity: number | null;
   genres: string[];
   cover: string | null;
+  // Small cover for lists (absent on titles cached before it was added; fall back to cover).
+  thumb?: string | null;
   banner: string | null;
   color: string | null;
   season: Season | null;

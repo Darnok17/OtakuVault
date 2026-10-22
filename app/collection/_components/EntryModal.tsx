@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { lengthFor, type Title } from "@/lib/anilist-shared";
 import type { Entry, EntryStatus, EntryType } from "@/lib/types";
+import AniListSearch from "./AniListSearch";
 import CoverDropZone from "./CoverDropZone";
 import StarRating from "./StarRating";
 
@@ -21,9 +23,25 @@ export default function EntryModal({
   });
 
   const [uploading, setUploading] = useState(false);
+  const titleInput = useRef<HTMLInputElement>(null);
 
   // Functional update: the cover image is set asynchronously, after the upload finishes.
   const set = <K extends keyof Entry>(k: K, v: Entry[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  // AniList autofill: fills the fields a title card needs; everything stays editable before saving.
+  const fillFromAniList = (t: Title) => {
+    const length = lengthFor(t);
+    setForm((f) => ({
+      ...f,
+      title: t.title,
+      type: t.entryType,
+      genre: t.genres.join(", "),
+      totalEps: length.label,
+      progressTotal: length.total,
+      imageUrl: t.cover ?? "",
+      status: "plan-to",
+    }));
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,9 +58,13 @@ export default function EntryModal({
         <div className="modal-title">{isEdit ? "Edit Entry" : "Add New Entry"}</div>
 
         <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem" }}>
+          {!isEdit && (
+            <AniListSearch onPick={fillFromAniList} onManual={() => titleInput.current?.focus()} inputStyle={inputStyle} labelStyle={labelStyle} />
+          )}
+
           <label style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
             <span style={labelStyle}>Title *</span>
-            <input type="text" value={form.title} onChange={(e) => set("title", e.target.value)} required autoFocus style={inputStyle} />
+            <input ref={titleInput} type="text" value={form.title} onChange={(e) => set("title", e.target.value)} required autoFocus style={inputStyle} />
           </label>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".75rem" }}>

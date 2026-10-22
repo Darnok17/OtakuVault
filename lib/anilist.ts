@@ -57,7 +57,7 @@ const MEDIA_FIELDS = `
   id type format status episodes chapters volumes averageScore popularity genres countryOfOrigin
   season seasonYear startDate { year }
   title { romaji english native }
-  coverImage { extraLarge large color }
+  coverImage { extraLarge large medium color }
   bannerImage`;
 
 type RawMedia = {
@@ -66,7 +66,7 @@ type RawMedia = {
   averageScore: number | null; popularity: number | null; genres: string[] | null; countryOfOrigin: string | null;
   season: Season | null; seasonYear: number | null; startDate: { year: number | null } | null;
   title: { romaji: string | null; english: string | null; native: string | null };
-  coverImage: { extraLarge: string | null; large: string | null; color: string | null } | null;
+  coverImage: { extraLarge: string | null; large: string | null; medium: string | null; color: string | null } | null;
   bannerImage: string | null;
   description?: string | null;
   studios?: { nodes: { name: string }[] } | null;
@@ -97,6 +97,7 @@ function normalize(m: RawMedia): Title {
     popularity: m.popularity,
     genres: m.genres ?? [],
     cover: m.coverImage?.extraLarge ?? m.coverImage?.large ?? null,
+    thumb: m.coverImage?.medium ?? m.coverImage?.large ?? null,
     banner: m.bannerImage,
     color: m.coverImage?.color ?? null,
     season: m.season,

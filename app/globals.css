@@ -3932,6 +3932,38 @@
   }
   .cover-remove-btn:hover{color:var(--accent);border-color:var(--accent);}
   .cover-upload-error{font-family:var(--font-space-mono),monospace;font-size:.62rem;color:var(--accent);}
+
+  /* ─── Add Entry: AniList autofill ─── */
+  .al-search-note{font-family:var(--font-space-mono),monospace;font-size:.62rem;letter-spacing:.04em;color:var(--text-dim);}
+  .al-search-note.error{color:#ff8a9c;}
+  .al-search-panel{
+    border:1px solid var(--border);border-radius:8px;overflow:hidden;
+    background:rgba(10,10,15,.75);box-shadow:var(--shadow-sm);
+  }
+  .al-search-list{list-style:none;margin:0;padding:.25rem;max-height:320px;overflow-y:auto;}
+  .al-search-list[aria-busy="true"]{opacity:.6;}
+  .al-search-row{
+    display:flex;align-items:center;gap:.7rem;padding:.35rem .5rem;border-radius:6px;cursor:pointer;
+    border:1px solid transparent;transition:background .15s,border-color .15s;
+  }
+  .al-search-row.active{background:rgba(123,94,167,.14);border-color:rgba(123,94,167,.4);}
+  .al-search-thumb{
+    flex:none;width:28px;height:40px;border-radius:3px;overflow:hidden;background:var(--surface3);
+  }
+  .al-search-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .al-search-title{
+    flex:1;min-width:0;display:flex;align-items:baseline;gap:.5rem;
+    font-size:.82rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .al-search-year{flex:none;font-family:var(--font-space-mono),monospace;font-size:.6rem;color:var(--text-faint);}
+  .al-search-row .badge{flex:none;}
+  .al-search-empty{padding:.6rem .5rem;font-family:var(--font-space-mono),monospace;font-size:.65rem;color:var(--text-dim);}
+  .al-search-manual{
+    display:block;width:100%;padding:.55rem .75rem;text-align:left;cursor:pointer;
+    background:transparent;border:none;border-top:1px solid var(--border);
+    font-family:var(--font-space-mono),monospace;font-size:.62rem;letter-spacing:.06em;color:var(--accent3);
+  }
+  .al-search-manual:hover,.al-search-manual:focus-visible{background:rgba(0,212,170,.06);outline:none;text-decoration:underline;}
   /* Upload in flight: dim the zone, keep the overlay up, and run a bar along the bottom.
      Server Actions don't report byte progress, so the bar shows the stage, not a percentage. */
   .cover-upload-area.uploading{cursor:progress;border-color:var(--accent3);}
