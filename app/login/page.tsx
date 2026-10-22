@@ -2,16 +2,38 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { authClient } from "@/lib/auth-client";
+import { AuthError, redirectTarget, useOAuth } from "@/app/_components/auth-ui";
 
 export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const oauth = useOAuth(() => redirectTarget());
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const email = String(form.get("identifier") ?? "").trim();
+    const password = String(form.get("password") ?? "");
+    setError(null);
+    if (!email.includes("@")) {
+      setError("> err: username login isn't supported yet — use your email");
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => { setLoading(false); setDone(true); setTimeout(() => setDone(false), 1500); }, 900);
+    const { error } = await authClient.signIn.email({ email, password });
+    setLoading(false);
+    if (error) {
+      setError(`> err: ${error.status === 401 ? "invalid email or password" : (error.message ?? "login failed").toLowerCase()}`);
+      return;
+    }
+    setDone(true);
+    // Full navigation, not router.replace: a /collection prefetched while signed out
+    // is cached as the proxy's /login redirect and would bounce us straight back.
+    window.location.assign(redirectTarget());
   };
 
   return (
@@ -34,17 +56,17 @@ export default function LoginPage() {
               <div className="auth-subtitle">Pick up where you left off — your collection, lists, and moodboards are waiting.</div>
 
               <div className="auth-oauth">
-                <button className="auth-oauth-btn" data-provider="google" type="button">
+                <button className="auth-oauth-btn" data-provider="google" type="button" data-connecting={oauth.connecting === "google" || undefined} disabled={!!oauth.connecting} onClick={() => oauth.connect("google")}>
                   <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1Z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.65l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z" fill="#34A853"/><path d="M5.84 14.11a6.6 6.6 0 0 1 0-4.22V7.07H2.18a11 11 0 0 0 0 9.86l3.66-2.82Z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.82C6.71 7.3 9.14 5.38 12 5.38Z" fill="#EA4335"/></svg>
-                  Google
+                  {oauth.connecting === "google" ? "Connecting…" : "Google"}
                 </button>
-                <button className="auth-oauth-btn" data-provider="discord" type="button">
+                <button className="auth-oauth-btn" data-provider="discord" type="button" data-connecting={oauth.connecting === "discord" || undefined} disabled={!!oauth.connecting} onClick={() => oauth.connect("discord")}>
                   <svg viewBox="0 0 24 24" fill="#5865F2" width="14" height="14"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.07.07 0 0 0-.074.035c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.618-1.25.08.08 0 0 0-.074-.035A19.74 19.74 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.1 18.058a.08.08 0 0 0 .031.055 19.9 19.9 0 0 0 5.993 3.03.08.08 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.08.08 0 0 0-.041-.106 13.1 13.1 0 0 1-1.873-.892.08.08 0 0 1-.008-.132c.126-.094.252-.192.372-.291a.07.07 0 0 1 .077-.01c3.927 1.793 8.18 1.793 12.062 0a.07.07 0 0 1 .078.01c.12.099.246.197.372.291a.08.08 0 0 1-.006.132 12.3 12.3 0 0 1-1.874.891.08.08 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.08.08 0 0 0 .084.028 19.84 19.84 0 0 0 6.002-3.03.08.08 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.06.06 0 0 0-.031-.028ZM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.42 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.334-.956 2.42-2.157 2.42Zm7.975 0c-1.183 0-2.157-1.085-2.157-2.42 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.334-.946 2.42-2.157 2.42Z"/></svg>
-                  Discord
+                  {oauth.connecting === "discord" ? "Connecting…" : "Discord"}
                 </button>
-                <button className="auth-oauth-btn" data-provider="github" type="button">
+                <button className="auth-oauth-btn" data-provider="github" type="button" data-connecting={oauth.connecting === "github" || undefined} disabled={!!oauth.connecting} onClick={() => oauth.connect("github")}>
                   <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57v-2c-3.34.72-4.03-1.6-4.03-1.6-.55-1.4-1.33-1.76-1.33-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.82 1.3 3.5.99.11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.3.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.02-.33 3.3 1.23a11.4 11.4 0 0 1 6 0c2.3-1.56 3.3-1.23 3.3-1.23.65 1.66.25 2.87.12 3.18a4.65 4.65 0 0 1 1.24 3.22c0 4.6-2.8 5.63-5.48 5.92.42.37.81 1.1.81 2.22v3.3c0 .32.21.7.82.58A12 12 0 0 0 12 .3"/></svg>
-                  GitHub
+                  {oauth.connecting === "github" ? "Connecting…" : "GitHub"}
                 </button>
               </div>
 
@@ -89,6 +111,7 @@ export default function LoginPage() {
                 <button type="submit" className={`auth-submit ${loading ? "loading" : ""}`} disabled={loading}>
                   {done ? "✓ Logged In" : loading ? "Processing" : "Log In"}
                 </button>
+                <AuthError message={error} />
               </form>
 
               <div className="auth-footer">
@@ -120,6 +143,7 @@ export default function LoginPage() {
           </div>
         </aside>
       </div>
+      {oauth.toast}
     </section>
   );
 }

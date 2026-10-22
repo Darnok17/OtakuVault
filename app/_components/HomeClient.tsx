@@ -6,6 +6,52 @@ import { useRouter } from "next/navigation";
 // Module-level flag survives Strict Mode's double-mount and Fast Refresh.
 let bootStarted = false;
 
+// ─── Scroll reveal for feature sections ─────────────────────
+function setupScrollReveal(): IntersectionObserver | null {
+  const revealTargets = document.querySelectorAll(
+    ".home-features .feat, .home-features .feat-stats, .home-features .feat-cta"
+  );
+  if (!revealTargets.length) return null;
+  const revealIO = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("in-view");
+        revealIO.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.18, rootMargin: "0px 0px -40px 0px" });
+  revealTargets.forEach((el) => revealIO.observe(el));
+  return revealIO;
+}
+
+// ─── Stat counter animation ─────────────────────────────────
+function setupStatCounters(): IntersectionObserver | null {
+  const bigs = document.querySelectorAll<HTMLElement>(".stat-big[data-count]");
+  if (!bigs.length) return null;
+  const statIO = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      statIO.unobserve(entry.target);
+      const el = entry.target as HTMLElement;
+      const targetVal = parseInt(el.dataset.count || "0", 10);
+      const DURATION = 1400;
+      const start = performance.now();
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - start) / DURATION);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const value = Math.round(targetVal * eased);
+        el.textContent = targetVal >= 1000
+          ? value.toLocaleString() + (t === 1 ? "+" : "")
+          : String(value);
+        if (t < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  }, { threshold: 0.5 });
+  bigs.forEach((el) => statIO.observe(el));
+  return statIO;
+}
+
 export default function HomeClient() {
   const router = useRouter();
 
@@ -19,8 +65,6 @@ export default function HomeClient() {
     if (sessionStorage.getItem("booted")) {
       document.body.classList.remove("booting");
       document.body.classList.add("boot-complete", "post-boot");
-      setupScrollReveal();
-      setupStatCounters();
       return;
     }
 
@@ -267,9 +311,6 @@ export default function HomeClient() {
           }, 1250);
           setTimeout(() => {
             document.body.classList.add("post-boot");
-            // Wire up scroll reveal + stat counters once boot settles
-            setupScrollReveal();
-            setupStatCounters();
           }, 2600);
         });
       });
@@ -284,52 +325,6 @@ export default function HomeClient() {
       document.body.classList.add("boot-complete", "post-boot");
       overlay.classList.add("done");
       setTimeout(() => overlay.remove(), 400);
-      setupScrollReveal();
-      setupStatCounters();
-    }
-
-    // ─── Scroll reveal for feature sections ─────────────────────
-    function setupScrollReveal() {
-      const revealTargets = document.querySelectorAll(
-        ".home-features .feat, .home-features .feat-stats, .home-features .feat-cta"
-      );
-      if (!revealTargets.length) return;
-      const revealIO = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("in-view");
-            revealIO.unobserve(entry.target);
-          }
-        });
-      }, { threshold: 0.18, rootMargin: "0px 0px -40px 0px" });
-      revealTargets.forEach((el) => revealIO.observe(el));
-    }
-
-    // ─── Stat counter animation ─────────────────────────────────
-    function setupStatCounters() {
-      const bigs = document.querySelectorAll<HTMLElement>(".stat-big[data-count]");
-      if (!bigs.length) return;
-      const statIO = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          statIO.unobserve(entry.target);
-          const el = entry.target as HTMLElement;
-          const targetVal = parseInt(el.dataset.count || "0", 10);
-          const DURATION = 1400;
-          const start = performance.now();
-          const tick = (now: number) => {
-            const t = Math.min(1, (now - start) / DURATION);
-            const eased = 1 - Math.pow(1 - t, 3);
-            const value = Math.round(targetVal * eased);
-            el.textContent = targetVal >= 1000
-              ? value.toLocaleString() + (t === 1 ? "+" : "")
-              : String(value);
-            if (t < 1) requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
-        });
-      }, { threshold: 0.5 });
-      bigs.forEach((el) => statIO.observe(el));
     }
 
     // ─── Dev shortcut: Alt+B replays the boot ───────────────────
@@ -344,6 +339,32 @@ export default function HomeClient() {
 
     // Give fonts + layout a frame to settle, then kick off the boot
     requestAnimationFrame(() => requestAnimationFrame(runBoot));
+  }, []);
+
+  // Scroll reveal + stat counters, wired on every mount. Kept out of the boot
+  // effect: its bootStarted guard skips everything when Home remounts with
+  // fresh DOM (e.g. after the router evicts the cached page), which left the
+  // feature sections permanently hidden until a reload. Waits for body.post-boot
+  // so nothing reveals behind the boot overlay on tall screens.
+  useEffect(() => {
+    let observers: (IntersectionObserver | null)[] = [];
+    const start = () => { observers = [setupScrollReveal(), setupStatCounters()]; };
+
+    const body = document.body;
+    if (body.classList.contains("post-boot")) {
+      start();
+      return () => observers.forEach((io) => io?.disconnect());
+    }
+    const bootWatch = new MutationObserver(() => {
+      if (!body.classList.contains("post-boot")) return;
+      bootWatch.disconnect();
+      start();
+    });
+    bootWatch.observe(body, { attributes: true, attributeFilter: ["class"] });
+    return () => {
+      bootWatch.disconnect();
+      observers.forEach((io) => io?.disconnect());
+    };
   }, []);
 
   // Helper for tile navigation (click + Enter/Space keyboard)

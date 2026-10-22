@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { authClient } from "@/lib/auth-client";
+import { AuthError, useOAuth } from "@/app/_components/auth-ui";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function SignupPage() {
   const [showPw, setShowPw] = useState(false);
@@ -10,6 +14,7 @@ export default function SignupPage() {
   const [conf, setConf] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const strength = (() => {
     let s = 0;
@@ -23,10 +28,37 @@ export default function SignupPage() {
   const strengthLabel = ["—", "Weak", "Fair", "Good", "Strong"][strength];
   const matchColor = conf ? (conf === pw ? "rgba(0,212,170,.5)" : "rgba(233,69,96,.5)") : "";
 
-  const onSubmit = (e: React.FormEvent) => {
+  const oauth = useOAuth(() => "/collection");
+
+  const validate = (username: string, email: string) => {
+    if (!username) return "username is required";
+    if (!EMAIL_RE.test(email)) return "enter a valid email address";
+    if (pw.length < 8) return "password must be 8+ characters";
+    if (conf !== pw) return "passwords don't match";
+    return null;
+  };
+
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const username = String(form.get("username") ?? "").trim();
+    const email = String(form.get("email") ?? "").trim();
+    const invalid = validate(username, email);
+    setError(invalid && `> err: ${invalid}`);
+    if (invalid) return;
+
     setLoading(true);
-    setTimeout(() => { setLoading(false); setDone(true); setTimeout(() => setDone(false), 1500); }, 900);
+    const { error } = await authClient.signUp.email({ email, password: pw, name: username });
+    setLoading(false);
+    if (error) {
+      setError(`> err: ${(error.message ?? "sign-up failed").toLowerCase()}`);
+      return;
+    }
+    setDone(true);
+    // Full navigation, not router.replace: a /collection prefetched while signed out
+    // is cached as the proxy's /login redirect and would bounce us straight back.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- see above
+    window.location.assign("/collection");
   };
 
   return (
@@ -49,9 +81,9 @@ export default function SignupPage() {
               <div className="auth-subtitle">Track thousands of titles, build moodboards, and connect with 12,000+ collectors.</div>
 
               <div className="auth-oauth">
-                <button className="auth-oauth-btn" type="button">Google</button>
-                <button className="auth-oauth-btn" type="button">Discord</button>
-                <button className="auth-oauth-btn" type="button">GitHub</button>
+                <button className="auth-oauth-btn" type="button" data-connecting={oauth.connecting === "google" || undefined} disabled={!!oauth.connecting} onClick={() => oauth.connect("google")}>{oauth.connecting === "google" ? "Connecting…" : "Google"}</button>
+                <button className="auth-oauth-btn" type="button" data-connecting={oauth.connecting === "discord" || undefined} disabled={!!oauth.connecting} onClick={() => oauth.connect("discord")}>{oauth.connecting === "discord" ? "Connecting…" : "Discord"}</button>
+                <button className="auth-oauth-btn" type="button" data-connecting={oauth.connecting === "github" || undefined} disabled={!!oauth.connecting} onClick={() => oauth.connect("github")}>{oauth.connecting === "github" ? "Connecting…" : "GitHub"}</button>
               </div>
 
               <div className="auth-divider">or register with email</div>
@@ -124,6 +156,7 @@ export default function SignupPage() {
                 <button type="submit" className={`auth-submit ${loading ? "loading" : ""}`} disabled={loading}>
                   {done ? "✓ Account Created" : loading ? "Processing" : "Create Account"}
                 </button>
+                <AuthError message={error} />
               </form>
 
               <div className="auth-footer">
@@ -144,7 +177,7 @@ export default function SignupPage() {
             <div className="auth-benefits">
               <div className="auth-benefit"><div className="auth-benefit-icon">追</div><div className="auth-benefit-text"><div className="auth-benefit-title">Cross-Device Tracking</div><div className="auth-benefit-desc">Your progress follows you across phone, laptop, and browser extension.</div></div></div>
               <div className="auth-benefit"><div className="auth-benefit-icon">板</div><div className="auth-benefit-text"><div className="auth-benefit-title">Visual Moodboards</div><div className="auth-benefit-desc">Build infinite canvases of favorites, with wires linking related works.</div></div></div>
-              <div className="auth-benefit"><div className="auth-benefit-icon">薦</div><div className="auth-benefit-text"><div className="auth-benefit-title">Personalized Recs</div><div className="auth-benefit-desc">Discover what to watch next based on what you've already loved.</div></div></div>
+              <div className="auth-benefit"><div className="auth-benefit-icon">薦</div><div className="auth-benefit-text"><div className="auth-benefit-title">Personalized Recs</div><div className="auth-benefit-desc">Discover what to watch next based on what you&apos;ve already loved.</div></div></div>
               <div className="auth-benefit"><div className="auth-benefit-icon">話</div><div className="auth-benefit-text"><div className="auth-benefit-title">Community Forum</div><div className="auth-benefit-desc">Join 12,000+ members in discussions, reviews, and weekly watch-alongs.</div></div></div>
             </div>
             <div className="auth-side-stats">
@@ -155,6 +188,7 @@ export default function SignupPage() {
           </div>
         </aside>
       </div>
+      {oauth.toast}
     </section>
   );
 }
