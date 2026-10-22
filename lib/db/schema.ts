@@ -154,6 +154,16 @@ export const cachedTitles = pgTable("cached_titles", {
   updatedAt: updatedAt(),
 }, (t) => [uniqueIndex("cached_titles_anilist_id_idx").on(t.anilistId)]);
 
+// Result lists of AniList queries (search, seasonal, trending, browse, recommendations),
+// stored as ordered anilist ids; the titles themselves live in cached_titles.
+export const cachedQueries = pgTable("cached_queries", {
+  key: text("key").primaryKey(),
+  anilistIds: jsonb("anilist_ids").$type<number[]>().notNull(),
+  total: integer("total").notNull().default(0),
+  hasNext: boolean("has_next").notNull().default(false),
+  updatedAt: updatedAt(),
+}, (t) => [index("cached_queries_updated_at_idx").on(t.updatedAt)]);
+
 /* ---------- Forum ---------- */
 
 export const forumThreads = pgTable("forum_threads", {

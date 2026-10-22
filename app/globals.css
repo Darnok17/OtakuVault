@@ -1305,6 +1305,67 @@
   }
   .idx-similar-note strong{color:var(--accent);font-weight:700;}
 
+  /* ─── Live AniList data ─── */
+  /* Cover art sits over the glyph (which stays as the fallback) and under the bottom gradient. */
+  .rec-poster-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  .idx-seasonal-img{
+    position:absolute;inset:0;background-size:cover;background-position:center;
+    opacity:.45;transition:opacity .35s var(--ease-out),transform .5s var(--ease-out);
+  }
+  .idx-seasonal-card:hover .idx-seasonal-img{opacity:.6;transform:scale(1.04);}
+  .idx-seasonal-card .idx-seasonal-glyph{z-index:1;}
+
+  /* "Add to Collection" — a corner pill that expands on hover */
+  .rec-poster-add{
+    position:absolute;top:.4rem;left:.4rem;z-index:3;
+    display:flex;align-items:center;gap:.35rem;height:1.7rem;min-width:1.7rem;padding:0 .5rem;
+    border-radius:999px;border:1px solid var(--border);
+    background:rgba(10,10,15,.85);backdrop-filter:blur(4px);
+    color:var(--poster-accent, var(--accent3));cursor:pointer;
+    font-family:var(--font-space-mono),monospace;font-size:1rem;font-weight:700;line-height:1;
+    opacity:0;transition:opacity .2s, border-color .2s, box-shadow .2s;
+  }
+  .rec-poster:hover .rec-poster-add,.rec-poster:focus-within .rec-poster-add,.rec-poster-add[data-state="added"]{opacity:1;}
+  .rec-poster-add:hover{border-color:var(--poster-accent, var(--accent3));box-shadow:0 0 12px color-mix(in oklab, var(--poster-accent, #00d4aa) 40%, transparent);}
+  .rec-poster-add-label{
+    max-width:0;overflow:hidden;white-space:nowrap;
+    font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;
+    transition:max-width .3s var(--ease-out);
+  }
+  .rec-poster-add:hover .rec-poster-add-label,.rec-poster-add:focus-visible .rec-poster-add-label{max-width:9rem;}
+  .rec-poster-add[data-state="added"]{color:var(--accent3);border-color:rgba(0,212,170,.5);}
+  .rec-poster-add[data-state="adding"]{cursor:wait;}
+  @media (hover:none){.rec-poster-add{opacity:1;}}
+
+  /* Loading + empty states */
+  .rec-poster-skeleton{pointer-events:none;}
+  .rec-poster-skeleton .rec-poster-cover::after,.idx-seasonal-skeleton::after{
+    content:'';position:absolute;inset:0;height:auto;
+    background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.05) 50%,transparent 70%);
+    transform:translateX(-100%);animation:skeletonSweep 1.4s ease-in-out infinite;
+  }
+  .idx-seasonal-skeleton{pointer-events:none;}
+  @media (prefers-reduced-motion:reduce){.rec-poster-skeleton .rec-poster-cover::after,.idx-seasonal-skeleton::after{animation:none;}}
+  .idx-grid[aria-busy="true"]{opacity:.55;transition:opacity .2s;}
+  .idx-grid-empty{
+    grid-column:1/-1;padding:2.5rem 1rem;text-align:center;
+    font-family:var(--font-space-mono),monospace;font-size:.72rem;letter-spacing:.06em;color:var(--text-dim);
+  }
+
+  .idx-toast{
+    position:fixed;left:50%;bottom:1.6rem;z-index:9500;transform:translate(-50%,24px);
+    display:flex;align-items:center;gap:.9rem;padding:.65rem 1.1rem;
+    background:linear-gradient(135deg,rgba(22,22,32,.96) 0%,rgba(16,16,24,.94) 100%);
+    border:1px solid rgba(0,212,170,.3);border-radius:999px;
+    box-shadow:var(--shadow-lg),0 0 24px rgba(0,212,170,.12);
+    font-family:var(--font-space-mono),monospace;font-size:.7rem;letter-spacing:.04em;color:var(--text);
+    opacity:0;pointer-events:none;
+    transition:opacity .28s var(--ease-out), transform .4s var(--ease-spring);
+  }
+  .idx-toast.visible{opacity:1;transform:translate(-50%,0);pointer-events:auto;}
+  .idx-toast-link{color:var(--accent3);text-decoration:none;font-weight:700;text-transform:uppercase;letter-spacing:.12em;}
+  .idx-toast-link:hover{text-shadow:0 0 8px rgba(0,212,170,.5);}
+
   /* Responsive: collapse sidebar on narrow screens */
   @media (max-width:900px){
     .idx-browse{grid-template-columns:1fr;}
