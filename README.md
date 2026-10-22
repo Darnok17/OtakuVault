@@ -128,10 +128,10 @@ Open any entry's moodboard and build a canvas of your reactions.
 
 **Phase 2 — Backend & persistence · In progress**
 
-- [ ] Postgres schema with Drizzle
-- [ ] Better-Auth integration
-- [ ] Entries migrated from localStorage to database
-- [ ] Moodboards persisted per entry
+- [x] Postgres schema with Drizzle
+- [x] Better-Auth integration
+- [x] Entries migrated from localStorage to database
+- [x] Moodboards persisted per entry
 - [ ] File storage via Vercel Blob
 - [ ] AniList integration with cached titles table
 - [ ] Store with Stripe Checkout

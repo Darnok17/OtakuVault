@@ -2,12 +2,17 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useEntriesStore } from "@/lib/store";
+import { useEntriesStore, useHydrateEntries } from "@/lib/store";
 import type { Entry, EntryStatus, EntryType } from "@/lib/types";
 import DeleteUndoToast, { UNDO_MS, type PendingDelete } from "./DeleteUndoToast";
 import CardGrid from "./CardGrid";
 import EmptyState from "./EmptyState";
 import EntryModal from "./EntryModal";
+import CardSkeleton from "./CardSkeleton";
+import SyncErrorToast from "./SyncErrorToast";
+
+// True if the entry is (back) in the store, e.g. after a failed server delete was reverted.
+const isLive = (id: string) => useEntriesStore.getState().entries.some((e) => e.id === id);
 
 // Order inside a rating tier: manually placed cards by position, unplaced (new) ones first, newest first.
 const byManualOrder = (a: Entry, b: Entry) =>
@@ -15,6 +20,7 @@ const byManualOrder = (a: Entry, b: Entry) =>
 
 export default function CollectionShell() {
   const entries = useEntriesStore((s) => s.entries);
+  const loading = useEntriesStore((s) => s.loading);
   const addEntry = useEntriesStore((s) => s.addEntry);
   const updateEntry = useEntriesStore((s) => s.updateEntry);
   const removeEntry = useEntriesStore((s) => s.deleteEntry);
@@ -31,7 +37,8 @@ export default function CollectionShell() {
   const [pendingDeletes, setPendingDeletes] = useState<PendingDelete[]>([]);
   const deleteTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
-  // Load from localStorage (or seed) on mount
+  // Entries come from the DB; moodboards still load from localStorage.
+  useHydrateEntries();
   useEffect(() => {
     useEntriesStore.persist.rehydrate();
   }, []);
@@ -41,7 +48,7 @@ export default function CollectionShell() {
     const timers = deleteTimers.current;
     return () => timers.forEach((t, id) => {
       clearTimeout(t);
-      useEntriesStore.getState().deleteMoodboard(id);
+      if (!isLive(id)) useEntriesStore.getState().deleteMoodboard(id);
     });
   }, []);
 
@@ -119,7 +126,8 @@ export default function CollectionShell() {
     deleteTimers.current.set(id, setTimeout(() => {
       deleteTimers.current.delete(id);
       // The delete is final now, so the entry's moodboard goes too (kept until then so Undo restores it).
-      deleteMoodboard(id);
+      // Skipped if the server delete failed and the entry was put back.
+      if (!isLive(id)) deleteMoodboard(id);
       setPendingDeletes((p) => p.filter((d) => d.entry.id !== id));
     }, UNDO_MS));
   };
@@ -149,8 +157,14 @@ export default function CollectionShell() {
     setPendingDeletes((p) => p.filter((d) => d.entry.id !== id));
   };
 
-  const empty = entries.filter((e) => e.status !== "plan-to").length === 0;
-  const noResults = !empty && filtered.length === 0;
+  // A delete reverted by a failed save is no longer pending, so drop its Undo row.
+  const visibleDeletes = useMemo(() => {
+    const live = new Set(entries.map((e) => e.id));
+    return pendingDeletes.filter((d) => !live.has(d.entry.id));
+  }, [pendingDeletes, entries]);
+
+  const empty = !loading && entries.filter((e) => e.status !== "plan-to").length === 0;
+  const noResults = !loading && !empty && filtered.length === 0;
 
   return (
     <section className="site-page active" id="page-collection" data-page="collection">
@@ -244,6 +258,8 @@ export default function CollectionShell() {
         </div>
 
         <main className="main">
+          {loading && <CardSkeleton />}
+
           {empty && <EmptyState variant="empty" />}
 
           {noResults && <EmptyState variant="no-results" />}
@@ -285,7 +301,8 @@ export default function CollectionShell() {
       </div>
 
       {showModal && <EntryModal entry={editing} onSave={saveEntry} onClose={closeModal} />}
-      <DeleteUndoToast items={pendingDeletes} onUndo={undoDelete} />
+      <DeleteUndoToast items={visibleDeletes} onUndo={undoDelete} />
+      <SyncErrorToast />
     </section>
   );
 }

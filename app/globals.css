@@ -3255,6 +3255,37 @@
 
   /* CARDS */
   .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:1.1rem;}
+
+  /* Loading skeleton (first fetch of the collection) */
+  .skeleton-card{pointer-events:none;}
+  .skeleton-cover{aspect-ratio:2/3;background:var(--surface2);}
+  .skeleton-body{display:flex;flex-direction:column;gap:.55rem;padding:.9rem 1rem 1.1rem;}
+  .skeleton-bar{display:block;height:.7rem;border-radius:4px;background:var(--surface3);}
+  .skeleton-cover,.skeleton-bar{position:relative;overflow:hidden;}
+  .skeleton-cover::after,.skeleton-bar::after{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.05) 50%,transparent 70%);
+    transform:translateX(-100%);animation:skeletonSweep 1.4s ease-in-out infinite;
+  }
+  @keyframes skeletonSweep{to{transform:translateX(100%);}}
+  @media (prefers-reduced-motion:reduce){.skeleton-cover::after,.skeleton-bar::after{animation:none;}}
+
+  /* Failed-save notice; sits above the delete toast's corner */
+  .sync-toast{
+    position:fixed;left:50%;bottom:1.6rem;z-index:9600;transform:translate(-50%,24px);
+    display:flex;align-items:center;gap:.7rem;padding:.65rem 1.1rem;
+    background:linear-gradient(135deg,rgba(22,22,32,.95) 0%,rgba(16,16,24,.92) 100%);
+    border:1px solid rgba(233,69,96,.35);border-radius:999px;
+    box-shadow:var(--shadow-lg),0 0 24px rgba(233,69,96,.14);
+    font-family:var(--font-space-mono),monospace;font-size:.7rem;letter-spacing:.04em;color:#ff8a9c;
+    opacity:0;pointer-events:none;
+    transition:opacity .28s var(--ease-out), transform .4s var(--ease-spring);
+  }
+  .sync-toast.visible{opacity:1;transform:translate(-50%,0);}
+  .sync-toast-dot{
+    width:7px;height:7px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 10px var(--accent);animation:pulse 1.5s ease-in-out infinite;
+  }
   .card{
     background:linear-gradient(165deg,var(--surface) 0%,var(--surface2) 100%);
     border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;

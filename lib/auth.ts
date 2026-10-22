@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { db, users, sessions, accounts, verifications } from "@/lib/db";
+import { seedDemoEntries } from "@/lib/demo-entries";
 
 const DAY = 60 * 60 * 24;
 
@@ -36,6 +37,20 @@ export const auth = betterAuth({
     ...(google && { google }),
     ...(discord && { discord }),
     ...(github && { github }),
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          // A failed seed shouldn't fail the signup; the user just starts empty.
+          try {
+            await seedDemoEntries(user.id);
+          } catch (err) {
+            console.error("Demo seed failed for", user.id, err);
+          }
+        },
+      },
+    },
   },
   // Must stay last so cookies set in server actions reach the browser.
   plugins: [nextCookies()],

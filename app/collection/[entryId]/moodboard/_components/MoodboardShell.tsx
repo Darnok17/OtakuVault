@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEntriesHydrated, useEntriesStore } from "@/lib/store";
+import { useEntriesHydrated, useEntriesStore, useHydrateEntries } from "@/lib/store";
 import type { MoodNode, MoodNodeType, MoodWire } from "@/lib/types";
 import BoardCanvas, { clampZoom, isTyping, type BoardView } from "./BoardCanvas";
 import NodePalette from "./NodePalette";
@@ -38,6 +38,7 @@ export default function MoodboardShell({ entryId }: { entryId: string }) {
     return new Set([...rawSelectedWires].filter((id) => live.has(id)));
   }, [wires, rawSelectedWires]);
 
+  useHydrateEntries();
   useEffect(() => {
     useEntriesStore.persist.rehydrate();
   }, []);
