@@ -132,8 +132,8 @@ Open any entry's moodboard and build a canvas of your reactions.
 - [x] Better-Auth integration
 - [x] Entries migrated from localStorage to database
 - [x] Moodboards persisted per entry
-- [ ] File storage via Vercel Blob
-- [ ] AniList integration with cached titles table
+- [x] File storage via Vercel Blob
+- [x] AniList integration with cached titles table
 - [ ] Store with Stripe Checkout
 - [ ] Deployed to Vercel + Neon
 
