@@ -3,10 +3,11 @@
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEntriesHydrated, useEntriesStore, useHydrateEntries } from "@/lib/store";
+import { useEntriesHydrated, useEntriesStore, useHydrateEntries, useHydrateMoodboard } from "@/lib/store";
 import type { MoodNode, MoodNodeType, MoodWire } from "@/lib/types";
 import BoardCanvas, { clampZoom, isTyping, type BoardView } from "./BoardCanvas";
 import NodePalette from "./NodePalette";
+import SaveIndicator from "./SaveIndicator";
 import { BUBBLE_COLORS, NODE_TYPES } from "./nodeTypes";
 import { useBoardHistory } from "./useBoardHistory";
 import { snapTo } from "./wires";
@@ -39,9 +40,7 @@ export default function MoodboardShell({ entryId }: { entryId: string }) {
   }, [wires, rawSelectedWires]);
 
   useHydrateEntries();
-  useEffect(() => {
-    useEntriesStore.persist.rehydrate();
-  }, []);
+  const boardLoad = useHydrateMoodboard(entryId);
 
   // The board covers the page; stop the document behind it from scrolling.
   useEffect(() => {
@@ -189,7 +188,14 @@ export default function MoodboardShell({ entryId }: { entryId: string }) {
 
       <div style={{ flex: 1, display: "flex", position: "relative", minHeight: 0 }}>
         <NodePalette onSpawn={spawn} />
-        {hydrated && (
+        {boardLoad === "error" && entry && (
+          <div className="board-missing">
+            <p>&gt; Couldn&apos;t load this moodboard.</p>
+            <button type="button" className="board-back" onClick={() => location.reload()}>Retry</button>
+          </div>
+        )}
+        <SaveIndicator entryId={entryId} />
+        {hydrated && boardLoad === "ready" && (
           <BoardCanvas
             nodes={nodes}
             wires={wires}

@@ -37,11 +37,7 @@ export default function CollectionShell() {
   const [pendingDeletes, setPendingDeletes] = useState<PendingDelete[]>([]);
   const deleteTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
-  // Entries come from the DB; moodboards still load from localStorage.
   useHydrateEntries();
-  useEffect(() => {
-    useEntriesStore.persist.rehydrate();
-  }, []);
 
   // Entries are already removed from the store, so leaving the page makes pending deletes final.
   useEffect(() => {

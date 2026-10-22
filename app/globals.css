@@ -4584,6 +4584,24 @@
   }
   .board-missing .board-back{text-decoration:none;}
 
+  /* Moodboard save status — top-right of the canvas */
+  .board-save-status{
+    position:absolute;top:.7rem;right:.9rem;z-index:20;pointer-events:none;
+    padding:.25rem .6rem;border-radius:4px;
+    background:rgba(10,10,15,.7);border:1px solid var(--border);
+    font-family:var(--font-space-mono),monospace;font-size:.6rem;letter-spacing:.1em;text-transform:lowercase;
+    color:var(--text-dim);
+  }
+  .board-save-prompt{color:var(--accent3);}
+  .board-save-status[data-status="saved"]{
+    color:var(--accent3);border-color:rgba(0,212,170,.3);text-shadow:0 0 8px rgba(0,212,170,.4);
+    animation:boardSavedFade 1.8s var(--ease-out) forwards;
+  }
+  .board-save-status[data-status="error"]{color:#ff8a9c;border-color:rgba(233,69,96,.4);}
+  .board-save-status[data-status="error"] .board-save-prompt{color:var(--accent);}
+  @keyframes boardSavedFade{0%,55%{opacity:1;}100%{opacity:0;}}
+  @media (prefers-reduced-motion:reduce){.board-save-status[data-status="saved"]{animation-duration:.01s;animation-delay:1.2s;}}
+
   @media (max-width:640px){
     .board-crumbs .crumb-link,.board-crumbs .crumb-sep:first-of-type{display:none;}
     .board-help{display:none;}

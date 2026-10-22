@@ -3,8 +3,9 @@
 import { headers } from "next/headers";
 import { and, desc, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { db, entries, entryStatus, entryType } from "@/lib/db";
-import type { Entry, EntryStatus, EntryType } from "@/lib/types";
+import { saveMoodboard } from "./moodboards";
+import { db, entries, entryStatus, entryType, moodboards } from "@/lib/db";
+import type { Entry, EntryStatus, EntryType, Moodboard } from "@/lib/types";
 
 type EntryRow = typeof entries.$inferSelect;
 export type NewEntryInput = Omit<Entry, "id" | "created" | "userId">;
@@ -99,19 +100,30 @@ export async function updateEntryAction(entry: Entry): Promise<Entry> {
 }
 
 // Idempotent: deleting something already gone (or not yours) is a no-op.
-export async function deleteEntryAction(entryId: string): Promise<void> {
+// The entry's moodboard row goes with it (FK cascade), so the board is returned for Undo.
+export async function deleteEntryAction(entryId: string): Promise<Moodboard | null> {
   const userId = await requireUserId();
-  await db.delete(entries).where(and(eq(entries.id, id(entryId)), eq(entries.userId, userId)));
+  return db.transaction(async (tx) => {
+    const [board] = await tx.select({ nodes: moodboards.nodes, wires: moodboards.wires }).from(moodboards)
+      .innerJoin(entries, eq(entries.id, moodboards.entryId))
+      .where(and(eq(entries.id, id(entryId)), eq(entries.userId, userId)));
+    await tx.delete(entries).where(and(eq(entries.id, id(entryId)), eq(entries.userId, userId)));
+    return board ?? null;
+  });
 }
 
-// Undo of a delete: re-inserts with the original id and timestamp so the entry's
-// moodboard (keyed by entry id) stays attached. A taken id is left untouched.
-export async function restoreEntryAction(entry: Entry): Promise<void> {
+// Undo of a delete: re-inserts with the original id and timestamp, plus the moodboard the
+// delete returned. A taken id is left untouched.
+export async function restoreEntryAction(entry: Entry, board?: Moodboard | null): Promise<void> {
   const userId = await requireUserId();
   if (!Number.isFinite(entry.created)) throw new Error("Invalid created");
-  await db.insert(entries)
-    .values({ ...entryFields(entry), id: id(entry.id), userId, createdAt: new Date(entry.created) })
-    .onConflictDoNothing();
+  const entryId = id(entry.id);
+  const [restored] = await db.insert(entries)
+    .values({ ...entryFields(entry), id: entryId, userId, createdAt: new Date(entry.created) })
+    .onConflictDoNothing()
+    .returning({ id: entries.id });
+  // saveMoodboard re-validates the board and re-checks ownership.
+  if (restored && board?.nodes.length) await saveMoodboard(entryId, board.nodes, board.wires);
 }
 
 // Drag-reorder within a rating tier: manualOrder = position in orderedIds.
