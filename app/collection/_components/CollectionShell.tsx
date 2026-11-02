@@ -268,7 +268,7 @@ export default function CollectionShell() {
                   <path d="M12 7 L13.2 10 L16.3 10 L13.8 11.9 L14.7 15 L12 13.1 L9.3 15 L10.2 11.9 L7.7 10 L10.8 10 Z" fill="currentColor" stroke="none"/>
                 </svg>
               </span>
-              <span>Your Watchlist — titles you've bookmarked to start later.</span>
+              <span>Your Watchlist — titles you&apos;ve bookmarked to start later.</span>
             </div>
           )}
 

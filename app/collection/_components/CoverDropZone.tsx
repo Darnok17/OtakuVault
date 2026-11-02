@@ -3,6 +3,9 @@
 import { useRef, useState, type DragEvent } from "react";
 import { isStoredImage, uploadImageFile, type UploadStage } from "@/lib/image";
 
+// Matches .cover-upload-area in globals.css.
+const COVER_WIDTH = 110;
+
 const STAGE_LABEL: Record<UploadStage, string> = { preparing: "Preparing", uploading: "Uploading" };
 
 export default function CoverDropZone({
@@ -46,59 +49,59 @@ export default function CoverDropZone({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: ".75rem" }}>
-        <div
-          className={`cover-upload-area ${dragOver ? "drag-over" : ""} ${busy ? "uploading" : ""}`}
-          aria-busy={busy}
-          role="button" tabIndex={0}
-          aria-label="Upload cover image"
-          onClick={() => fileInput.current?.click()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.current?.click(); }
-          }}
-          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; setDragOver(true); }}
-          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false); }}
-          onDrop={onDrop}
-        >
-          {showPreview ? (
-            <>
-              <img src={value} alt="Cover preview" onError={() => setBrokenSrc(value)} />
-              <div className="cover-upload-overlay">
-                <span className="cover-upload-icon">⇪</span>
-                <span className="cover-upload-text">{stage ? `${STAGE_LABEL[stage]}…` : "Replace"}</span>
-              </div>
-            </>
-          ) : (
-            <div className="cover-placeholder-inner">
-              <span>{busy ? "…" : "🖼"}</span>
-              <span>{stage ? STAGE_LABEL[stage] : dragOver ? "Drop it" : "Drop or click"}</span>
+    // Fixed to the cover's width so the URL field below lines up with it.
+    <div style={{ display: "flex", flexDirection: "column", gap: ".5rem", width: COVER_WIDTH }}>
+      <div
+        className={`cover-upload-area ${dragOver ? "drag-over" : ""} ${busy ? "uploading" : ""}`}
+        aria-busy={busy}
+        role="button" tabIndex={0}
+        aria-label="Upload cover image"
+        onClick={() => fileInput.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.current?.click(); }
+        }}
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; setDragOver(true); }}
+        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false); }}
+        onDrop={onDrop}
+      >
+        {showPreview ? (
+          <>
+            <img src={value} alt="Cover preview" onError={() => setBrokenSrc(value)} />
+            <div className="cover-upload-overlay">
+              <span className="cover-upload-icon">⇪</span>
+              <span className="cover-upload-text">{stage ? `${STAGE_LABEL[stage]}…` : "Replace"}</span>
             </div>
-          )}
-          {stage && <div className="cover-upload-progress" data-stage={stage} role="progressbar" aria-label={`${STAGE_LABEL[stage]} image`}><span /></div>}
-        </div>
-        {/* Outside the zone so the programmatic click doesn't bubble back into its onClick */}
-        <input
-          ref={fileInput}
-          type="file" accept="image/*" hidden
-          onChange={(e) => { takeFile(e.target.files?.[0]); e.target.value = ""; }}
-        />
-        {value && !busy && (
-          <button type="button" className="cover-remove-btn" onClick={() => { onChange(""); setError(""); }}>
-            Remove
-          </button>
+          </>
+        ) : (
+          <div className="cover-placeholder-inner">
+            <span>{busy ? "…" : "🖼"}</span>
+            <span>{stage ? STAGE_LABEL[stage] : dragOver ? "Drop it" : "Drop or click"}</span>
+          </div>
         )}
+        {stage && <div className="cover-upload-progress" data-stage={stage} role="progressbar" aria-label={`${STAGE_LABEL[stage]} image`}><span /></div>}
       </div>
+      {/* Outside the zone so the programmatic click doesn't bubble back into its onClick */}
+      <input
+        ref={fileInput}
+        type="file" accept="image/*" hidden
+        onChange={(e) => { takeFile(e.target.files?.[0]); e.target.value = ""; }}
+      />
 
       {/* URL fallback. Uploaded images show as a placeholder rather than their storage path. */}
       <input
         type="url"
         value={isStored ? "" : value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={isStored ? "Uploaded image — or paste a URL to replace" : "…or paste an image URL"}
+        placeholder={isStored ? "Uploaded" : "Image URL"}
+        title={isStored ? "Uploaded image — paste a URL to replace it" : "…or paste an image URL"}
         disabled={busy}
-        style={inputStyle}
+        style={{ ...inputStyle, width: "100%", minWidth: 0 }}
       />
+      {value && !busy && (
+        <button type="button" className="cover-remove-btn" onClick={() => { onChange(""); setError(""); }}>
+          Remove
+        </button>
+      )}
       {error && <span className="cover-upload-error" role="alert">{error}</span>}
       {value && !isStored && brokenSrc === value && (
         <span className="cover-upload-error">That URL didn&apos;t load as an image.</span>

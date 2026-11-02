@@ -6,7 +6,7 @@ export default function EmptyState({ variant }: { variant: "empty" | "no-results
       <div className="empty-state" style={{ marginTop: "3rem" }}>
         <div className="empty-icon"><CoverPlaceholder /></div>
         <div className="empty-title">Your vault is empty</div>
-        <div className="empty-sub">Hit "+ Add Entry" and start building your collection!</div>
+        <div className="empty-sub">Hit &ldquo;+ Add Entry&rdquo; and start building your collection!</div>
       </div>
     );
   }

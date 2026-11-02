@@ -58,14 +58,24 @@ export default function EntryModal({
         <div className="modal-title">{isEdit ? "Edit Entry" : "Add New Entry"}</div>
 
         <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem" }}>
-          {!isEdit && (
-            <AniListSearch onPick={fillFromAniList} onManual={() => titleInput.current?.focus()} inputStyle={inputStyle} labelStyle={labelStyle} />
-          )}
+          {/* Cover on the left; AniList search + title stacked on the right. */}
+          <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: "1rem", alignItems: "start" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
+              <span style={labelStyle}>Cover image</span>
+              <CoverDropZone value={form.imageUrl} onChange={(url) => set("imageUrl", url)} inputStyle={inputStyle} onBusyChange={setUploading} />
+            </div>
 
-          <label style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
-            <span style={labelStyle}>Title *</span>
-            <input ref={titleInput} type="text" value={form.title} onChange={(e) => set("title", e.target.value)} required autoFocus style={inputStyle} />
-          </label>
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem", minWidth: 0 }}>
+              {!isEdit && (
+                <AniListSearch onPick={fillFromAniList} onManual={() => titleInput.current?.focus()} inputStyle={inputStyle} labelStyle={labelStyle} />
+              )}
+
+              <label style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
+                <span style={labelStyle}>Title *</span>
+                <input ref={titleInput} type="text" value={form.title} onChange={(e) => set("title", e.target.value)} required autoFocus style={inputStyle} />
+              </label>
+            </div>
+          </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".75rem" }}>
             <label style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
@@ -98,11 +108,6 @@ export default function EntryModal({
             <span style={labelStyle}>Total episodes/chapters</span>
             <input type="text" value={form.totalEps} onChange={(e) => set("totalEps", e.target.value)} placeholder="24 eps" style={inputStyle} />
           </label>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
-            <span style={labelStyle}>Cover image</span>
-            <CoverDropZone value={form.imageUrl} onChange={(url) => set("imageUrl", url)} inputStyle={inputStyle} onBusyChange={setUploading} />
-          </div>
 
           {(form.status === "watching" || form.status === "dropped") && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".75rem" }}>

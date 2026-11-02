@@ -3037,6 +3037,8 @@
   .search-wrap{position:relative;flex:1;min-width:200px;max-width:400px;}
   .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-dim);pointer-events:none;z-index:2;display:flex;align-items:center;transition:color .2s;}
   .search-wrap:focus-within .search-icon{color:var(--accent);}
+  /* More specific than the global input[type="text"] rule below; clears the icon (12px + 14px + gap). */
+  .search-wrap input[type="text"]{padding-left:2.25rem;}
   input[type="text"],input[type="number"],select,textarea{
     background:var(--surface2);
     border:1px solid var(--border);color:var(--text);
