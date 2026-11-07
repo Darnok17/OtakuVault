@@ -7,7 +7,8 @@ import { authClient } from "@/lib/auth-client";
 
 function ActiveLink({ href, children }: { href: string; children: ReactNode }) {
   const path = usePathname();
-  return <Link href={href} className={`nav-link ${path === href ? "active" : ""}`}>{children}</Link>;
+  const active = path === href || (href !== "/" && path.startsWith(`${href}/`));
+  return <Link href={href} className={`nav-link ${active ? "active" : ""}`}>{children}</Link>;
 }
 
 // usePathname suspends while prerendering routes with dynamic params (e.g. a moodboard),

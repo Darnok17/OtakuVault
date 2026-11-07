@@ -58,8 +58,9 @@ export async function getSeasonalLineupAction(y: number, season: Season): Promis
   return getSeasonalLineup(posInt(y, "year", 2100), season);
 }
 
-export async function getTrendingNowAction(): Promise<TitlePage> {
-  return getTrendingNow();
+export async function getTrendingNowAction(type?: EntryType): Promise<TitlePage> {
+  if (type !== undefined && !isEntryType(type)) throw new Error("Invalid type");
+  return getTrendingNow(type);
 }
 
 export async function getTitleByIdAction(anilistId: number): Promise<Title> {
@@ -93,13 +94,15 @@ export type Recommendations =
   | { status: "ok"; basis: string[]; items: Title[] };
 
 // The user's top 3 rated entries → AniList recommendations for each → de-duped, minus
-// anything already in the collection, 12 shown.
-export async function getRecommendationsAction(): Promise<Recommendations> {
+// anything already in the collection, 12 shown. With a type, both the rated entries and the
+// results are limited to it (AniList happily recommends a manhwa off an anime).
+export async function getRecommendationsAction(type?: EntryType): Promise<Recommendations> {
+  if (type !== undefined && !isEntryType(type)) throw new Error("Invalid type");
   const userId = await sessionUserId();
   if (!userId) return { status: "signin" };
 
   const top = await db.select({ title: entries.title, type: entries.type }).from(entries)
-    .where(and(eq(entries.userId, userId), gt(entries.rating, 0)))
+    .where(and(eq(entries.userId, userId), gt(entries.rating, 0), type ? eq(entries.type, type) : undefined))
     .orderBy(desc(entries.rating), desc(entries.createdAt))
     .limit(3);
   if (!top.length) return { status: "empty" };
@@ -116,7 +119,7 @@ export async function getRecommendationsAction(): Promise<Recommendations> {
   const owned = new Set((await db.select({ title: entries.title }).from(entries).where(eq(entries.userId, userId)))
     .map((e) => e.title.toLowerCase()));
   const items = (await getRecommendations(sources.map((t) => t.anilistId)))
-    .filter((t) => !owned.has(t.title.toLowerCase()) && !owned.has(t.romaji.toLowerCase()))
+    .filter((t) => (!type || t.entryType === type) && !owned.has(t.title.toLowerCase()) && !owned.has(t.romaji.toLowerCase()))
     .slice(0, 12);
   return { status: "ok", basis: top.map((e) => e.title), items };
 }

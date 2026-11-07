@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { useEntriesStore } from "@/lib/store";
 import { addTitleToCollectionAction } from "@/app/actions/anilist";
@@ -82,15 +82,20 @@ export function PosterCard({ t, rank }: { t: Title; rank?: number }) {
   );
 }
 
-export function RecRow({ items, accent }: { items: Title[]; accent: string }) {
+// Scrolling rail with arrows. Renders poster cards from `items`, or `children` for other card
+// types (pass their track class as scrollClassName).
+export function RecRow({ items, accent, scrollClassName = "rec-row-scroll", children }: {
+  items?: Title[]; accent: string; scrollClassName?: string; children?: ReactNode;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const by = () => Math.round((ref.current?.clientWidth || 600) * 0.75);
   return (
     <div className="rec-row" data-accent={accent}>
       <div className="rec-row-track">
         <button className="rec-row-nav rec-row-nav-prev" aria-label="Scroll left" onClick={() => ref.current?.scrollBy({ left: -by(), behavior: "smooth" })}>‹</button>
-        <div className="rec-row-scroll" ref={ref}>
-          {items.map((t, i) => <PosterCard key={t.anilistId} t={t} rank={i + 1} />)}
+        <div className={scrollClassName} ref={ref}>
+          {items?.map((t, i) => <PosterCard key={t.anilistId} t={t} rank={i + 1} />)}
+          {children}
         </div>
         <button className="rec-row-nav rec-row-nav-next" aria-label="Scroll right" onClick={() => ref.current?.scrollBy({ left: by(), behavior: "smooth" })}>›</button>
       </div>

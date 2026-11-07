@@ -1,9 +1,11 @@
 "use client";
 
+import { Suspense } from "react";
 import { useIndex } from "./IndexProvider";
+import IndexTabs, { TabBar } from "./IndexTabs";
 
 export default function IndexHero() {
-  const { query, setQuery, chip, setChip } = useIndex();
+  const { query, setQuery } = useIndex();
 
   return (
     <div className="idx-hero">
@@ -20,16 +22,18 @@ export default function IndexHero() {
             placeholder="Search 12,000+ titles — anime, manga, webtoons, novels…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            // Results land in the browse grid further down; Enter jumps there.
-            onKeyDown={(e) => { if (e.key === "Enter") document.getElementById("idx-browse")?.scrollIntoView({ behavior: "smooth" }); }}
+            // Results land in the browse grid further down; Enter jumps there. Tabs visited
+            // earlier stay in the DOM, hidden, so look for the one on screen.
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              [...document.querySelectorAll(".idx-browse")].find((el) => el.checkVisibility())?.scrollIntoView({ behavior: "smooth" });
+            }}
           />
         </div>
         <div className="idx-type-chips">
-          {(["all", "anime", "manga", "webtoon", "novel"] as const).map((t) => (
-            <button key={t} className={`idx-chip ${chip === t ? "active" : ""}`} onClick={() => setChip(t)}>
-              {t === "all" ? "All" : t === "novel" ? "Novels" : t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
+          <Suspense fallback={<TabBar />}>
+            <IndexTabs />
+          </Suspense>
         </div>
       </div>
     </div>

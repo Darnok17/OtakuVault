@@ -229,8 +229,9 @@ export function getSeasonalLineup(year: number, season: Season): Promise<TitlePa
     fetchPage({ season, seasonYear: year, type: "ANIME", sort: ["POPULARITY_DESC"], perPage: 24 }));
 }
 
-export function getTrendingNow(): Promise<TitlePage> {
-  return cachedPage("trending", TTL.trending, () => fetchPage({ sort: ["TRENDING_DESC"], perPage: 20 }));
+export function getTrendingNow(type?: EntryType): Promise<TitlePage> {
+  return cachedPage(type ? `trending:${type}` : "trending", TTL.trending, () =>
+    fetchPage({ sort: ["TRENDING_DESC"], perPage: 20, ...typeVars(type ? [type] : []) }));
 }
 
 const SORTS: Record<BrowseFilters["sort"], string[]> = {

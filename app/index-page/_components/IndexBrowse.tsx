@@ -1,11 +1,13 @@
 "use client";
 
 import { Suspense, use, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { browseTitlesAction, searchTitlesAction } from "@/app/actions/anilist";
 import {
-  DEFAULT_FILTERS, ENTRY_TYPES,
+  ENTRY_TYPES,
   type BrowseFilters, type BrowseSort, type BrowseStatus, type Title, type TitlePage,
 } from "@/lib/anilist-shared";
+import { BROWSE_GENRES, filtersFromParams, filtersToQuery, parseYear } from "@/lib/index-filters";
 import type { EntryType } from "@/lib/types";
 import { useIndex } from "./IndexProvider";
 import { PosterCard } from "./posters";
@@ -16,18 +18,12 @@ type View = { key: string; items: Title[]; total: number; hasNext: boolean; page
 
 const TYPE_LABELS: [EntryType, string][] = [["anime", "Anime"], ["manga", "Manga"], ["webtoon", "Webtoon"], ["novel", "Light / Web Novel"]];
 const STATUS_LABELS: [BrowseStatus, string][] = [["RELEASING", "Airing / Ongoing"], ["FINISHED", "Completed / Finished"], ["NOT_YET_RELEASED", "Not Yet Released"], ["HIATUS", "Hiatus"]];
-const GENRES = ["Action","Adventure","Comedy","Drama","Fantasy","Horror","Isekai","Mecha","Mystery","Romance","Sci-Fi","Seinen","Shonen","Slice of Life","Sports","Supernatural","Thriller"];
 const SORT_LABELS: [BrowseSort, string][] = [["popularity", "Popularity"], ["rating-desc", "Rating ↓"], ["rating-asc", "Rating ↑"], ["newest", "Newest"], ["oldest", "Oldest"]];
 
 const SEARCH_DEBOUNCE_MS = 350;
 const FILTER_DEBOUNCE_MS = 250;
 
-const parseYear = (s: string) => (/^\d{4}$/.test(s) && +s >= 1950 && +s <= 2030 ? +s : null);
 const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
-const sameSet = <T,>(a: T[], b: T[]) => a.length === b.length && a.every((x) => b.includes(x));
-const isDefaultFilters = (f: BrowseFilters) =>
-  sameSet(f.types, DEFAULT_FILTERS.types) && !f.statuses.length && !f.genres.length &&
-  f.yearFrom == null && f.yearTo == null && !f.minStars && f.sort === DEFAULT_FILTERS.sort;
 
 const fromInitial = (key: string, init: BrowseInitial): View =>
   init.page
@@ -35,43 +31,80 @@ const fromInitial = (key: string, init: BrowseInitial): View =>
     : { key, items: [], total: 0, hasNext: false, pageNo: 1, error: true };
 
 // The first page streams from the server; once filters/search change, client results take over.
-function useView(initial: Promise<BrowseInitial>, results: View | null, key: string, isDefault: boolean): View {
+function useView(initial: Promise<BrowseInitial>, results: View | null, key: string, isServerView: boolean): View {
   if (results?.key === key) return results;
-  if (!isDefault && results) return results; // keep the last results up (dimmed) while the next load runs
-  // Outside the default view the streamed page is only a placeholder until the first client load lands.
-  return fromInitial(isDefault ? key : "initial", use(initial));
+  if (!isServerView && results) return results; // keep the last results up (dimmed) while the next load runs
+  // Outside the server's view the streamed page is only a placeholder until the first client load lands.
+  return fromInitial(isServerView ? key : "initial", use(initial));
 }
 
-export default function IndexBrowse({ initial }: { initial: Promise<BrowseInitial> }) {
-  const { query, chip } = useIndex();
-  const [types, setTypes] = useState<EntryType[]>([...ENTRY_TYPES]);
-  const [statuses, setStatuses] = useState<BrowseStatus[]>([]);
-  const [genres, setGenres] = useState<string[]>([]);
-  const [yearFrom, setYearFrom] = useState("");
-  const [yearTo, setYearTo] = useState("");
-  const [stars, setStars] = useState(0);
-  const [sort, setSort] = useState<BrowseSort>("popularity");
+// `type` is set on the sub-routes, which commit to that type: it scopes search and browse, and
+// locks the Type filter. Reads the URL, so it needs a <Suspense> above it (see BrowseFallback).
+export default function IndexBrowse({ initial, type }: { initial: Promise<BrowseInitial>; type?: EntryType }) {
+  const { query } = useIndex();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [seed] = useState(() => filtersFromParams(searchParams, type));
+  const [types, setTypes] = useState<EntryType[]>(seed.types);
+  const [statuses, setStatuses] = useState<BrowseStatus[]>(seed.statuses);
+  const [genres, setGenres] = useState<string[]>(seed.genres);
+  const [yearFrom, setYearFrom] = useState(seed.yearFrom?.toString() ?? "");
+  const [yearTo, setYearTo] = useState(seed.yearTo?.toString() ?? "");
+  const [stars, setStars] = useState(seed.minStars);
+  const [sort, setSort] = useState<BrowseSort>(seed.sort);
+  // The filters the server rendered `initial` for.
+  const [serverKey, setServerKey] = useState(() => JSON.stringify(seed));
   const [results, setResults] = useState<View | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const reqId = useRef(0);
 
   const q = query.trim();
   const searching = q.length >= 2;
-  // A hero chip narrows everything to that type; "All" defers to the Type checkboxes.
   const filters = useMemo<BrowseFilters>(() => ({
-    types: chip === "all" ? types : [chip], statuses, genres,
+    types: ENTRY_TYPES.filter((t) => types.includes(t)), statuses, genres,
     yearFrom: parseYear(yearFrom), yearTo: parseYear(yearTo), minStars: stars, sort,
-  }), [chip, types, statuses, genres, yearFrom, yearTo, stars, sort]);
-  const key = JSON.stringify(searching ? { q: q.toLowerCase(), chip } : filters);
-  const isDefault = !searching && isDefaultFilters(filters);
+  }), [types, statuses, genres, yearFrom, yearTo, stars, sort]);
+  const key = JSON.stringify(searching ? { q: q.toLowerCase(), type } : filters);
+  const isServerView = !searching && key === serverKey;
+
+  const applyFilters = (f: BrowseFilters) => {
+    setTypes(f.types); setStatuses(f.statuses); setGenres(f.genres);
+    setYearFrom(f.yearFrom?.toString() ?? ""); setYearTo(f.yearTo?.toString() ?? "");
+    setStars(f.minStars); setSort(f.sort);
+  };
+
+  // Mirror filter changes into the URL. replaceState keeps useSearchParams (and so the tab links)
+  // in step without a server round trip, since results load through the actions below.
+  // Only actual changes are written: Next keeps visited routes mounted but hidden, and effects
+  // re-run when one is shown again, when the URL must win over the state it was left in.
+  const filterQuery = filtersToQuery(filters, type);
+  const writtenQuery = useRef(filterQuery);
+  useEffect(() => {
+    if (filterQuery === writtenQuery.current) return;
+    writtenQuery.current = filterQuery;
+    if (window.location.search.slice(1) !== filterQuery) {
+      window.history.replaceState(null, "", filterQuery ? `${pathname}?${filterQuery}` : pathname);
+    }
+  }, [filterQuery, pathname]);
+
+  // Navigations that don't remount us (the site nav's Index link while filtered, or returning to
+  // a hidden route) can land on other params, so pick the URL's filters up here. The location
+  // check skips the lag behind our own writes above.
+  const urlQuery = searchParams.toString();
+  useEffect(() => {
+    if (urlQuery === writtenQuery.current || urlQuery !== window.location.search.slice(1)) return;
+    const next = filtersFromParams(new URLSearchParams(urlQuery), type);
+    applyFilters(next);
+    setServerKey(JSON.stringify(next));
+  }, [urlQuery, type]);
 
   useEffect(() => {
     const id = ++reqId.current;
-    if (isDefault) return; // the server-streamed first page covers this
+    if (isServerView) return; // the server-streamed first page covers this
     const timer = setTimeout(async () => {
       try {
         const page = searching
-          ? await searchTitlesAction(q, chip === "all" ? undefined : chip)
+          ? await searchTitlesAction(q, type)
           : await browseTitlesAction(filters, 1);
         if (id === reqId.current) setResults({ key, ...page, pageNo: 1 });
       } catch {
@@ -79,7 +112,7 @@ export default function IndexBrowse({ initial }: { initial: Promise<BrowseInitia
       }
     }, searching ? SEARCH_DEBOUNCE_MS : FILTER_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [key, isDefault, searching, q, chip, filters]);
+  }, [key, isServerView, searching, q, type, filters]);
 
   const loadMore = async (view: View) => {
     if (loadingMore) return;
@@ -100,11 +133,9 @@ export default function IndexBrowse({ initial }: { initial: Promise<BrowseInitia
     }
   };
 
-  const clear = () => {
-    setTypes([...ENTRY_TYPES]); setStatuses([]); setGenres([]); setYearFrom(""); setYearTo(""); setStars(0); setSort("popularity");
-  };
+  const clear = () => applyFilters(filtersFromParams(new URLSearchParams(), type));
 
-  const grid = { initial, results, viewKey: key, isDefault, searching, q, loadingMore, loadMore };
+  const grid = { initial, results, viewKey: key, isServerView, searching, q, loadingMore, loadMore };
 
   return (
     <div className="idx-browse" id="idx-browse">
@@ -115,9 +146,9 @@ export default function IndexBrowse({ initial }: { initial: Promise<BrowseInitia
         </div>
         <div className="idx-filter-group">
           <div className="idx-filter-label">Type</div>
-          {TYPE_LABELS.map(([t, label], i) => (
-            <label key={t} className="idx-check">
-              <input type="checkbox" checked={types.includes(t)} onChange={() => setTypes(toggle(types, t))} />
+          {TYPE_LABELS.map(([t, label], i) => (type && t !== type) ? null : (
+            <label key={t} className={`idx-check ${type ? "idx-check-locked" : ""}`}>
+              <input type="checkbox" checked={types.includes(t)} disabled={!!type} onChange={() => setTypes(toggle(types, t))} />
               <span className="idx-check-box"></span><span className="idx-check-text">{label}</span>
               <span className="idx-check-count"><Suspense fallback="…"><TypeCount initial={initial} index={i} /></Suspense></span>
             </label>
@@ -135,7 +166,7 @@ export default function IndexBrowse({ initial }: { initial: Promise<BrowseInitia
         <div className="idx-filter-group">
           <div className="idx-filter-label">Genre</div>
           <div className="idx-genre-chips">
-            {GENRES.map((g) => (
+            {BROWSE_GENRES.map((g) => (
               <button key={g} className={`idx-genre-chip ${genres.includes(g) ? "active" : ""}`} type="button" onClick={() => setGenres(toggle(genres, g))}>{g}</button>
             ))}
           </div>
@@ -179,7 +210,7 @@ export default function IndexBrowse({ initial }: { initial: Promise<BrowseInitia
 }
 
 type GridProps = {
-  initial: Promise<BrowseInitial>; results: View | null; viewKey: string; isDefault: boolean;
+  initial: Promise<BrowseInitial>; results: View | null; viewKey: string; isServerView: boolean;
   searching: boolean; q: string; loadingMore: boolean; loadMore: (v: View) => void;
 };
 
@@ -188,8 +219,8 @@ function TypeCount({ initial, index }: { initial: Promise<BrowseInitial>; index:
   return n == null ? "—" : n.toLocaleString("en-US");
 }
 
-function ResultCount({ initial, results, viewKey, isDefault, searching, q }: GridProps) {
-  const view = useView(initial, results, viewKey, isDefault);
+function ResultCount({ initial, results, viewKey, isServerView, searching, q }: GridProps) {
+  const view = useView(initial, results, viewKey, isServerView);
   // While the next load runs the grid still shows the old results; don't pair their count with the new label.
   const n = view.key !== viewKey ? null : searching ? view.items.length : view.total;
   return searching
@@ -197,8 +228,8 @@ function ResultCount({ initial, results, viewKey, isDefault, searching, q }: Gri
     : <div className="idx-result-count"><strong>{n?.toLocaleString("en-US") ?? "…"}</strong> titles</div>;
 }
 
-function BrowseGrid({ initial, results, viewKey, isDefault, searching, loadingMore, loadMore }: GridProps) {
-  const view = useView(initial, results, viewKey, isDefault);
+function BrowseGrid({ initial, results, viewKey, isServerView, searching, loadingMore, loadMore }: GridProps) {
+  const view = useView(initial, results, viewKey, isServerView);
   const pending = view.key !== viewKey;
   return (
     <>
@@ -218,6 +249,21 @@ function BrowseGrid({ initial, results, viewKey, isDefault, searching, loadingMo
         </div>
       )}
     </>
+  );
+}
+
+// Static-shell stand-in while the URL's filters resolve.
+export function BrowseFallback() {
+  return (
+    <div className="idx-browse" id="idx-browse" aria-busy="true">
+      <aside className="idx-filters">
+        <div className="idx-filters-head"><div className="idx-filters-head-title">Filters</div></div>
+      </aside>
+      <div className="idx-browse-main">
+        <div className="idx-browse-toolbar"><div className="idx-result-count"><strong>…</strong> titles</div></div>
+        <GridSkeleton />
+      </div>
+    </div>
   );
 }
 

@@ -1012,6 +1012,10 @@
   .idx-chip[data-type="webtoon"]{--chip-accent:var(--webtoon);}
   .idx-chip[data-type="novel"]  {--chip-accent:var(--novel);}
 
+  /* Route tabs: .filter-tabs/.tab-btn from the Collection page, as links */
+  .idx-type-chips .filter-tabs{flex-wrap:wrap;justify-content:center;}
+  .idx-type-chips .tab-btn{text-decoration:none;}
+
   /* ─── Shared section header for index ─── */
   .idx-section{padding:2.5rem 1rem 0;}
   .idx-section-header{
@@ -1174,6 +1178,8 @@
   }
   .idx-check:hover{background:var(--surface2);color:var(--text);}
   .idx-check input{display:none;}
+  .idx-check-locked,.idx-check-locked:hover{opacity:.55;cursor:not-allowed;background:none;}
+  .idx-section-browse + .idx-browse{margin-top:1.25rem;}
   .idx-check-box{
     width:14px;height:14px;border:1.5px solid var(--border-strong);
     border-radius:3px;flex-shrink:0;
