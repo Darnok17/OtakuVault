@@ -6,9 +6,9 @@ import { auth } from "@/lib/auth";
 import { deleteImage, isDataImage, isOwnedUpload, uploadDataUrl } from "@/lib/storage";
 import { saveMoodboard } from "./moodboards";
 import { db, entries, entryStatus, entryType, moodboards } from "@/lib/db";
+import { toEntry } from "@/lib/entries-db";
 import type { Entry, EntryStatus, EntryType, Moodboard } from "@/lib/types";
 
-type EntryRow = typeof entries.$inferSelect;
 export type NewEntryInput = Omit<Entry, "id" | "created" | "userId">;
 
 // The proxy only checks that a session cookie exists; every action re-validates it.
@@ -17,22 +17,6 @@ async function requireUserId() {
   if (!session) throw new Error("Not signed in");
   return session.user.id;
 }
-
-const toEntry = (r: EntryRow): Entry => ({
-  id: r.id,
-  title: r.title,
-  type: r.type,
-  status: r.status,
-  genre: r.genre,
-  totalEps: r.totalEps,
-  notes: r.notes,
-  rating: r.rating,
-  imageUrl: r.imageUrl,
-  progressCurrent: r.progressCurrent,
-  progressTotal: r.progressTotal,
-  created: r.createdAt.getTime(),
-  manualOrder: r.manualOrder ?? undefined,
-});
 
 /* ---------- Input validation (actions are public endpoints; never trust the client) ---------- */
 
@@ -136,6 +120,8 @@ export async function restoreEntryAction(entry: Entry, board?: Moodboard | null)
   const userId = await requireUserId();
   if (!Number.isFinite(entry.created)) throw new Error("Invalid created");
   const entryId = id(entry.id);
+  const anilistId = entry.anilistId ?? null;
+  if (anilistId !== null && (!Number.isInteger(anilistId) || anilistId < 1 || anilistId > 10_000_000)) throw new Error("Invalid anilistId");
   // An entry deleted before the backfill ran may still carry base64 images: store them as uploads now.
   if (isDataImage(entry.imageUrl)) entry = { ...entry, imageUrl: await uploadDataUrl(entry.imageUrl, "cover", userId) };
   if (board?.nodes.some((n) => Object.values(n.data ?? {}).some(isDataImage))) {
@@ -149,7 +135,7 @@ export async function restoreEntryAction(entry: Entry, board?: Moodboard | null)
     };
   }
   const [restored] = await db.insert(entries)
-    .values({ ...entryFields(entry), id: entryId, userId, createdAt: new Date(entry.created) })
+    .values({ ...entryFields(entry), anilistId, id: entryId, userId, createdAt: new Date(entry.created) })
     .onConflictDoNothing()
     .returning();
   if (!restored) return null;

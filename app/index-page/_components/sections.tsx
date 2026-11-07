@@ -1,7 +1,8 @@
+import Link from "next/link";
 import { connection } from "next/server";
 import { browseTitles, getSeasonalLineup, getTrendingNow } from "@/lib/anilist";
 import { getRecommendationsAction, type Recommendations } from "@/app/actions/anilist";
-import { DEFAULT_FILTERS, SEASON_INFO, badgeFor, glyphFor, hueFor, hueToVar, lengthFor, seasonOf, type BrowseFilters, type Title } from "@/lib/anilist-shared";
+import { DEFAULT_FILTERS, SEASON_INFO, badgeFor, glyphFor, hueFor, hueToVar, lengthFor, seasonOf, titleHref, type BrowseFilters, type Title } from "@/lib/anilist-shared";
 import type { EntryType } from "@/lib/types";
 import { RecRow } from "./posters";
 
@@ -20,7 +21,8 @@ function SeasonalCard({ t }: { t: Title }) {
     ? `${t.season ? SEASON_INFO[t.season].label : ""} ${t.seasonYear} · ${eps}`
     : [t.startYear, lengthFor(t).label || eps].filter(Boolean).join(" · ");
   return (
-    <div className="idx-seasonal-card" style={{ "--card-accent": `var(--${hueToVar(hueFor(t))})` } as React.CSSProperties} role="button" tabIndex={0}>
+    <div className="idx-seasonal-card" style={{ "--card-accent": `var(--${hueToVar(hueFor(t))})` } as React.CSSProperties}>
+      <Link className="td-card-link" href={titleHref(t.entryType, t.anilistId)} aria-label={t.title} />
       {/* A background image (not <img>) so art that fails to load leaves the glyph card, not a broken icon. */}
       {art && <div className="idx-seasonal-img" style={{ backgroundImage: `url(${JSON.stringify(art)})` }} aria-hidden="true" />}
       <div className="idx-seasonal-glyph">{glyphFor(t)}</div>

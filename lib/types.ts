@@ -16,6 +16,8 @@ export type Entry = {
   created: number;
   // Position within its rating tier (same type + rating); unset entries sort first, newest first.
   manualOrder?: number;
+  // Set when the entry came from AniList; links it to its detail page.
+  anilistId?: number;
 };
 
 export type MoodNodeType =

@@ -1,9 +1,10 @@
+import { cache } from "react";
 import { inArray, eq, lt, sql } from "drizzle-orm";
 import { db, cachedTitles, cachedQueries } from "@/lib/db";
 import type { EntryType } from "@/lib/types";
 import {
-  DEFAULT_FILTERS, ENTRY_TYPES, TAG_GENRES,
-  type BrowseFilters, type MediaKind, type Season, type Title, type TitlePage,
+  DEFAULT_FILTERS, DETAILS_VERSION, ENTRY_TYPES, TAG_GENRES,
+  type BrowseFilters, type DetailsResult, type FuzzyDate, type MediaKind, type Season, type Title, type TitleDetails, type TitlePage,
 } from "@/lib/anilist-shared";
 
 // AniList GraphQL client with a Postgres cache in front of it. Server-only (imports the db).
@@ -18,6 +19,7 @@ const TITLE_TTL = 7 * DAY;
 const TTL = { trending: HOUR, seasonal: 6 * HOUR, search: DAY, browse: DAY, counts: DAY, recs: 7 * DAY };
 
 export class AniListError extends Error {}
+class AniListNotFound extends AniListError {}
 
 /* ---------- Transport ---------- */
 
@@ -48,6 +50,7 @@ async function gql<T>(query: string, variables: Record<string, unknown> = {}): P
     blockedUntil = Date.now() + (Number(res.headers.get("Retry-After")) || 60) * 1000;
     throw new AniListError("AniList rate limit reached");
   }
+  if (res.status === 404) throw new AniListNotFound("Not found on AniList");
   const body = await res.json().catch(() => null) as { data?: T; errors?: { message: string }[] } | null;
   if (!res.ok || !body?.data) throw new AniListError(body?.errors?.[0]?.message ?? `AniList HTTP ${res.status}`);
   return body.data;
@@ -321,3 +324,160 @@ export async function getRecommendations(sourceIds: number[]): Promise<Title[]> 
   });
   return page.items;
 }
+
+/* ---------- Title details ---------- */
+
+const DETAILS_QUERY = `
+  query ($id: Int) {
+    Media(id: $id) {
+      ${MEDIA_FIELDS}
+      idMal siteUrl duration meanScore favourites synonyms source(version: 3)
+      description(asHtml: false)
+      endDate { year month day }
+      startDate { year month day }
+      rankings { rank type allTime }
+      tags { name rank isMediaSpoiler isAdult }
+      studios { edges { isMain node { name } } }
+      staff(perPage: 50, sort: [RELEVANCE, ID]) { edges { role node { id name { full } image { large } } } }
+      characters(perPage: 50, sort: [ROLE, RELEVANCE, ID]) {
+        edges {
+          role
+          node { id name { full } image { large } }
+          voiceActors(sort: [RELEVANCE, ID]) { id name { full } image { large } languageV2 }
+        }
+      }
+      relations {
+        edges {
+          relationType(version: 2)
+          node { id type format countryOfOrigin title { romaji english } coverImage { large } }
+        }
+      }
+      recommendations(sort: RATING_DESC, perPage: 12) { nodes { mediaRecommendation { ${MEDIA_FIELDS} } } }
+      streamingEpisodes { title thumbnail url site }
+      externalLinks { url site icon color }
+      trailer { id site }
+    }
+  }`;
+
+type RawPerson = { id: number; name: { full: string | null } | null; image: { large: string | null } | null };
+type RawDetails = Omit<RawMedia, "studios"> & {
+  idMal: number | null; siteUrl: string | null; duration: number | null; meanScore: number | null; favourites: number | null;
+  synonyms: string[] | null; source: string | null;
+  startDate: FuzzyDate | null; endDate: FuzzyDate | null;
+  rankings: { rank: number; type: string; allTime: boolean | null }[] | null;
+  tags: { name: string; rank: number | null; isMediaSpoiler: boolean | null; isAdult: boolean | null }[] | null;
+  studios: { edges: { isMain: boolean; node: { name: string } | null }[] } | null;
+  staff: { edges: { role: string | null; node: RawPerson | null }[] } | null;
+  characters: { edges: { role: string | null; node: RawPerson | null; voiceActors: (RawPerson & { languageV2: string | null })[] | null }[] } | null;
+  relations: { edges: { relationType: string | null; node: (Pick<RawMedia, "id" | "type" | "format" | "countryOfOrigin"> & { title: { romaji: string | null; english: string | null }; coverImage: { large: string | null } | null }) | null }[] } | null;
+  recommendations: { nodes: { mediaRecommendation: RawMedia | null }[] } | null;
+  streamingEpisodes: TitleDetails["streamingEpisodes"] | null;
+  externalLinks: { url: string | null; site: string; icon: string | null; color: string | null }[] | null;
+  trailer: { id: string | null; site: string | null } | null;
+};
+
+const hasDate = (d: FuzzyDate | null) => (d?.year ? d : null);
+const isWebUrl = (url: string | null): url is string => !!url && /^https?:\/\//i.test(url);
+
+function normalizeDetails(m: RawDetails, base: Title): TitleDetails {
+  return {
+    v: DETAILS_VERSION,
+    fetchedAt: Date.now(),
+    anilistId: base.anilistId,
+    idMal: m.idMal,
+    siteUrl: m.siteUrl,
+    kind: base.kind,
+    entryType: base.entryType,
+    title: base.title,
+    romaji: base.romaji,
+    english: m.title.english,
+    native: base.native,
+    synonyms: m.synonyms ?? [],
+    cover: base.cover,
+    color: base.color,
+    banner: base.banner,
+    description: m.description ?? null,
+    format: base.format,
+    status: base.status,
+    episodes: base.episodes,
+    chapters: base.chapters,
+    volumes: base.volumes,
+    duration: m.duration,
+    startDate: hasDate(m.startDate),
+    endDate: hasDate(m.endDate),
+    season: base.season,
+    seasonYear: base.seasonYear,
+    averageScore: base.score,
+    meanScore: m.meanScore,
+    popularity: base.popularity,
+    popularityRank: m.rankings?.find((r) => r.type === "POPULAR" && r.allTime)?.rank ?? null,
+    favourites: m.favourites,
+    source: m.source,
+    genres: base.genres,
+    tags: (m.tags ?? []).filter((t) => !t.isMediaSpoiler && !t.isAdult).map((t) => ({ name: t.name, rank: t.rank ?? 0 })),
+    studios: (m.studios?.edges ?? []).flatMap((e) => (e.node ? [{ name: e.node.name, isMain: e.isMain }] : [])),
+    staff: (m.staff?.edges ?? []).flatMap((e) => (e.node?.name?.full
+      ? [{ id: e.node.id, name: e.node.name.full, role: e.role, image: e.node.image?.large ?? null }] : [])),
+    characters: (m.characters?.edges ?? []).flatMap((e) => (e.node?.name?.full
+      ? [{
+          id: e.node.id, name: e.node.name.full, role: e.role, image: e.node.image?.large ?? null,
+          voiceActors: (e.voiceActors ?? []).flatMap((v) => (v.name?.full
+            ? [{ id: v.id, name: v.name.full, image: v.image?.large ?? null, language: v.languageV2 }] : [])),
+        }] : [])),
+    relations: (m.relations?.edges ?? []).flatMap((e) => (e.node
+      ? [{
+          id: e.node.id, relationType: e.relationType, format: e.node.format,
+          entryType: entryTypeOf(e.node as RawMedia),
+          title: e.node.title.english ?? e.node.title.romaji ?? `#${e.node.id}`,
+          cover: e.node.coverImage?.large ?? null,
+        }] : [])),
+    recommendations: (m.recommendations?.nodes ?? []).flatMap((n) => (n.mediaRecommendation ? [normalize(n.mediaRecommendation)] : [])),
+    streamingEpisodes: m.streamingEpisodes ?? [],
+    externalLinks: (m.externalLinks ?? []).flatMap((l) => (isWebUrl(l.url) ? [{ url: l.url, site: l.site, icon: l.icon, color: l.color }] : [])),
+    trailer: m.trailer?.id && m.trailer.site ? { id: m.trailer.id, site: m.trailer.site } : null,
+  };
+}
+
+async function fetchDetails(anilistId: number): Promise<TitleDetails> {
+  const { Media } = await gql<{ Media: RawDetails | null }>(DETAILS_QUERY, { id: anilistId });
+  if (!Media) throw new AniListNotFound("Not found on AniList");
+  const base = normalize({
+    ...Media,
+    studios: { nodes: (Media.studios?.edges ?? []).flatMap((e) => (e.isMain && e.node ? [e.node] : [])) },
+  });
+  const details = normalizeDetails(Media, base);
+  const values = { anilistId, type: base.kind, title: base.title, meta: base, details, updatedAt: new Date() };
+  await db.insert(cachedTitles).values(values).onConflictDoUpdate({
+    target: cachedTitles.anilistId,
+    set: { type: values.type, title: values.title, meta: sql`${cachedTitles.meta} || excluded.meta`, details, updatedAt: values.updatedAt },
+  });
+  return details;
+}
+
+const detailsInflight = new Map<number, Promise<TitleDetails>>();
+
+// One Media query per title per week. Age comes from the payload's fetchedAt, not updated_at:
+// list queries bump updated_at whenever they refresh a title, so a title on the trending rail
+// would never look stale. Wrapped in cache() so metadata and the page share one lookup.
+export const getTitleDetails = cache(async (anilistId: number, type: EntryType): Promise<DetailsResult> => {
+  const [row] = await db.select({ details: cachedTitles.details }).from(cachedTitles).where(eq(cachedTitles.anilistId, anilistId));
+  const stored = row?.details as TitleDetails | null | undefined;
+  const cached = stored?.v === DETAILS_VERSION ? stored : null;
+  let details = cached && Date.now() - cached.fetchedAt < TITLE_TTL ? cached : null;
+
+  if (!details) {
+    let pending = detailsInflight.get(anilistId);
+    if (!pending) {
+      pending = fetchDetails(anilistId).finally(() => detailsInflight.delete(anilistId));
+      detailsInflight.set(anilistId, pending);
+    }
+    try {
+      details = await pending;
+    } catch (err) {
+      if (err instanceof AniListNotFound) return { status: "not-found" };
+      if (!cached) throw err;
+      details = cached; // stale beats nothing while AniList is down
+    }
+  }
+  return details.entryType === type ? { status: "ok", details } : { status: "wrong-type", entryType: details.entryType };
+});

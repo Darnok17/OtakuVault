@@ -1,18 +1,18 @@
 "use server";
 
 import { headers } from "next/headers";
-import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gt } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { db, entries } from "@/lib/db";
+import { db, entries, entryStatus } from "@/lib/db";
+import { findCollectionEntry, toEntry } from "@/lib/entries-db";
 import {
-  browseTitles, getRecommendations, getSeasonalLineup, getTitleById, getTrendingNow, getTypeCounts, searchTitles,
+  browseTitles, getRecommendations, getSeasonalLineup, getTitleById, getTitleDetails, getTrendingNow, getTypeCounts, searchTitles,
 } from "@/lib/anilist";
 import {
   DEFAULT_FILTERS, ENTRY_TYPES, lengthFor,
-  type AddResult, type BrowseFilters, type BrowseSort, type BrowseStatus, type Season, type Title, type TitlePage,
+  type AddResult, type BrowseFilters, type BrowseSort, type BrowseStatus, type DetailsResult, type Season, type Title, type TitlePage,
 } from "@/lib/anilist-shared";
-import type { EntryType } from "@/lib/types";
-import { addEntryAction } from "./entries";
+import type { EntryStatus, EntryType } from "@/lib/types";
 
 // Thin, validated wrappers over lib/anilist. Every export here is a public endpoint, and each
 // call can trigger an upstream AniList request, so inputs are checked before anything runs.
@@ -65,6 +65,11 @@ export async function getTrendingNowAction(type?: EntryType): Promise<TitlePage>
 
 export async function getTitleByIdAction(anilistId: number): Promise<Title> {
   return getTitleById(posInt(anilistId, "anilistId", 10_000_000));
+}
+
+export async function getTitleDetailsAction(anilistId: number, type: EntryType): Promise<DetailsResult> {
+  if (!isEntryType(type)) throw new Error("Invalid type");
+  return getTitleDetails(posInt(anilistId, "anilistId", 10_000_000), type);
 }
 
 export async function browseTitlesAction(filters: BrowseFilters, page = 1): Promise<TitlePage> {
@@ -124,30 +129,30 @@ export async function getRecommendationsAction(type?: EntryType): Promise<Recomm
   return { status: "ok", basis: top.map((e) => e.title), items };
 }
 
-// "Add to Collection" on a poster. Title data comes from our cache/AniList, never from the client.
-export async function addTitleToCollectionAction(anilistId: number): Promise<AddResult> {
+// "Add to Collection" from a poster or a detail page. Title data comes from our cache/AniList,
+// never from the client.
+export async function addToCollectionFromAnilist(anilistId: number, type: EntryType, status: EntryStatus): Promise<AddResult> {
+  if (!isEntryType(type)) throw new Error("Invalid type");
+  if (!(entryStatus.enumValues as readonly string[]).includes(status)) throw new Error("Invalid status");
   const userId = await sessionUserId();
   if (!userId) return { status: "signin" };
 
   const t = await getTitleById(posInt(anilistId, "anilistId", 10_000_000));
-  const names = [...new Set([t.title, t.romaji].map((n) => n.toLowerCase()))];
-  const [dupe] = await db.select({ id: entries.id }).from(entries)
-    .where(and(eq(entries.userId, userId), inArray(sql`lower(${entries.title})`, names)))
-    .limit(1);
-  if (dupe) return { status: "exists" };
+  if (t.entryType !== type) throw new Error("Invalid type");
+  const dupe = await findCollectionEntry(userId, t.anilistId, type, [t.title, t.romaji, t.native]);
+  if (dupe) return { status: "exists", entry: toEntry(dupe) };
 
   const length = lengthFor(t);
-  const entry = await addEntryAction({
+  const [row] = await db.insert(entries).values({
+    userId,
+    anilistId: t.anilistId,
     title: t.title.slice(0, 300),
-    type: t.entryType,
-    status: "plan-to",
+    type,
+    status,
     genre: t.genres.slice(0, 3).join(", "),
     totalEps: length.label,
-    notes: "",
-    rating: 0,
     imageUrl: t.cover ?? "",
-    progressCurrent: 0,
     progressTotal: length.total,
-  });
-  return { status: "added", entry };
+  }).returning();
+  return { status: "added", entry: toEntry(row) };
 }

@@ -329,6 +329,16 @@ export const useEntriesStore = create<EntriesState>()(
 );
 
 // Loads the signed-in user's entries from the DB once; later mounts reuse the store.
+// Puts an entry saved outside the store (poster or detail page) into an already-loaded
+// collection, so client navigation shows it.
+export function syncEntry(userId: string, entry: Entry) {
+  const { hydratedFor, entries } = useEntriesStore.getState();
+  if (hydratedFor !== userId) return;
+  useEntriesStore.setState({
+    entries: entries.some((e) => e.id === entry.id) ? entries.map((e) => (e.id === entry.id ? entry : e)) : [entry, ...entries],
+  });
+}
+
 export function useHydrateEntries() {
   const { data, isPending } = authClient.useSession();
   const userId = data?.user.id;

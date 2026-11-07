@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { lengthFor, type Title } from "@/lib/anilist-shared";
+import Link from "next/link";
+import { lengthFor, titleHref, type Title } from "@/lib/anilist-shared";
 import type { Entry, EntryStatus, EntryType } from "@/lib/types";
 import AniListSearch from "./AniListSearch";
 import CoverDropZone from "./CoverDropZone";
@@ -134,6 +135,16 @@ export default function EntryModal({
             <span style={labelStyle}>Rating</span>
             <StarRating value={form.rating} onChange={(r) => set("rating", r)} />
           </div>
+
+          {form.anilistId && (
+            <div style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
+              <span style={labelStyle}>AniList ID</span>
+              <div style={{ display: "flex", gap: ".75rem", alignItems: "center" }}>
+                <input type="text" value={form.anilistId} readOnly aria-label="AniList ID" style={{ ...inputStyle, flex: 1, opacity: .7 }} />
+                <Link href={titleHref(form.type, form.anilistId)} className="btn btn-ghost btn-sm">View AniList page</Link>
+              </div>
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: ".75rem", marginTop: ".5rem" }}>
             <button type="button" className="btn btn-ghost" onClick={onClose} style={{ flex: 1 }}>Cancel</button>

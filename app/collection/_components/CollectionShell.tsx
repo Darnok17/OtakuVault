@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { Suspense, useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useEntriesStore, useHydrateEntries } from "@/lib/store";
 import type { Entry, EntryStatus, EntryType } from "@/lib/types";
@@ -17,6 +18,16 @@ const isLive = (id: string) => useEntriesStore.getState().entries.some((e) => e.
 // Order inside a rating tier: manually placed cards by position, unplaced (new) ones first, newest first.
 const byManualOrder = (a: Entry, b: Entry) =>
   ((a.manualOrder ?? -1) - (b.manualOrder ?? -1)) || (b.created - a.created);
+
+// /collection?edit=<id>, from a detail page's Edit button: opens that entry once it has loaded.
+// Reads the URL rather than keeping state, because this page stays mounted (hidden) between visits.
+function LinkedEditModal({ onSave }: { onSave: (e: Entry) => void }) {
+  const id = useSearchParams().get("edit");
+  const entry = useEntriesStore((s) => s.entries.find((e) => e.id === id));
+  if (!entry) return null;
+  const close = () => window.history.replaceState(null, "", window.location.pathname);
+  return <EntryModal key={entry.id} entry={entry} onSave={(e) => { onSave(e); close(); }} onClose={close} />;
+}
 
 export default function CollectionShell() {
   const entries = useEntriesStore((s) => s.entries);
@@ -297,6 +308,7 @@ export default function CollectionShell() {
       </div>
 
       {showModal && <EntryModal entry={editing} onSave={saveEntry} onClose={closeModal} />}
+      <Suspense><LinkedEditModal onSave={saveEntry} /></Suspense>
       <DeleteUndoToast items={visibleDeletes} onUndo={undoDelete} />
       <SyncErrorToast />
     </section>

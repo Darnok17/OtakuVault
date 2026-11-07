@@ -86,9 +86,11 @@ export const entries = pgTable("entries", {
   progressCurrent: integer("progress_current").notNull().default(0),
   progressTotal: integer("progress_total").notNull().default(0),
   manualOrder: integer("manual_order"),
+  // The AniList title behind this entry; null for entries added by hand.
+  anilistId: integer("anilist_id"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-}, (t) => [index("entries_user_id_idx").on(t.userId)]);
+}, (t) => [index("entries_user_id_idx").on(t.userId), index("entries_user_anilist_idx").on(t.userId, t.anilistId)]);
 
 export const moodboards = pgTable("moodboards", {
   id: id(),
@@ -151,6 +153,8 @@ export const cachedTitles = pgTable("cached_titles", {
   type: text("type").notNull(), // AniList media type: "ANIME" | "MANGA"
   title: text("title").notNull(),
   meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+  // Full detail-page payload (TitleDetails), filled the first time the page is visited.
+  details: jsonb("details").$type<Record<string, unknown>>(),
   updatedAt: updatedAt(),
 }, (t) => [uniqueIndex("cached_titles_anilist_id_idx").on(t.anilistId)]);
 

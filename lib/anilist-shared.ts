@@ -1,4 +1,4 @@
-import type { Entry, EntryType } from "@/lib/types";
+ import type { Entry, EntryType } from "@/lib/types";
 
 // Client-safe AniList types and display helpers. The fetching/caching layer is lib/anilist.ts.
 
@@ -60,8 +60,127 @@ export const TAG_GENRES = new Set(["Isekai", "Seinen", "Shounen", "Shonen"]);
 
 export type AddResult =
   | { status: "added"; entry: Entry }
-  | { status: "exists" }
+  | { status: "exists"; entry: Entry }
   | { status: "signin" };
+
+/* ---------- Detail pages ---------- */
+
+export const TITLE_ROUTES: Record<EntryType, string> = { anime: "anime", manga: "manga", webtoon: "webtoons", novel: "novels" };
+
+export const titleHref = (type: EntryType, anilistId: number) => `/${TITLE_ROUTES[type]}/${anilistId}`;
+
+export type FuzzyDate = { year: number | null; month: number | null; day: number | null };
+
+export type TitleVoiceActor = { id: number; name: string; image: string | null; language: string | null };
+export type TitleCharacter = { id: number; name: string; role: string | null; image: string | null; voiceActors: TitleVoiceActor[] };
+export type TitleStaff = { id: number; name: string; role: string | null; image: string | null };
+export type TitleRelation = { id: number; relationType: string | null; entryType: EntryType; format: string | null; title: string; cover: string | null };
+export type TitleLink = { url: string; site: string; icon: string | null; color: string | null };
+
+// Everything a detail page shows; this is what cached_titles.details holds. Normalized so lists
+// are always arrays and absent values are null. Bump DETAILS_VERSION when the shape changes.
+export const DETAILS_VERSION = 1;
+
+export type TitleDetails = {
+  v: number;
+  fetchedAt: number;
+  anilistId: number;
+  idMal: number | null;
+  siteUrl: string | null;
+  kind: MediaKind;
+  entryType: EntryType;
+  title: string; // english, else romaji
+  romaji: string;
+  english: string | null;
+  native: string | null;
+  synonyms: string[];
+  cover: string | null;
+  color: string | null;
+  banner: string | null;
+  description: string | null; // raw, as AniList sends it; see descriptionParagraphs
+  format: string | null;
+  status: string | null;
+  episodes: number | null;
+  chapters: number | null;
+  volumes: number | null;
+  duration: number | null;
+  startDate: FuzzyDate | null;
+  endDate: FuzzyDate | null;
+  season: Season | null;
+  seasonYear: number | null;
+  averageScore: number | null;
+  meanScore: number | null;
+  popularity: number | null;
+  popularityRank: number | null;
+  favourites: number | null;
+  source: string | null;
+  genres: string[];
+  tags: { name: string; rank: number }[];
+  studios: { name: string; isMain: boolean }[];
+  staff: TitleStaff[];
+  characters: TitleCharacter[];
+  relations: TitleRelation[];
+  recommendations: Title[];
+  streamingEpisodes: { title: string | null; thumbnail: string | null; url: string | null; site: string | null }[];
+  externalLinks: TitleLink[];
+  trailer: { id: string; site: string } | null;
+};
+
+export type DetailsResult =
+  | { status: "ok"; details: TitleDetails }
+  | { status: "not-found" }
+  | { status: "wrong-type"; entryType: EntryType }; // the id exists, under another route
+
+// Collapses items sharing a key, keeping the first one's position. `merge` folds each later
+// duplicate into the one already kept.
+export function uniqueBy<T>(items: T[], keyOf: (item: T) => unknown, merge: (kept: T, dup: T) => T = (kept) => kept): T[] {
+  const byKey = new Map<unknown, T>();
+  for (const item of items) {
+    const key = keyOf(item);
+    const kept = byKey.get(key);
+    byKey.set(key, kept === undefined ? item : merge(kept, item));
+  }
+  return [...byKey.values()];
+}
+
+// AniList repeats entries, e.g. a studio credited as both animator (isMain) and producer. This
+// runs at render rather than in normalizeDetails so details already cached are covered too.
+// Staff and relations stay distinct per role/type: the same person or title under a second label
+// is real information, and the row shows that label.
+export function dedupeDetails(d: TitleDetails): TitleDetails {
+  return {
+    ...d,
+    synonyms: [...new Set(d.synonyms)],
+    genres: [...new Set(d.genres)],
+    tags: uniqueBy(d.tags, (t) => t.name, (a, b) => (b.rank > a.rank ? b : a)),
+    studios: uniqueBy(d.studios, (s) => s.name.trim().toLowerCase(), (a, b) => ({ ...a, isMain: a.isMain || b.isMain })),
+    staff: uniqueBy(d.staff, (s) => `${s.id}-${s.role}`),
+    // AniList sorts by role, so the kept entry already has the most prominent one.
+    characters: uniqueBy(d.characters, (c) => c.id, (a, b) => ({
+      ...a, role: a.role ?? b.role, image: a.image ?? b.image, voiceActors: [...a.voiceActors, ...b.voiceActors],
+    })).map((c) => ({ ...c, voiceActors: uniqueBy(c.voiceActors, (v) => v.id) })),
+    relations: uniqueBy(d.relations, (r) => `${r.id}-${r.relationType}`),
+    recommendations: uniqueBy(d.recommendations, (t) => t.anilistId),
+  };
+}
+
+const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", mdash: "—", ndash: "–", hellip: "…", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“" };
+
+// AniList descriptions are HTML-ish, with ~!spoiler!~ blocks. Returns plain-text paragraphs.
+export function descriptionParagraphs(raw: string | null): string[] {
+  if (!raw) return [];
+  return raw
+    .replace(/~!\s*[\s\S]*?!~/g, "")
+    .replace(/\r/g, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n))
+    .replace(/&(\w+);/g, (m, name) => ENTITIES[name] ?? m)
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+}
 
 /* ---------- Seasons ---------- */
 

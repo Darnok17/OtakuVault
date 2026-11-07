@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
-import { useEntriesStore } from "@/lib/store";
-import { addTitleToCollectionAction } from "@/app/actions/anilist";
-import { badgeFor, glyphFor, hueFor, hueToVar, ratingFor, type Title } from "@/lib/anilist-shared";
+import { syncEntry } from "@/lib/store";
+import { addToCollectionFromAnilist } from "@/app/actions/anilist";
+import { badgeFor, glyphFor, hueFor, hueToVar, ratingFor, titleHref, type Title } from "@/lib/anilist-shared";
 import { useIndex } from "./IndexProvider";
 
 type AddState = "idle" | "adding" | "added";
@@ -20,7 +21,7 @@ function AddButton({ t }: { t: Title }) {
     if (!session) return notify("Log in to start your collection", { login: true });
     setState("adding");
     try {
-      const res = await addTitleToCollectionAction(t.anilistId);
+      const res = await addToCollectionFromAnilist(t.anilistId, t.entryType, "plan-to");
       if (res.status === "signin") {
         setState("idle");
         return notify("Your session expired — log in again", { login: true });
@@ -28,10 +29,7 @@ function AddButton({ t }: { t: Title }) {
       setState("added");
       if (res.status === "exists") return notify(`${t.title} is already in your collection`);
       // Keep an already-loaded collection in step so client navigation shows the new card.
-      const store = useEntriesStore.getState();
-      if (store.hydratedFor === session.user.id && !store.entries.some((x) => x.id === res.entry.id)) {
-        useEntriesStore.setState({ entries: [res.entry, ...store.entries] });
-      }
+      syncEntry(session.user.id, res.entry);
       notify(`Added ${t.title} to your collection`);
     } catch {
       setState("idle");
@@ -61,7 +59,9 @@ const hideIfBroken = (img: HTMLImageElement | null) => {
 
 export function PosterCard({ t, rank }: { t: Title; rank?: number }) {
   return (
-    <div className="rec-poster" style={{ "--poster-accent": `var(--${hueToVar(hueFor(t))})` } as React.CSSProperties} role="button" tabIndex={0}>
+    <div className="rec-poster" style={{ "--poster-accent": `var(--${hueToVar(hueFor(t))})` } as React.CSSProperties}>
+      {/* A stretched link rather than a wrapping one: a button can't legally sit inside an <a>. */}
+      <Link className="td-card-link" href={titleHref(t.entryType, t.anilistId)} aria-label={t.title} />
       <div className="rec-poster-cover">
         <div className="rec-poster-glyph">{glyphFor(t)}</div>
         {t.cover && (
@@ -84,8 +84,8 @@ export function PosterCard({ t, rank }: { t: Title; rank?: number }) {
 
 // Scrolling rail with arrows. Renders poster cards from `items`, or `children` for other card
 // types (pass their track class as scrollClassName).
-export function RecRow({ items, accent, scrollClassName = "rec-row-scroll", children }: {
-  items?: Title[]; accent: string; scrollClassName?: string; children?: ReactNode;
+export function RecRow({ items, accent, scrollClassName = "rec-row-scroll", ranked = true, children }: {
+  items?: Title[]; accent: string; scrollClassName?: string; ranked?: boolean; children?: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const by = () => Math.round((ref.current?.clientWidth || 600) * 0.75);
@@ -94,7 +94,7 @@ export function RecRow({ items, accent, scrollClassName = "rec-row-scroll", chil
       <div className="rec-row-track">
         <button className="rec-row-nav rec-row-nav-prev" aria-label="Scroll left" onClick={() => ref.current?.scrollBy({ left: -by(), behavior: "smooth" })}>‹</button>
         <div className={scrollClassName} ref={ref}>
-          {items?.map((t, i) => <PosterCard key={t.anilistId} t={t} rank={i + 1} />)}
+          {items?.map((t, i) => <PosterCard key={t.anilistId} t={t} rank={ranked ? i + 1 : undefined} />)}
           {children}
         </div>
         <button className="rec-row-nav rec-row-nav-next" aria-label="Scroll right" onClick={() => ref.current?.scrollBy({ left: by(), behavior: "smooth" })}>›</button>
