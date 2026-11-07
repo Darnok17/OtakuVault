@@ -75,11 +75,11 @@ export type TitleVoiceActor = { id: number; name: string; image: string | null; 
 export type TitleCharacter = { id: number; name: string; role: string | null; image: string | null; voiceActors: TitleVoiceActor[] };
 export type TitleStaff = { id: number; name: string; role: string | null; image: string | null };
 export type TitleRelation = { id: number; relationType: string | null; entryType: EntryType; format: string | null; title: string; cover: string | null };
-export type TitleLink = { url: string; site: string; icon: string | null; color: string | null };
+export type TitleLink = { url: string; site: string; language: string | null; icon: string | null; color: string | null };
 
 // Everything a detail page shows; this is what cached_titles.details holds. Normalized so lists
 // are always arrays and absent values are null. Bump DETAILS_VERSION when the shape changes.
-export const DETAILS_VERSION = 1;
+export const DETAILS_VERSION = 2;
 
 export type TitleDetails = {
   v: number;

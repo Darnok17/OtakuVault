@@ -354,7 +354,7 @@ const DETAILS_QUERY = `
       }
       recommendations(sort: RATING_DESC, perPage: 12) { nodes { mediaRecommendation { ${MEDIA_FIELDS} } } }
       streamingEpisodes { title thumbnail url site }
-      externalLinks { url site icon color }
+      externalLinks { url site language icon color }
       trailer { id site }
     }
   }`;
@@ -372,7 +372,7 @@ type RawDetails = Omit<RawMedia, "studios"> & {
   relations: { edges: { relationType: string | null; node: (Pick<RawMedia, "id" | "type" | "format" | "countryOfOrigin"> & { title: { romaji: string | null; english: string | null }; coverImage: { large: string | null } | null }) | null }[] } | null;
   recommendations: { nodes: { mediaRecommendation: RawMedia | null }[] } | null;
   streamingEpisodes: TitleDetails["streamingEpisodes"] | null;
-  externalLinks: { url: string | null; site: string; icon: string | null; color: string | null }[] | null;
+  externalLinks: { url: string | null; site: string; language: string | null; icon: string | null; color: string | null }[] | null;
   trailer: { id: string | null; site: string | null } | null;
 };
 
@@ -433,7 +433,7 @@ function normalizeDetails(m: RawDetails, base: Title): TitleDetails {
         }] : [])),
     recommendations: (m.recommendations?.nodes ?? []).flatMap((n) => (n.mediaRecommendation ? [normalize(n.mediaRecommendation)] : [])),
     streamingEpisodes: m.streamingEpisodes ?? [],
-    externalLinks: (m.externalLinks ?? []).flatMap((l) => (isWebUrl(l.url) ? [{ url: l.url, site: l.site, icon: l.icon, color: l.color }] : [])),
+    externalLinks: (m.externalLinks ?? []).flatMap((l) => (isWebUrl(l.url) ? [{ url: l.url, site: l.site, language: l.language, icon: l.icon, color: l.color }] : [])),
     trailer: m.trailer?.id && m.trailer.site ? { id: m.trailer.id, site: m.trailer.site } : null,
   };
 }

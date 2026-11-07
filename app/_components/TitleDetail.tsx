@@ -269,8 +269,8 @@ function Trailer({ d }: { d: TitleDetails }) {
 
 function ExternalLinks({ d }: { d: TitleDetails }) {
   const links = uniqueBy([
-    ...(d.siteUrl ? [{ url: d.siteUrl, site: "AniList", icon: null }] : []),
-    ...(d.idMal ? [{ url: `https://myanimelist.net/${d.kind.toLowerCase()}/${d.idMal}`, site: "MyAnimeList", icon: null }] : []),
+    ...(d.siteUrl ? [{ url: d.siteUrl, site: "AniList", language: null, icon: null }] : []),
+    ...(d.idMal ? [{ url: `https://myanimelist.net/${d.kind.toLowerCase()}/${d.idMal}`, site: "MyAnimeList", language: null, icon: null }] : []),
     ...d.externalLinks,
   ], (l) => l.url);
   return (
@@ -281,7 +281,7 @@ function ExternalLinks({ d }: { d: TitleDetails }) {
             <a className="td-link" href={l.url} target="_blank" rel="noopener noreferrer" key={l.url}>
               {/* eslint-disable-next-line @next/next/no-img-element -- remote AniList icons */}
               {l.icon && <img src={l.icon} alt="" loading="lazy" />}
-              {l.site}
+              {l.language ? `${l.site} (${l.language})` : l.site}
             </a>
           ))}
         </div>
