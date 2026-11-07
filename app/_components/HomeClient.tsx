@@ -384,7 +384,7 @@ export default function HomeClient() {
           <div className="home-eyebrow">◆ Welcome back ◆</div>
           <div className="home-title">OtakuVault</div>
           <div className="home-subtitle">
-            Your personal hub for everything anime, manga, webtoon, and light novel. Track what you've watched, discover what's next, and build the ultimate collection.
+            Your personal hub for everything anime, manga, webtoon, and light novel. Track what you&apos;ve watched, discover what&apos;s next, and build the ultimate collection.
           </div>
           <div className="home-tiles">
             {/* Your Collection */}
@@ -404,7 +404,7 @@ export default function HomeClient() {
                 <div className="home-tile-title">Your Collection</div>
                 <div className="home-tile-kanji">収蔵庫</div>
               </div>
-              <div className="home-tile-desc">Everything you've watched or read, ranked and organized. Full tracker with search, filters, moodboards, and connection wires.</div>
+              <div className="home-tile-desc">Everything you&apos;ve watched or read, ranked and organized. Full tracker with search, filters, moodboards, and connection wires.</div>
               <div className="home-tile-stats" id="tileStatsCollection">
                 <span className="stat-chip"><strong>—</strong> entries</span>
                 <span className="stat-chip"><strong>—</strong> rated</span>
@@ -473,7 +473,7 @@ export default function HomeClient() {
               <div className="feat-kicker">収蔵</div>
               <h2 className="feat-title">Collection as a Craft</h2>
               <p className="feat-body">
-                Every anime, manga, webtoon, and light novel you've ever cared about — ranked within rating tiers, rated to half a star, tagged with your own notes. The whole vault lives in one place and remembers everything you've touched.
+                Every anime, manga, webtoon, and light novel you&apos;ve ever cared about — ranked within rating tiers, rated to half a star, tagged with your own notes. The whole vault lives in one place and remembers everything you&apos;ve touched.
               </p>
               <ul className="feat-points">
                 <li>Half-star ratings with drag-reorder inside each tier</li>
@@ -528,7 +528,7 @@ export default function HomeClient() {
               <div className="feat-kicker">趣境</div>
               <h2 className="feat-title">Visual Story Webs</h2>
               <p className="feat-body">
-                Open any entry's moodboard and build a canvas of your reactions. Pin character cards, quotes, episode highlights, images, and custom nodes. Drag connections between them with gradient wires that take on each node's color.
+                Open any entry&apos;s moodboard and build a canvas of your reactions. Pin character cards, quotes, episode highlights, images, and custom nodes. Drag connections between them with gradient wires that take on each node&apos;s color.
               </p>
               <ul className="feat-points">
                 <li>8 node types · 8 color themes · fully custom nodes</li>
@@ -549,9 +549,9 @@ export default function HomeClient() {
                 12,000+ titles across every medium, filtered the way you want. Seasonal lineups, trending now, hidden gems, and recommendations tuned to the top-rated picks in your own collection.
               </p>
               <ul className="feat-points">
-                <li>Seasonal "Fall 2026" lineup banners</li>
+                <li>Seasonal &ldquo;Fall 2026&rdquo; lineup banners</li>
                 <li>Multi-select genre, year, rating, and status filters</li>
-                <li>"Because you liked…" powered by your collection</li>
+                <li>&ldquo;Because you liked…&rdquo; powered by your collection</li>
                 <li>AniList + Jikan database integration</li>
               </ul>
             </div>
@@ -591,7 +591,7 @@ export default function HomeClient() {
                 A dark Hyprland-inspired aesthetic from the boot screen on down. CRT scanlines, powerline chrome, kanji accents, color-coded sections — every pixel earns its place. Keyboard shortcuts throughout.
               </p>
               <ul className="feat-points">
-                <li>Terminal boot animation with "press to enter"</li>
+                <li>Terminal boot animation with &ldquo;press to enter&rdquo;</li>
                 <li>Keyboard shortcuts: ⌃Z undo · B bubble · G snap grid</li>
                 <li>Scroll-snap views · GPU-accelerated FLIP · 60fps drag</li>
                 <li>Zero backend. Pure HTML. Save as .html and it works.</li>

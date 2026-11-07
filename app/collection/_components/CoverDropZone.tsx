@@ -66,6 +66,7 @@ export default function CoverDropZone({
       >
         {showPreview ? (
           <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- user-supplied URLs from any host; next/image would need every host allow-listed */}
             <img src={value} alt="Cover preview" onError={() => setBrokenSrc(value)} />
             <div className="cover-upload-overlay">
               <span className="cover-upload-icon">⇪</span>

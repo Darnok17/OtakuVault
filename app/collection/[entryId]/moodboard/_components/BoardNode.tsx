@@ -71,7 +71,10 @@ function ImageSlot({ field, data, onPatch, className, empty }: {
   return (
     <>
       <div className={`${className} ${src ? "loaded" : ""} ${status ? "uploading" : ""}`} aria-busy={!!status} onClick={() => input.current?.click()}>
-        {src ? <img src={src} alt="" draggable={false} /> : empty}
+        {src
+          // eslint-disable-next-line @next/next/no-img-element -- user-supplied URLs from any host; next/image would need every host allow-listed
+          ? <img src={src} alt="" draggable={false} />
+          : empty}
         {(status || error) && (
           <span className={`bc-upload-status ${error ? "error" : ""}`} role={error ? "alert" : "status"}>
             &gt; {status ?? error}

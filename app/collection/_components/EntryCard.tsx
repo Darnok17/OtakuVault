@@ -35,6 +35,7 @@ export function CardFace({
       {handle}
       <div className="card-cover-wrap" onClick={onOpen} title={onOpen ? "Open moodboard" : undefined}>
         {entry.imageUrl
+          // eslint-disable-next-line @next/next/no-img-element -- user-supplied URLs from any host; next/image would need every host allow-listed
           ? <img className="card-cover" src={entry.imageUrl} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
           : <CoverPlaceholder />}
       </div>

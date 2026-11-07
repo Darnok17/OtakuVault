@@ -157,6 +157,7 @@ export default function MoodboardShell({ entryId }: { entryId: string }) {
         <div className="board-identity">
           <div className="board-cover-thumb">
             {entry?.imageUrl
+              // eslint-disable-next-line @next/next/no-img-element -- user-supplied URLs from any host; next/image would need every host allow-listed
               ? <img src={entry.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }} />
               : "🎌"}
           </div>

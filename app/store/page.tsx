@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useSyncExternalStore } from "react";
 
 const POOL = [
   { title:"Thorfinn 1/7 Scale Figure",   brand:"Max Factory",   series:"Vinland Saga",         price:189.99, hue:"crimson", glyph:"剣", badge:"ltd",  cat:"figures" },
@@ -24,6 +24,15 @@ const POOL = [
 ];
 
 const fmtPrice = (p: number) => `$${p.toFixed(2)}`;
+
+// Trending order is shuffled client-side only: Math.random can't run during Next.js 16 prerender.
+// The server snapshot renders the unshuffled slice; React swaps in the shuffle after hydration.
+// Cached so getSnapshot returns a stable value (shuffled once per page load).
+const SERVER_TRENDING = POOL.slice(0, 12);
+let clientTrending: typeof POOL | null = null;
+const getTrending = () => (clientTrending ??= [...POOL].sort(() => Math.random() - 0.5).slice(0, 12));
+const getServerTrending = () => SERVER_TRENDING;
+const noSubscribe = () => () => {};
 
 function ProductCard({ p }: { p: typeof POOL[number] }) {
   const [saved, setSaved] = useState(false);
@@ -85,12 +94,7 @@ function ProductRow({ items }: { items: typeof POOL }) {
 export default function StorePage() {
   const [activeCat, setActiveCat] = useState("all");
   const [grid, setGrid] = useState(POOL);
-  const [trending, setTrending] = useState(POOL.slice(0, 12));
-
-  // Shuffle after mount — Math.random can't run during Next.js 16 prerender
-  useEffect(() => {
-    setTrending([...POOL].sort(() => Math.random() - 0.5).slice(0, 12));
-  }, []);
+  const trending = useSyncExternalStore(noSubscribe, getTrending, getServerTrending);
 
   const chips = [
     ["all","All"],["figures","Figures"],["artbooks","Art Books"],["posters","Posters"],
@@ -130,7 +134,7 @@ export default function StorePage() {
           <div className="store-section-meta">BASED ON YOUR TOP-RATED</div>
         </div>
         <div className="store-rec-note">
-          Because you rated <span className="series-pill">Vinland Saga</span> highly — here's a hand-picked lineup of merch for the series you love.
+          Because you rated <span className="series-pill">Vinland Saga</span> highly — here&apos;s a hand-picked lineup of merch for the series you love.
         </div>
         <ProductRow items={picked} />
       </div>
@@ -142,7 +146,7 @@ export default function StorePage() {
             <span className="store-featured-tag">◆ Limited drop ◆</span>
             <div className="store-featured-title">Fall 2026 Figure Collection</div>
             <div className="store-featured-sub">
-              Hand-sculpted scale figures from the season's biggest shows. Pre-orders ship December — reserve yours before stock closes.
+              Hand-sculpted scale figures from the season&apos;s biggest shows. Pre-orders ship December — reserve yours before stock closes.
             </div>
             <button className="store-featured-cta" type="button">
               <span>Browse Collection</span><span>❯</span>

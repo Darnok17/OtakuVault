@@ -15,11 +15,12 @@ export default function EntryModal({
   onClose: () => void;
 }) {
   const isEdit = !!entry;
+  // id and created are stamped in submit(); render must stay pure.
   const [form, setForm] = useState<Entry>(entry ?? {
-    id: "e_" + Date.now(),
+    id: "",
     title: "", type: "anime", status: "watching",
     genre: "", totalEps: "", notes: "", rating: 0, imageUrl: "",
-    progressCurrent: 0, progressTotal: 0, created: Date.now(),
+    progressCurrent: 0, progressTotal: 0, created: 0,
   });
 
   const [uploading, setUploading] = useState(false);
@@ -47,7 +48,9 @@ export default function EntryModal({
     e.preventDefault();
     // Saving mid-upload would drop the new cover.
     if (!form.title.trim() || uploading) return;
-    onSave(form);
+    if (isEdit) return onSave(form);
+    const now = Date.now();
+    onSave({ ...form, id: "e_" + now, created: now });
   };
 
   return (
