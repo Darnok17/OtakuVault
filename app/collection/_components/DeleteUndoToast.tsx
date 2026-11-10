@@ -5,7 +5,7 @@ import type { Entry } from "@/lib/types";
 
 export const UNDO_MS = 5000;
 
-export type PendingDelete = { entry: Entry; index: number };
+export type PendingDelete = { entry: Entry; index: number; expiresAt: number };
 
 export default function DeleteUndoToast({
   items, onUndo,
@@ -20,7 +20,7 @@ export default function DeleteUndoToast({
 
   return (
     <div className={`undo-toast delete-toast ${visible ? "visible" : ""}`} role="status" aria-live="polite" inert={!visible}>
-      {shown.map(({ entry }) => (
+      {shown.map(({ entry, expiresAt }) => (
         <div className="delete-toast-item" key={entry.id}>
           <div className="toast-row">
             <span className="toast-dot"></span>
@@ -28,7 +28,13 @@ export default function DeleteUndoToast({
             <button className="toast-undo" type="button" onClick={() => onUndo(entry.id)}>Undo</button>
           </div>
           <div className="toast-progress-track">
-            <div className="toast-progress" style={{ animationDuration: `${UNDO_MS}ms` }}></div>
+            {/* Negative delay starts the drain part-way through, so the bar stays in step with the
+                deadline if the page is hidden and shown again mid-countdown. */}
+            <div
+              className="toast-progress"
+              style={{ animationDuration: `${UNDO_MS}ms` }}
+              ref={(el) => { if (el) el.style.animationDelay = `${Math.min(0, expiresAt - Date.now() - UNDO_MS)}ms`; }}
+            ></div>
           </div>
         </div>
       ))}

@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useSortable } from "@dnd-kit/sortable";
@@ -25,16 +26,36 @@ type CardProps = {
   onDelete: (id: string) => void;
 };
 
+// Icon buttons sit beside (not inside) the card link, but still swallow the event
+// so nothing underneath ever treats the click as a moodboard open.
+const guard = (fn: () => void) => (e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); fn(); };
+
+function InfoIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4" />
+      <path d="M12 8h.01" />
+    </svg>
+  );
+}
+
 // The visual card. Also rendered on its own as the floating drag overlay.
 export function CardFace({
-  entry, rank, onEdit, onDelete, onOpen, onMoodboard, handle, className = "",
-}: CardProps & { onOpen?: () => void; onMoodboard?: () => void; handle?: ReactNode; className?: string }) {
+  entry, rank, onEdit, onDelete, moodboardHref, onInfo, handle, className = "",
+}: CardProps & { moodboardHref?: string; onInfo?: () => void; handle?: ReactNode; className?: string }) {
   const isTop = rank <= 3 && entry.rating >= 4;
   const isPlanTo = entry.status === "plan-to";
+  const linked = entry.anilistId != null;
   return (
     <div className={`card ${className}`} data-type={entry.type} data-id={entry.id}>
+      {/* Stretched link: the whole card is one tab stop that opens the moodboard.
+          Action buttons are siblings layered above it, so the markup stays valid. */}
+      {moodboardHref && (
+        <Link href={moodboardHref} className="card-link" aria-label={`Open moodboard for ${entry.title}`} />
+      )}
       {handle}
-      <div className="card-cover-wrap" onClick={onOpen} title={onOpen ? (entry.anilistId ? "View title" : "Open moodboard") : undefined}>
+      <div className="card-cover-wrap">
         {entry.imageUrl
           // eslint-disable-next-line @next/next/no-img-element -- user-supplied URLs from any host; next/image would need every host allow-listed
           ? <img className="card-cover" src={entry.imageUrl} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
@@ -42,12 +63,19 @@ export function CardFace({
       </div>
       <div className="card-type-stripe"></div>
       <div className="card-actions">
-        {entry.anilistId && onMoodboard && <button className="icon-btn" onClick={onMoodboard} title="Open moodboard" type="button">▦</button>}
-        <button className="icon-btn" onClick={() => onEdit(entry.id)} title="Edit" type="button">✎</button>
-        <button className="icon-btn del" onClick={() => onDelete(entry.id)} title="Delete" type="button">✕</button>
+        <button
+          className={`icon-btn ${linked ? "" : "is-disabled"}`}
+          onClick={guard(() => { if (linked) onInfo?.(); })}
+          title={linked ? "View title details" : "Not linked to AniList"}
+          aria-label={linked ? `View details for ${entry.title}` : "Title details unavailable: not linked to AniList"}
+          aria-disabled={!linked || undefined}
+          type="button"
+        ><InfoIcon /></button>
+        <button className="icon-btn" onClick={guard(() => onEdit(entry.id))} title="Edit" aria-label={`Edit ${entry.title}`} type="button">✎</button>
+        <button className="icon-btn del" onClick={guard(() => onDelete(entry.id))} title="Delete" aria-label={`Delete ${entry.title}`} type="button">✕</button>
       </div>
       <div className="card-body">
-        <div className="card-title" onClick={onOpen}>{entry.title}</div>
+        <div className="card-title">{entry.title}</div>
         <div className="card-meta">
           <span className={`badge badge-type-${entry.type}`}>{entry.type}</span>
           <span className="badge badge-status">{STATUS_LABELS[entry.status]}</span>
@@ -95,9 +123,8 @@ export default function EntryCard({
       >
         <CardFace
           {...props}
-          // Entries from AniList open their detail page; hand-added ones have only the moodboard.
-          onOpen={() => router.push(entry.anilistId ? titleHref(entry.type, entry.anilistId) : `/collection/${entry.id}/moodboard`)}
-          onMoodboard={() => router.push(`/collection/${entry.id}/moodboard`)}
+          moodboardHref={`/collection/${entry.id}/moodboard`}
+          onInfo={() => { if (entry.anilistId != null) router.push(titleHref(entry.type, entry.anilistId)); }}
           className={isDragging ? "drag-source" : ""}
           handle={draggable && (
             <div

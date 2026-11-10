@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect, useMemo, useRef } from "react";
+import { Suspense, useState, useEffect, useMemo, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useEntriesStore, useHydrateEntries } from "@/lib/store";
@@ -18,6 +18,24 @@ const isLive = (id: string) => useEntriesStore.getState().entries.some((e) => e.
 // Order inside a rating tier: manually placed cards by position, unplaced (new) ones first, newest first.
 const byManualOrder = (a: Entry, b: Entry) =>
   ((a.manualOrder ?? -1) - (b.manualOrder ?? -1)) || (b.created - a.created);
+
+// Grid/list choice, remembered per browser. Read through useSyncExternalStore so the server
+// render (and hydration) uses "grid" and the saved value takes over right after, with no mismatch.
+type ViewMode = "grid" | "list";
+const VIEW_KEY = "ov:collection-view";
+const viewListeners = new Set<() => void>();
+const readView = (): ViewMode => {
+  try { return localStorage.getItem(VIEW_KEY) === "list" ? "list" : "grid"; } catch { return "grid"; }
+};
+const subscribeView = (cb: () => void) => {
+  viewListeners.add(cb);
+  window.addEventListener("storage", cb);
+  return () => { viewListeners.delete(cb); window.removeEventListener("storage", cb); };
+};
+const saveView = (v: ViewMode) => {
+  try { localStorage.setItem(VIEW_KEY, v); } catch { /* storage blocked: the choice just won't persist */ }
+  viewListeners.forEach((cb) => cb());
+};
 
 // /collection?edit=<id>, from a detail page's Edit button: opens that entry once it has loaded.
 // Reads the URL rather than keeping state, because this page stays mounted (hidden) between visits.
@@ -41,23 +59,29 @@ export default function CollectionShell() {
   const [activeType, setActiveType] = useState<"all" | EntryType | "watchlist">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | EntryStatus>("all");
   const [sort, setSort] = useState("rating-desc");
-  const [view, setView] = useState<"grid" | "list">("grid");
+  const view = useSyncExternalStore(subscribeView, readView, (): ViewMode => "grid");
+  const setView = saveView;
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Entry | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [pendingDeletes, setPendingDeletes] = useState<PendingDelete[]>([]);
-  const deleteTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   useHydrateEntries();
 
-  // Entries are already removed from the store, so leaving the page makes pending deletes final.
+  // Each pending delete carries its own deadline, and its timer is derived from state. The page
+  // stays mounted but hidden between visits (cacheComponents), which tears down and re-runs
+  // effects; timers kept in a ref were cleared on the way out and never re-armed, so the toast
+  // stuck around until a reload. Re-deriving them means an expired delete finalizes as soon as
+  // the page is shown again.
   useEffect(() => {
-    const timers = deleteTimers.current;
-    return () => timers.forEach((t, id) => {
-      clearTimeout(t);
-      if (!isLive(id)) useEntriesStore.getState().deleteMoodboard(id);
-    });
-  }, []);
+    const timers = pendingDeletes.map(({ entry, expiresAt }) => setTimeout(() => {
+      // The delete is final now, so the entry's moodboard goes too (kept until then so Undo restores it).
+      // Skipped if the server delete failed and the entry was put back.
+      if (!isLive(entry.id)) deleteMoodboard(entry.id);
+      setPendingDeletes((p) => p.filter((d) => d.entry.id !== entry.id));
+    }, Math.max(0, expiresAt - Date.now())));
+    return () => timers.forEach(clearTimeout);
+  }, [pendingDeletes, deleteMoodboard]);
 
   // Stats (exclude plan-to + dropped)
   const stats = useMemo(() => {
@@ -129,14 +153,7 @@ export default function CollectionShell() {
     if (index === -1) return;
     const entry = entries[index];
     removeEntry(id);
-    setPendingDeletes((p) => [...p, { entry, index }]);
-    deleteTimers.current.set(id, setTimeout(() => {
-      deleteTimers.current.delete(id);
-      // The delete is final now, so the entry's moodboard goes too (kept until then so Undo restores it).
-      // Skipped if the server delete failed and the entry was put back.
-      if (!isLive(id)) deleteMoodboard(id);
-      setPendingDeletes((p) => p.filter((d) => d.entry.id !== id));
-    }, UNDO_MS));
+    setPendingDeletes((p) => [...p.filter((d) => d.entry.id !== id), { entry, index, expiresAt: Date.now() + UNDO_MS }]);
   };
 
   // Drag reordering is only meaningful when cards are grouped by rating.
@@ -158,8 +175,6 @@ export default function CollectionShell() {
   const undoDelete = (id: string) => {
     const pending = pendingDeletes.find((d) => d.entry.id === id);
     if (!pending) return;
-    clearTimeout(deleteTimers.current.get(id));
-    deleteTimers.current.delete(id);
     restoreEntry(pending.entry, pending.index);
     setPendingDeletes((p) => p.filter((d) => d.entry.id !== id));
   };

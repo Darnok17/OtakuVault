@@ -3827,6 +3827,19 @@
     box-shadow:0 0 12px rgba(233,69,96,.3);
   }
   .icon-btn:active{transform:scale(.95);}
+  /* Info button on cards not linked to AniList: visible but inert */
+  .icon-btn.is-disabled{opacity:.4;cursor:not-allowed;}
+  .icon-btn.is-disabled:hover{color:var(--text-dim);border-color:var(--border);transform:none;background:rgba(10,10,15,.85);box-shadow:none;}
+
+  /* Stretched moodboard link covering the whole card; actions + drag handle sit above it */
+  .card-link{position:absolute;inset:0;z-index:2;border-radius:inherit;cursor:pointer;}
+  .card-link:focus-visible{outline:2px solid var(--accent3);outline-offset:-2px;}
+  .card-actions{z-index:6;}
+  /* List view: lift handle + actions above the card link. position:relative would otherwise
+     activate the grid-view top:.5rem/left/right offsets and push them ~8px below the row's
+     center line, so reset every inset; the row's align-items:center then centers them. */
+  .view-list .card-actions,.view-list .drag-handle{position:relative;z-index:6;top:auto;right:auto;bottom:auto;left:auto;}
+  .card:focus-within .card-actions,.card:focus-within .drag-handle{opacity:1;}
 
   /* EMPTY STATE */
   .empty-state{text-align:center;padding:3.5rem 1rem;color:var(--text-dim);animation:fadeInUp .5s var(--ease-out) both;}
