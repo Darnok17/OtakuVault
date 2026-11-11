@@ -44,3 +44,22 @@ export type Moodboard = {
   nodes: MoodNode[];
   wires: MoodWire[];
 };
+
+/* ---------- Profiles ---------- */
+
+// Which parts of a public profile visitors may see. The owner always sees everything.
+export type PublicFields = {
+  bio: boolean;
+  pronouns: boolean;
+  collection: boolean;
+  moodboards: boolean;
+  forumPosts: boolean;
+};
+
+export const DEFAULT_PUBLIC_FIELDS: PublicFields = { bio: true, pronouns: true, collection: true, moodboards: true, forumPosts: true };
+
+// Stored sparsely (users.public_fields): a missing key means the section is visible.
+export const publicFieldsOf = (stored: Partial<PublicFields> | null | undefined): PublicFields =>
+  ({ ...DEFAULT_PUBLIC_FIELDS, ...stored });
+
+export type PinKind = "entry" | "moodboard" | "forum_thread" | "product";

@@ -1,15 +1,12 @@
 import type { ReactNode } from "react";
 import IndexProvider from "./_components/IndexProvider";
-import IndexHero from "./_components/IndexHero";
 
-// The hero (search + tabs) and the toast stay mounted across the type tabs.
+// Everything under /index-page shares the provider (the "added to collection" toast); the hero
+// belongs to the (main) group only.
 export default function IndexLayout({ children }: { children: ReactNode }) {
   return (
     <section className="site-page active" id="page-index" data-page="index">
-      <IndexProvider>
-        <IndexHero />
-        {children}
-      </IndexProvider>
+      <IndexProvider>{children}</IndexProvider>
     </section>
   );
 }

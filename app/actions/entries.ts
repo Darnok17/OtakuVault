@@ -7,6 +7,7 @@ import { deleteImage, isDataImage, isOwnedUpload, uploadDataUrl } from "@/lib/st
 import { saveMoodboard } from "./moodboards";
 import { db, entries, entryStatus, entryType, moodboards } from "@/lib/db";
 import { toEntry } from "@/lib/entries-db";
+import { seedStarterEntries } from "@/lib/starter-entries";
 import type { Entry, EntryStatus, EntryType, Moodboard } from "@/lib/types";
 
 export type NewEntryInput = Omit<Entry, "id" | "created" | "userId">;
@@ -66,6 +67,8 @@ function entryFields(e: NewEntryInput, legacyImage?: string) {
 
 export async function getEntriesForUser(): Promise<Entry[]> {
   const userId = await requireUserId();
+  // Normally a no-op (users.seeded is already true); covers a signup whose seed attempt failed.
+  await seedStarterEntries(userId).catch((err) => console.error("Starter seed failed for", userId, err));
   const rows = await db.select().from(entries).where(eq(entries.userId, userId)).orderBy(desc(entries.createdAt));
   return rows.map(toEntry);
 }

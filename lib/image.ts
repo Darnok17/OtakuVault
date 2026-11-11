@@ -46,7 +46,9 @@ async function fitForUpload(file: File): Promise<Blob> {
 export type UploadStage = "preparing" | "uploading";
 
 // Uploads an image file and resolves to its public URL. Rejects with a user-facing message.
-export async function uploadImageFile(file: File, kind: "cover" | "moodboard", onStage?: (s: UploadStage) => void): Promise<string> {
+export type UploadKind = "cover" | "moodboard" | "avatar" | "forum";
+
+export async function uploadImageFile(file: File, kind: UploadKind, onStage?: (s: UploadStage) => void): Promise<string> {
   if (!file.type.startsWith("image/")) throw new Error("That file isn't an image.");
   onStage?.("preparing");
   let body: Blob;

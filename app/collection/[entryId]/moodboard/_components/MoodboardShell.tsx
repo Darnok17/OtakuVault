@@ -1,5 +1,6 @@
 "use client";
 
+import PinButton from "@/app/_components/PinButton";
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -178,6 +179,8 @@ export default function MoodboardShell({ entryId }: { entryId: string }) {
           </div>
         </div>
         <div className="board-zoom-info">
+          {entry && <PinButton kind="moodboard" targetId={entryId} label={`the ${entry.title} moodboard`} className="board-zoom-btn board-pin" />}
+          {entry && <Link className="board-zoom-btn wide" href={`/boards/${entryId}`} title="See this board as visitors do">View</Link>}
           <button className="board-zoom-btn" type="button" title="Zoom out" onClick={() => zoomBy(1 / 1.2)}>−</button>
           <span id="boardZoomLevel">{Math.round(view.zoom * 100)}%</span>
           <button className="board-zoom-btn" type="button" title="Zoom in" onClick={() => zoomBy(1.2)}>+</button>

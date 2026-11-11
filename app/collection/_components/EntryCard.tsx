@@ -8,6 +8,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { titleHref } from "@/lib/anilist-shared";
 import type { Entry, EntryStatus } from "@/lib/types";
+import PinButton from "@/app/_components/PinButton";
 import CoverPlaceholder from "./CoverPlaceholder";
 import ProgressBar from "./ProgressBar";
 import Stars from "./Stars";
@@ -71,6 +72,7 @@ export function CardFace({
           aria-disabled={!linked || undefined}
           type="button"
         ><InfoIcon /></button>
+        <PinButton kind="entry" targetId={entry.id} label={entry.title} className="icon-btn" />
         <button className="icon-btn" onClick={guard(() => onEdit(entry.id))} title="Edit" aria-label={`Edit ${entry.title}`} type="button">✎</button>
         <button className="icon-btn del" onClick={guard(() => onDelete(entry.id))} title="Delete" aria-label={`Delete ${entry.title}`} type="button">✕</button>
       </div>

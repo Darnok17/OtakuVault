@@ -237,6 +237,18 @@ export function getTrendingNow(type?: EntryType): Promise<TitlePage> {
     fetchPage({ sort: ["TRENDING_DESC"], perPage: 20, ...typeVars(type ? [type] : []) }));
 }
 
+// Page n of a rail, 24 per page, for the "See more" pages (the rails themselves keep their own
+// first-page caches above).
+export function getTrendingPage(type: EntryType | undefined, page: number): Promise<TitlePage> {
+  return cachedPage(`trending:${type ?? "all"}:24:p${page}`, TTL.trending, () =>
+    fetchPage({ sort: ["TRENDING_DESC"], page, perPage: 24, ...typeVars(type ? [type] : []) }));
+}
+
+export function getSeasonalPage(year: number, season: Season, page: number): Promise<TitlePage> {
+  return cachedPage(`seasonal:${year}:${season}:24:p${page}`, TTL.seasonal, () =>
+    fetchPage({ season, seasonYear: year, type: "ANIME", sort: ["POPULARITY_DESC"], page, perPage: 24 }));
+}
+
 const SORTS: Record<BrowseFilters["sort"], string[]> = {
   popularity: ["POPULARITY_DESC"],
   "rating-desc": ["SCORE_DESC"],

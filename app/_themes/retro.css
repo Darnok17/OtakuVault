@@ -1,0 +1,232 @@
+/* ═══════════════════════════════════════════════════════════
+   THEME · RETRO
+   A rental tape from 1988: paused-screen indigo, hot pink / cyan / amber, pixel type, chrome
+   mastheads, chunky rounded squares with hard shadows, and an optional CRT overlay
+   (Settings → Appearance → Effects).
+   ═══════════════════════════════════════════════════════════ */
+[data-theme="retro"] {
+  color-scheme: dark;
+
+  --bg: #130a2a;
+  --surface: #1c1040;
+  --surface-elevated: #281858;
+  --surface-overlay: #35206e;
+  --float-a: #24144f;
+  --float-b: #1a0e3c;
+  --border: #4a2c96;
+  --border-strong: #7445e0;
+
+  --fg: #f2eaff;
+  --fg-dim: #b3a3e0;
+  --fg-faint: #7e6db3;
+  --fg-bright: #fff;
+  --on-accent: #130a2a;
+  --on-acc-1: #fff;
+  --scrim: #0d0620;
+  --on-scrim: #fff;
+  --on-scrim-dim: #b3a3e0;
+
+  --acc-1: #ff2e97;            /* hot pink */
+  --accent-bright: #ff66b5;
+  --acc-1-deep: #c9107a;
+  --acc-2: #9d4dff;
+  --acc-2-bright: #b97aff;
+  --acc-3: #19e3ff;            /* cyan */
+  --acc-3-bright: #7cf2ff;
+  --acc-3-soft: #5ad1ff;
+  --gold: #ffb000;             /* amber */
+  --gold-bright: #ffd04d;
+  --azure: #4d8dff;
+  --azure-bright: #80aeff;
+  --violet: #b47aff;
+  --orange: #ff7a1a;
+  --rose: #ff6ec7;
+  --danger-fg: #ff7aa8;
+
+  --anime: #ff2e97;   --anime-deep: #b80f66;
+  --manga: #9d4dff;   --manga-deep: #5f1fc4;
+  --webtoon: #19e3ff; --webtoon-deep: #0a8aa8;
+  --novel: #ffb000;   --novel-deep: #a86a00;
+
+  --shade: #05020f;
+  --shade-k: 1;
+  --glow-k: 1.2;
+  --well-k: 1;
+  --scan-k: 1.5;
+  --hi: #fff;
+  --shadow-elev-0: 3px 3px 0 #05020f;
+  --shadow-elev-1: 5px 5px 0 #05020f;
+  --shadow-elev-2: 8px 8px 0 #05020f, 0 0 44px rgb(255 46 151 / .2);
+
+  --r-k: 1.5;
+  --radius: 12px;
+  --radius-pill: 10px;
+
+  --font-display: var(--font-vt323), "Courier New", monospace;
+  --font-body: var(--font-chakra), system-ui, sans-serif;
+  --font-mono: var(--font-vt323), "Courier New", monospace;
+  --font-jp: var(--font-noto-jp), sans-serif;
+  --display-scale: 1.14;
+  --display-track: .45;
+  --display-weight: 400;
+  --display-case: uppercase;
+  --label-scale: 1.5;
+  --label-track: .5;
+  --label-case: uppercase;
+  --label-weight: 400;
+
+  --bg-dropdown: #24144f;
+  --fg-dropdown: #f2eaff;
+  --fg-dropdown-dim: #b3a3e0;
+  --accent-dropdown: #19e3ff;
+  --border-dropdown: #7445e0;
+  --hover-dropdown: rgb(25 227 255 / .14);
+  --on-hover-dropdown: #fff;
+  --menu-prompt: 'PLAYER 1';
+  --shadow-dropdown: 5px 5px 0 #05020f, 0 0 30px rgb(157 77 255 / .25);
+  --radius-dropdown: 12px;
+
+  /* Mastheads: sky above the horizon, sunset below it. */
+  --chrome: linear-gradient(180deg, #fff 0%, #c9f7ff 26%, #19e3ff 47%, #1b1466 50%, #ff2e97 56%, #ffb000 84%, #fff1b8 100%);
+  /* The three-stripe band off a VHS sleeve. */
+  --vhs-stripes: linear-gradient(180deg, #ff2e97 0 33.3%, #ffb000 33.3% 66.6%, #19e3ff 66.6% 100%);
+}
+
+/* ── Page: night sky into a magenta horizon ── */
+:root[data-theme="retro"] body::before {
+  animation: none;
+  background:
+    radial-gradient(ellipse 90% 45% at 50% 108%, rgb(255 46 151 / .3) 0%, rgb(157 77 255 / .12) 45%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 85% -5%, rgb(25 227 255 / .1) 0%, transparent 65%),
+    linear-gradient(180deg, #0f0724 0%, #130a2a 45%, #1d0d3d 100%);
+}
+:root[data-theme="retro"] *::selection { background: var(--acc-1); color: #fff; }
+
+/* The CRT overlay: scanlines and a vignette across the whole screen. Effects off = plain grain. */
+:root[data-theme="retro"]:not([data-fx="off"]) body::after {
+  z-index: 10000; opacity: 1; mix-blend-mode: multiply;
+  background-image:
+    repeating-linear-gradient(0deg, rgb(8 3 24 / .3) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse 120% 100% at 50% 50%, transparent 58%, rgb(8 3 24 / .55) 100%);
+  animation: crtFlicker 6s steps(60) infinite;
+}
+@keyframes crtFlicker { 0%, 100% { opacity: 1; } 48% { opacity: .96; } 50% { opacity: .9; } 52% { opacity: .97; } }
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme="retro"]:not([data-fx="off"]) body::after { animation: none; }
+}
+
+/* ── Chunky panels: thick borders, rounded squares, hard shadows ── */
+:root[data-theme="retro"] :is(
+  .home-tile, .card, .rec-poster, .idx-seasonal-card, .idx-filters, .forum-pinned-card, .forum-trend-card,
+  .forum-filters, .forum-threads, .store-featured-card, .store-filters, .product, .auth-card, .auth-benefit,
+  .stat-pill, .watchlist-banner, .td-stat, .td-char-card, .td-relation, .demo-grid, .demo-board, .feat-stats,
+  .modal, .ov-panel, .theme-card
+) {
+  border: 2px solid var(--border-strong);
+  box-shadow: 5px 5px 0 var(--shade);
+}
+/* Hover: nudge up-left and split the edge into cyan and pink, like a mistracked tape. */
+:root[data-theme="retro"] :is(.home-tile, .card, .rec-poster, .idx-seasonal-card, .product, .forum-pinned-card, .forum-trend-card, .td-char-card, .td-relation, .theme-card):hover {
+  transform: translate(-2px, -3px);
+  border-color: var(--fg-bright);
+  box-shadow: -3px 0 0 var(--acc-3), 3px 0 0 var(--acc-1), 7px 8px 0 var(--shade);
+}
+:root[data-theme="retro"] :is(.card:hover .card-title, .rec-poster:hover .rec-poster-title, .idx-seasonal-card:hover .idx-seasonal-title, .product:hover .product-name, .forum-thread:hover .forum-thread-title, .home-tile:hover .home-tile-title, .nav-link:hover, .btn:hover) {
+  text-shadow: -1.5px 0 rgb(25 227 255 / .85), 1.5px 0 rgb(255 46 151 / .85);
+}
+:root[data-theme="retro"] :is(.modal, .nav-user-menu, .idx-toast, .auth-toast, .sync-toast, .undo-toast, .delete-toast, .al-search-panel, .td-menu-list, .ov-toast) {
+  border: 2px solid var(--border-strong);
+  box-shadow: var(--shadow-elev-2);
+  background: var(--float-a);
+}
+
+/* ── Navigation: on-screen-display menu over the stripe band ── */
+:root[data-theme="retro"] .site-nav { background: rgb(from var(--surface) r g b / .96); border-bottom: 2px solid var(--shade); }
+:root[data-theme="retro"] .site-nav::after { height: 6px; bottom: -8px; opacity: 1; background: var(--vhs-stripes); }
+:root[data-theme="retro"] .nav-link { border-width: 2px; }
+:root[data-theme="retro"] .nav-link.active {
+  background: var(--acc-3); color: var(--on-accent); border-color: var(--shade);
+  box-shadow: 3px 3px 0 var(--shade); text-shadow: none;
+}
+:root[data-theme="retro"] .nav-link.active::after { display: none; }
+:root[data-theme="retro"] .nav-link.nav-signup,
+:root[data-theme="retro"] .nav-link.nav-signup.active {
+  background: var(--acc-1); color: #fff; border-color: var(--shade); box-shadow: 3px 3px 0 var(--shade);
+}
+
+/* ── Mastheads: Press Start 2P in chrome ── */
+:root[data-theme="retro"] :is(.logo-main, .home-title, .idx-title, .forum-title, .store-title, .auth-title, .td-not-found-code, .ov-masthead) {
+  font-family: var(--font-press-start), var(--font-vt323), monospace;
+  letter-spacing: -.02em; line-height: 1.25;
+  background: var(--chrome); background-size: 100% 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  animation: none;
+  filter: drop-shadow(2px 2px 0 var(--shade)) drop-shadow(3px 3px 0 var(--acc-2));
+}
+:root[data-theme="retro"] :is(.idx-title, .forum-title, .store-title, .auth-title) .accent {
+  background: none; -webkit-text-fill-color: transparent; color: inherit; text-shadow: none;
+}
+:root[data-theme="retro"] .home-title { font-size: clamp(1.5rem, 5.4vw, 3.9rem); margin-bottom: 1.4rem; }
+:root[data-theme="retro"] :is(.idx-title, .forum-title, .store-title) { font-size: clamp(1.3rem, 3.9vw, 2.7rem); }
+:root[data-theme="retro"] .auth-title { font-size: 1.25rem; }
+:root[data-theme="retro"] .logo-main { font-size: .98rem; filter: drop-shadow(2px 2px 0 var(--shade)); }
+:root[data-theme="retro"] .site-nav .logo-main { font-size: .9rem; }
+:root[data-theme="retro"] .logo-main:hover { filter: drop-shadow(-2px 0 0 var(--acc-3)) drop-shadow(2px 0 0 var(--acc-1)); }
+:root[data-theme="retro"] .td-not-found-code { font-size: clamp(2.4rem, 9vw, 5rem); }
+
+/* ── Controls: key caps ── */
+:root[data-theme="retro"] .btn { border: 2px solid var(--shade); box-shadow: 0 4px 0 var(--shade); }
+:root[data-theme="retro"] .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--shade); }
+:root[data-theme="retro"] :is(.btn-primary, .auth-submit, .feat-cta-btn, .forum-new-thread, .store-featured-cta, .ov-btn-primary) {
+  background: var(--acc-1); color: #fff; border: 2px solid var(--shade);
+  box-shadow: 0 4px 0 var(--acc-1-deep), 0 4px 0 2px var(--shade);
+}
+:root[data-theme="retro"] :is(.btn-primary, .auth-submit, .feat-cta-btn, .forum-new-thread, .store-featured-cta, .ov-btn-primary):hover {
+  background: var(--accent-bright); transform: translateY(-1px);
+  box-shadow: 0 5px 0 var(--acc-1-deep), 0 5px 0 2px var(--shade);
+}
+:root[data-theme="retro"] .btn-ghost { background: var(--surface-elevated); color: var(--fg); border-color: var(--shade); }
+:root[data-theme="retro"] .btn-ghost:hover { background: var(--surface-overlay); border-color: var(--shade); box-shadow: 0 4px 0 var(--shade); }
+:root[data-theme="retro"] :is(input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="search"], select, textarea) {
+  border-width: 2px; background: #0d0620;
+}
+:root[data-theme="retro"] :is(input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="search"], select, textarea):focus {
+  border-color: var(--acc-3); background: #0d0620;
+  box-shadow: 3px 3px 0 var(--acc-1);
+}
+:root[data-theme="retro"] :is(.filter-tabs, .view-toggle) { border-width: 2px; border-color: var(--border-strong); box-shadow: 3px 3px 0 var(--shade); }
+:root[data-theme="retro"] .tab-btn.active { background: var(--acc-2); color: #fff; box-shadow: none; }
+
+/* ── Collection ── */
+:root[data-theme="retro"] header::after { height: 3px; opacity: 1; background: linear-gradient(90deg, var(--acc-1), var(--gold), var(--acc-3)); }
+:root[data-theme="retro"] .rank-badge { text-shadow: 2px 2px 0 var(--shade); }
+:root[data-theme="retro"] .section-title { text-shadow: 2px 2px 0 var(--shade); }
+
+:root[data-theme="retro"] :focus-visible { outline: 2px solid var(--acc-3); outline-offset: 3px; }
+
+/* ── Preview card ── */
+.tp[data-theme="retro"] { background: linear-gradient(180deg, #0f0724 0%, #130a2a 50%, #3a1057 100%); }
+.tp[data-theme="retro"] .tp-nav { border-bottom: 3px solid; border-image: var(--vhs-stripes) 1; }
+.tp[data-theme="retro"] :is(.tp-title, .tp-logo) {
+  font-family: var(--font-press-start), monospace; letter-spacing: -.02em;
+  background: var(--chrome); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(1.5px 1.5px 0 var(--shade));
+}
+.tp[data-theme="retro"] .tp-title { font-size: 17px; line-height: 1.5; }
+.tp[data-theme="retro"] .tp-logo { font-size: 7px; }
+.tp[data-theme="retro"] .tp-tile { border-width: 2px; border-color: var(--border-strong); box-shadow: 3px 3px 0 var(--shade); }
+.tp[data-theme="retro"] .tp-cta { box-shadow: 0 2px 0 var(--acc-1-deep); }
+.tp[data-theme="retro"]::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgb(8 3 24 / .3) 0 1px, transparent 1px 3px); }
+
+/* ── Community: posts are tape labels ── */
+:root[data-theme="retro"] .fp { border-width: 2px; box-shadow: 4px 4px 0 var(--shade); }
+:root[data-theme="retro"] .fp-root { border-left: 6px solid; border-image: var(--vhs-stripes) 1; }
+:root[data-theme="retro"] .fp-by { padding-bottom: .5rem; border-bottom: 2px dashed var(--border-strong); }
+:root[data-theme="retro"] .vote-score { font-size: 1.5rem; line-height: 1; color: var(--gold); text-shadow: 2px 2px 0 var(--shade); }
+:root[data-theme="retro"] .vote-btn { border: 2px solid var(--border-strong); }
+:root[data-theme="retro"] .vote-btn.up[aria-pressed="true"] { box-shadow: 2px 2px 0 var(--acc-1); }
+:root[data-theme="retro"] .vote-btn.down[aria-pressed="true"] { box-shadow: 2px 2px 0 var(--acc-3); }
+:root[data-theme="retro"] .fp-deleted::before { content: "▚▚ "; color: var(--acc-1); }
+:root[data-theme="retro"] .fp-deleted::after { content: " — TAPE ERASED"; color: var(--fg-faint); font-style: normal; }
+:root[data-theme="retro"] .pf-name { background: var(--chrome); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(2px 2px 0 var(--shade)); }
+:root[data-theme="retro"] :is(.pf-pin, .fp-entry) { border-width: 2px; box-shadow: 3px 3px 0 var(--shade); }

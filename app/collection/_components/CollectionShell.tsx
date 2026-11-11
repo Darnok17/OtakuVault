@@ -11,6 +11,19 @@ import EmptyState from "./EmptyState";
 import EntryModal from "./EntryModal";
 import CardSkeleton from "./CardSkeleton";
 import SyncErrorToast from "./SyncErrorToast";
+import ThemedSelect, { type SelectOption } from "@/app/_components/ThemedSelect";
+
+type SortKey = "rating-desc" | "rating-asc" | "newest" | "oldest" | "title-asc" | "title-desc";
+const SORT_OPTIONS: SelectOption<SortKey>[] = [
+  { value: "rating-desc", label: "Rating ↓" }, { value: "rating-asc", label: "Rating ↑" },
+  { value: "newest", label: "Newest" }, { value: "oldest", label: "Oldest" },
+  { value: "title-asc", label: "Title A–Z" }, { value: "title-desc", label: "Title Z–A" },
+];
+const STATUS_FILTER_OPTIONS: SelectOption<"all" | EntryStatus>[] = [
+  { value: "all", label: "All" }, { value: "completed", label: "Completed" },
+  { value: "watching", label: "Watching / Reading" }, { value: "on-hold", label: "On Hold" },
+  { value: "dropped", label: "Dropped" },
+];
 
 // True if the entry is (back) in the store, e.g. after a failed server delete was reverted.
 const isLive = (id: string) => useEntriesStore.getState().entries.some((e) => e.id === id);
@@ -58,7 +71,7 @@ export default function CollectionShell() {
   const deleteMoodboard = useEntriesStore((s) => s.deleteMoodboard);
   const [activeType, setActiveType] = useState<"all" | EntryType | "watchlist">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | EntryStatus>("all");
-  const [sort, setSort] = useState("rating-desc");
+  const [sort, setSort] = useState<SortKey>("rating-desc");
   const view = useSyncExternalStore(subscribeView, readView, (): ViewMode => "grid");
   const setView = saveView;
   const [search, setSearch] = useState("");
@@ -255,25 +268,12 @@ export default function CollectionShell() {
 
           <div className="sort-wrap">
             <span className="sort-label">Sort</span>
-            <select value={sort} onChange={(e) => setSort(e.target.value)}>
-              <option value="rating-desc">Rating ↓</option>
-              <option value="rating-asc">Rating ↑</option>
-              <option value="newest">Newest</option>
-              <option value="oldest">Oldest</option>
-              <option value="title-asc">Title A–Z</option>
-              <option value="title-desc">Title Z–A</option>
-            </select>
+            <ThemedSelect value={sort} onChange={setSort} options={SORT_OPTIONS} aria-label="Sort entries" />
           </div>
 
           <div className="sort-wrap">
             <span className="sort-label">Status</span>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "all" | EntryStatus)}>
-              <option value="all">All</option>
-              <option value="completed">Completed</option>
-              <option value="watching">Watching / Reading</option>
-              <option value="on-hold">On Hold</option>
-              <option value="dropped">Dropped</option>
-            </select>
+            <ThemedSelect value={statusFilter} onChange={setStatusFilter} options={STATUS_FILTER_OPTIONS} aria-label="Filter by status" />
           </div>
 
           <button className="btn btn-primary" onClick={openAdd}>+ Add Entry</button>

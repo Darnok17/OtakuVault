@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { browseTitles, getTypeCounts } from "@/lib/anilist";
 import { filtersFromParams, toUrlParams, type RawSearchParams } from "@/lib/index-filters";
+import Link from "next/link";
+import { browseHref, trendingSection } from "@/lib/browse-sections";
 import type { EntryType } from "@/lib/types";
 import IndexBrowse, { BrowseFallback, type BrowseInitial } from "./IndexBrowse";
 import { LINEUPS, LineupSection, RecommendationsBody, RowSkeleton, SeasonalFallback, SeasonalSection, TrendingRow } from "./sections";
@@ -42,8 +44,11 @@ export default function IndexSections({ type, searchParams }: { type?: EntryType
       {/* Trending */}
       <div className="idx-section" data-accent="crimson">
         <div className="idx-section-header">
-          <div className="idx-section-title">{copy.trending} <span className="idx-section-kanji">話題</span></div>
-          <div className="idx-section-meta">UPDATED HOURLY</div>
+          <div className="idx-section-title">{copy.trending} <span className="idx-section-kanji" data-latin="Trending">話題</span></div>
+          <div className="idx-section-side">
+            <div className="idx-section-meta">UPDATED HOURLY</div>
+            <Link className="ov-see-more" href={browseHref(trendingSection(type))}>See more</Link>
+          </div>
         </div>
         <Suspense fallback={<RowSkeleton />}>
           <TrendingRow type={type} />
@@ -54,7 +59,7 @@ export default function IndexSections({ type, searchParams }: { type?: EntryType
       {copy.browse && (
         <div className="idx-section idx-section-browse" data-accent="teal">
           <div className="idx-section-header">
-            <div className="idx-section-title">{copy.browse[0]} <span className="idx-section-kanji">{copy.browse[1]}</span></div>
+            <div className="idx-section-title">{copy.browse[0]} <span className="idx-section-kanji" data-latin="❧">{copy.browse[1]}</span></div>
           </div>
         </div>
       )}
@@ -65,7 +70,7 @@ export default function IndexSections({ type, searchParams }: { type?: EntryType
       {/* Because you liked */}
       <div className="idx-section" data-accent="crimson">
         <div className="idx-section-header">
-          <div className="idx-section-title">Because You Liked... <span className="idx-section-kanji">類似作品</span></div>
+          <div className="idx-section-title">Because You Liked... <span className="idx-section-kanji" data-latin="For you">類似作品</span></div>
           <div className="idx-section-meta">BASED ON YOUR COLLECTION</div>
         </div>
         <Suspense fallback={<><div className="idx-similar-note">Matching your top-rated titles…</div><RowSkeleton /></>}>

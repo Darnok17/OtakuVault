@@ -6,12 +6,12 @@ import { normalizeImage, uploadImage, uploadName } from "@/lib/storage";
 
 export type UploadResult = { ok: true; url: string } | { ok: false; error: string };
 
-const KINDS = new Set(["cover", "moodboard"]);
+const KINDS = new Set(["cover", "moodboard", "avatar", "forum"]);
 const MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"]);
 // Server Action bodies are capped at 1MB (Next's default); the client downsizes before sending.
 const MAX_BYTES = 1024 * 1024;
 
-// Takes a FormData with `file` and `kind` ("cover" | "moodboard"). Returns a result object rather
+// Takes a FormData with `file` and `kind` ("cover" | "moodboard" | "avatar" | "forum"). Returns a result object rather
 // than throwing so the client gets a readable message (thrown errors are redacted in production).
 export async function uploadImageAction(form: FormData): Promise<UploadResult> {
   const session = await auth.api.getSession({ headers: await headers() });

@@ -1,0 +1,117 @@
+/* ═══════════════════════════════════════════════════════════
+   THEME · TERMINAL (default)
+   Neon on midnight — the original OtakuVault look.
+
+   This file is the reference for every design token. A theme is a block of token values under
+   [data-theme="<id>"] plus, in its own file, the component overrides that give it a distinct
+   silhouette. Tokens are declared on any element carrying data-theme (not just <html>) so the
+   theme previews can nest one theme inside another.
+   ═══════════════════════════════════════════════════════════ */
+:root,
+[data-theme="terminal"] {
+  color-scheme: dark;
+
+  /* ── Surfaces ── */
+  --bg: #0a0a0f;                 /* page */
+  --surface: #12121a;            /* cards, panels */
+  --surface-elevated: #1a1a26;   /* raised controls, hover */
+  --surface-overlay: #22222f;    /* highest layer */
+  --float-a: #161620;            /* gradient stops of floating panels (menus, toasts) */
+  --float-b: #101018;
+  --border: #2a2a3d;
+  --border-strong: #3a3a55;
+
+  /* ── Text ── */
+  --fg: #e8e8f0;
+  --fg-dim: #7a7a9a;
+  --fg-faint: #5a5a7a;
+  --fg-bright: #fff;             /* headings, emphasised text */
+  --on-accent: #0a0a0f;          /* text and icons on an interface-accent or gold fill */
+  --on-acc-1: #fff;              /* text on a primary (accent 1) fill */
+  /* Captions that sit on artwork keep a dark scrim and light text whatever the theme. */
+  --scrim: #0a0a0f;
+  --on-scrim: #fff;
+  --on-scrim-dim: #7a7a9a;
+
+  /* ── Accents ── */
+  --acc-1: #e94560;              /* primary: brand, calls to action, danger */
+  --accent-bright: #ff5c75;
+  --acc-1-deep: #d6334f;
+  --acc-2: #7b5ea7;              /* secondary */
+  --acc-2-bright: #9d7bd1;
+  --acc-3: #00d4aa;              /* interface: focus, active, links */
+  --acc-3-bright: #00f0bf;
+  --acc-3-soft: #4de0c0;
+  --gold: #f5c842;               /* ratings, ranks */
+  --gold-bright: #ffd666;
+  --azure: #5aa9e6;
+  --azure-bright: #7bbbf0;
+  --violet: #9b73dc;
+  --orange: #f59e42;
+  --rose: #ec7bb4;
+  --danger-fg: #ff8a9c;          /* error text */
+
+  /* ── Media types ── */
+  --anime: #e94560;   --anime-deep: #c0152f;
+  --manga: #7b5ea7;   --manga-deep: #4a2d7a;
+  --webtoon: #00d4aa; --webtoon-deep: #007a63;
+  --novel: #f5a742;   --novel-deep: #8c5a1a;
+
+  /* ── Light and shadow ──
+     Shadows are written as rgb(from var(--shade) r g b / calc(alpha * var(--shade-k))), glows
+     with --glow-k, recessed fills with --well-k and scanline/grid textures with --scan-k, so a
+     theme can soften or switch off each of them with one number. --hi is the edge highlight. */
+  --shade: #000;
+  --shade-k: 1;
+  --glow-k: 1;
+  --well-k: 1;
+  --scan-k: 1;
+  --hi: #fff;
+  --shadow-elev-0: 0 2px 8px rgba(0, 0, 0, .3);
+  --shadow-elev-1: 0 8px 24px rgba(0, 0, 0, .4);
+  --shadow-elev-2: 0 20px 50px rgba(0, 0, 0, .55);
+
+  /* ── Shape ── every radius is its px value × --r-k; pills use --radius-pill. */
+  --r-k: 1;
+  --radius: 8px;
+  --radius-pill: 999px;
+
+  /* ── Type ──
+     Display and label sizes/tracking are multiplied by the scale/track numbers below, because
+     a replacement typeface rarely has the proportions of Bebas Neue or Space Mono. */
+  --font-display: var(--font-bebas), cursive;
+  --font-body: var(--font-noto-jp), sans-serif;
+  --font-mono: var(--font-space-mono), monospace;   /* labels, metadata, buttons */
+  --font-jp: var(--font-noto-jp), sans-serif;       /* kanji accents */
+  --display-scale: 1;
+  --display-track: 1;
+  --display-weight: 400;
+  --display-case: none;
+  --label-scale: 1;
+  --label-track: 1;
+  --label-case: uppercase;
+  --label-weight: 400;
+
+  /* ── Dropdowns (ThemedSelect, menus) ── */
+  --bg-dropdown: #161620;
+  --fg-dropdown: #e8e8f0;
+  --fg-dropdown-dim: #7a7a9a;
+  --accent-dropdown: #00d4aa;
+  --border-dropdown: #3a3a55;
+  --hover-dropdown: rgba(0, 212, 170, .1);
+  --on-hover-dropdown: #00d4aa;
+  --menu-prompt: '$ whoami';
+  --shadow-dropdown: 0 18px 44px rgba(0, 0, 0, .6), 0 0 0 1px rgba(0, 212, 170, .08);
+  --radius-dropdown: 9px;
+}
+
+/* ── Preview card ── */
+.tp[data-theme="terminal"] :is(.tp-title, .tp-logo) {
+  background: linear-gradient(90deg, var(--acc-1), var(--acc-2), var(--acc-3)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.tp[data-theme="terminal"] { background: radial-gradient(ellipse at 20% 0%, rgb(123 94 167 / .25), transparent 60%), radial-gradient(ellipse at 90% 100%, rgb(0 212 170 / .15), transparent 55%), var(--bg); }
+.tp[data-theme="terminal"] .tp-tile { background: linear-gradient(135deg, var(--surface-elevated), var(--surface)); }
+
+/* ── Community ── */
+:root[data-theme="terminal"] .fp-deleted::before { content: "> "; color: var(--acc-1); font-style: normal; font-family: var(--font-mono); }
+:root[data-theme="terminal"] .fp-root { box-shadow: var(--shadow-elev-1), -12px 0 30px -18px rgb(from var(--acc-3) r g b / .5); }

@@ -89,7 +89,7 @@ function Section({ title, kanji, accent = "teal", children }: { title: string; k
   return (
     <section className="idx-section td-section" data-accent={accent}>
       <div className="idx-section-header">
-        <h2 className="idx-section-title">{title} <span className="idx-section-kanji">{kanji}</span></h2>
+        <h2 className="idx-section-title">{title} <span className="idx-section-kanji" data-latin="❧">{kanji}</span></h2>
       </div>
       {children || <p className="td-empty">{NOT_AVAILABLE}</p>}
     </section>

@@ -1,23 +1,18 @@
 import type { Metadata } from "next";
-import { Bebas_Neue, Noto_Sans_JP, Space_Mono } from "next/font/google";
 import "./globals.css";
+import "./ov.css";
+import "./_themes/terminal.css";
+import "./_themes/rustic.css";
+import "./_themes/retro.css";
+import "./_themes/minimal.css";
+import "./_themes/anime.css";
+import "./_themes/manga.css";
+import { fontVariables } from "./fonts";
+import { DEFAULT_THEME, THEME_INIT_SCRIPT } from "@/lib/themes";
+import InlineScript from "./_components/InlineScript";
 import SiteNav from "./_components/SiteNav";
-
-const bebas = Bebas_Neue({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-bebas",
-});
-const notoJp = Noto_Sans_JP({
-  weight: ["400", "700"],
-  subsets: ["latin"],
-  variable: "--font-noto-jp",
-});
-const spaceMono = Space_Mono({
-  weight: ["400", "700"],
-  subsets: ["latin"],
-  variable: "--font-space-mono",
-});
+import ThemeFx from "./_components/ThemeFx";
+import ThemeProvider from "./_components/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "OtakuVault",
@@ -26,10 +21,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${bebas.variable} ${notoJp.variable} ${spaceMono.variable}`}>
+    // The inline script swaps data-theme before React hydrates, hence suppressHydrationWarning.
+    <html lang="en" data-theme={DEFAULT_THEME} className={fontVariables} suppressHydrationWarning>
+      <head>
+        <InlineScript html={THEME_INIT_SCRIPT} />
+      </head>
       <body>
-        <SiteNav />
-        {children}
+        <ThemeProvider>
+          <SiteNav />
+          {children}
+          <ThemeFx />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -21,7 +21,7 @@ function NavLink({ href, children }: { href: string; children: ReactNode }) {
   );
 }
 
-function UserMenu({ name, email, image }: { name: string; email: string; image?: string | null }) {
+function UserMenu({ name, email, image, username, isAdmin }: { name: string; email: string; image?: string | null; username?: string | null; isAdmin?: boolean | null }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -57,8 +57,10 @@ function UserMenu({ name, email, image }: { name: string; email: string; image?:
             <span className="nav-user-name">{name}</span>
             <span className="nav-user-email">{email}</span>
           </div>
+          {username && <Link href={`/profile/${username}`} className="nav-user-item" role="menuitem" onClick={() => setOpen(false)}>Your Profile</Link>}
           <Link href="/collection" className="nav-user-item" role="menuitem" onClick={() => setOpen(false)}>Your Collection</Link>
           <Link href="/settings" className="nav-user-item" role="menuitem" onClick={() => setOpen(false)}>Settings</Link>
+          {isAdmin && <Link href="/admin/reports" className="nav-user-item" role="menuitem" onClick={() => setOpen(false)}>Forum Reports</Link>}
           <button type="button" className="nav-user-item danger" role="menuitem" onClick={signOut}>Sign Out</button>
         </div>
       )}
@@ -68,7 +70,7 @@ function UserMenu({ name, email, image }: { name: string; email: string; image?:
 
 function AuthControls() {
   const { data, isPending } = authClient.useSession();
-  if (data) return <div className="auth-cta-group"><UserMenu {...data.user} /></div>;
+  if (data) return <div className="auth-cta-group"><UserMenu name={data.user.name} email={data.user.email} image={data.user.avatarUrl ?? data.user.image} username={data.user.username} isAdmin={data.user.isAdmin} /></div>;
   return (
     // Hidden (not removed) while the session loads so the nav doesn't jump.
     <div className="auth-cta-group" style={isPending ? { visibility: "hidden" } : undefined}>

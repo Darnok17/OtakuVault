@@ -229,10 +229,10 @@ export function hueFor(t: Title): string {
 }
 
 export const hueToVar = (hue: string) =>
-  hue === "teal"    ? "accent3" :
-  hue === "crimson" ? "accent"  :
-  hue === "violet"  ? "accent2" :
-  hue === "gold"    ? "gold"    : "novel";
+  hue === "teal"    ? "acc-3" :
+  hue === "crimson" ? "acc-1" :
+  hue === "violet"  ? "acc-2" :
+  hue === "gold"    ? "gold"  : "novel";
 
 // Episode/chapter/volume count in the same shapes the collection already uses ("64 eps", "179 ch", "36 vol").
 export function lengthFor(t: Title): { label: string; total: number } {

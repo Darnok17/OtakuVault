@@ -1,0 +1,310 @@
+/* ═══════════════════════════════════════════════════════════
+   THEME · MANGA PANEL
+   A printed tankobon page: newsprint, ink, and nothing else until something needs to shout.
+   Every card is a panel (thick outer stroke, thin inner line), gutters are uniform, halftone
+   bands divide sections, small text sits in speech bubbles, and red/yellow are saved for
+   action text.
+   ═══════════════════════════════════════════════════════════ */
+[data-theme="manga"] {
+  color-scheme: light;
+
+  --bg: #ecebe6;               /* newsprint */
+  --surface: #fbfbf8;
+  --surface-elevated: #fff;
+  --surface-overlay: #e2e1db;
+  --float-a: #fff;
+  --float-b: #f6f6f2;
+  --border: #1a1a1a;
+  --border-strong: #000;
+
+  --fg: #141414;
+  --fg-dim: #4d4d4d;
+  --fg-faint: #808080;
+  --fg-bright: #000;
+  --on-accent: #fff;
+  --on-acc-1: #fff;
+  --scrim: #0c0c0c;
+  --on-scrim: #fff;
+  --on-scrim-dim: #dcdcdc;
+
+  --acc-1: #d81e1e;            /* action red */
+  --accent-bright: #f03a3a;
+  --acc-1-deep: #a81212;
+  --acc-2: #1a1a1a;
+  --acc-2-bright: #3a3a3a;
+  --acc-3: #1a1a1a;
+  --acc-3-bright: #3a3a3a;
+  --acc-3-soft: #4d4d4d;
+  --gold: #1a1a1a;             /* ratings are inked; yellow is --action */
+  --gold-bright: #3a3a3a;
+  --azure: #3a3a3a;
+  --azure-bright: #5a5a5a;
+  --violet: #3a3a3a;
+  --orange: #3a3a3a;
+  --rose: #3a3a3a;
+  --danger-fg: #b01212;
+  --action: #ffd400;           /* action yellow */
+
+  /* Media types are told apart by ink weight and pattern, not hue. */
+  --anime: #111;   --anime-deep: #000;
+  --manga: #444;   --manga-deep: #222;
+  --webtoon: #777; --webtoon-deep: #555;
+  --novel: #999;   --novel-deep: #777;
+
+  --shade: #000;
+  --shade-k: 0;
+  --glow-k: 0;
+  --well-k: .05;
+  --scan-k: 0;
+  --hi: #141414;
+  --shadow-elev-0: none;
+  --shadow-elev-1: none;
+  --shadow-elev-2: 8px 8px 0 rgb(0 0 0 / .85);
+
+  --r-k: 0;
+  --radius: 0px;
+  --radius-pill: 0px;
+
+  --font-display: var(--font-bangers), Impact, sans-serif;
+  --font-body: var(--font-comic-neue), "Comic Sans MS", sans-serif;
+  --font-mono: var(--font-comic-neue), "Comic Sans MS", sans-serif;
+  --font-jp: var(--font-noto-jp), sans-serif;
+  --display-scale: .94;
+  --display-track: .45;
+  --display-weight: 400;
+  --display-case: uppercase;
+  --label-scale: 1.2;
+  --label-track: .3;
+  --label-case: uppercase;
+  --label-weight: 700;
+
+  --bg-dropdown: #fff;
+  --fg-dropdown: #141414;
+  --fg-dropdown-dim: #4d4d4d;
+  --accent-dropdown: #d81e1e;
+  --border-dropdown: #000;
+  --hover-dropdown: #141414;
+  --on-hover-dropdown: #fff;
+  --menu-prompt: 'Signed in as';
+  --shadow-dropdown: 6px 6px 0 rgb(0 0 0 / .85);
+  --radius-dropdown: 0px;
+
+  --halftone: radial-gradient(circle at 3px 3px, #141414 1.5px, transparent 1.9px);
+  --halftone-fine: radial-gradient(circle at 2px 2px, rgb(20 20 20 / .5) 1px, transparent 1.3px);
+  --hatch: repeating-linear-gradient(45deg, #141414 0 1.5px, transparent 1.5px 5px);
+  --gutter: 14px;
+}
+
+/* ── Page: flat newsprint with a faint grain ── */
+:root[data-theme="manga"] body::before { animation: none; background: var(--bg); }
+:root[data-theme="manga"] body::after {
+  opacity: .5; mix-blend-mode: multiply; animation: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+:root[data-theme="manga"] *::selection { background: #141414; color: #fff; }
+
+/* ── Panels: thick outer stroke, thin inner line ── */
+:root[data-theme="manga"] :is(
+  .home-tile, .card, .rec-poster, .idx-seasonal-card, .idx-filters, .forum-pinned-card, .forum-trend-card,
+  .forum-filters, .forum-threads, .store-featured-card, .store-filters, .product, .auth-card, .auth-benefit,
+  .stat-pill, .watchlist-banner, .td-stat, .td-char-card, .td-relation, .demo-grid, .demo-board, .feat-stats,
+  .modal, .ov-panel, .theme-card
+) {
+  background: var(--surface);
+  border: 3px solid #000;
+  outline: 1px solid #000;
+  outline-offset: -8px;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+:root[data-theme="manga"] :is(.rec-poster, .idx-seasonal-card, .td-relation, .td-char-card, .stat-pill, .td-stat) { outline: none; }
+/* Hover: the panel breaks its frame a little and the focus lines come in. */
+:root[data-theme="manga"] :is(.home-tile, .card, .rec-poster, .idx-seasonal-card, .product, .forum-pinned-card, .forum-trend-card, .td-char-card, .td-relation, .theme-card):hover {
+  transform: translate(-2px, -2px);
+  border-color: #000;
+  box-shadow: 6px 6px 0 #000;
+}
+:root[data-theme="manga"] :is(.home-tile, .forum-pinned-card, .forum-trend-card, .product, .theme-card):hover {
+  background-image: repeating-conic-gradient(from 0deg at 50% 50%, rgb(0 0 0 / .07) 0 1.2deg, transparent 1.2deg 6deg);
+}
+:root[data-theme="manga"] :is(.modal, .nav-user-menu, .idx-toast, .auth-toast, .sync-toast, .undo-toast, .delete-toast, .al-search-panel, .td-menu-list, .ov-toast) {
+  background: #fff; border: 3px solid #000; box-shadow: var(--shadow-elev-2); backdrop-filter: none;
+}
+:root[data-theme="manga"] .modal-overlay {
+  background: var(--halftone) 0 0 / 7px 7px, rgb(236 235 230 / .82);
+  backdrop-filter: none;
+}
+:root[data-theme="manga"] .home-tile-corner { border-color: #000; }
+/* Comic-page gutters: one width everywhere. */
+:root[data-theme="manga"] :is(.home-tiles, .grid, .rec-row-scroll, .idx-seasonal-grid, .store-grid, .forum-pinned-grid, .td-char-grid, .td-relations, .ov-grid) { gap: var(--gutter); }
+
+/* Cover art is printed in black and white; colour returns when you pick the panel up. */
+:root[data-theme="manga"] :is(.rec-poster-img, .idx-seasonal-img, .card-cover img, .td-relation-img, .td-char-card img, .product-img) {
+  filter: grayscale(1) contrast(1.15);
+}
+:root[data-theme="manga"] :is(.rec-poster, .idx-seasonal-card, .card, .td-relation, .td-char-card, .product):hover :is(.rec-poster-img, .idx-seasonal-img, .card-cover img, .td-relation-img, img, .product-img) {
+  filter: none;
+}
+
+/* ── Navigation: the page header strip ── */
+:root[data-theme="manga"] .site-nav { background: #fff; border-bottom: 3px solid #000; backdrop-filter: none; }
+:root[data-theme="manga"] .site-nav::after {
+  height: 8px; bottom: -11px; opacity: 1;
+  background: var(--halftone) 0 0 / 6px 6px;
+  -webkit-mask-image: linear-gradient(180deg, #000, transparent); mask-image: linear-gradient(180deg, #000, transparent);
+}
+:root[data-theme="manga"] .nav-link { color: #141414; border: 2px solid transparent; font-weight: 700; }
+:root[data-theme="manga"] .nav-link:hover { background: transparent; border-color: #000; color: #000; }
+:root[data-theme="manga"] .nav-link.active { background: #141414; color: #fff; border-color: #000; box-shadow: none; text-shadow: none; }
+:root[data-theme="manga"] .nav-link.active::after { display: none; }
+:root[data-theme="manga"] .nav-link.nav-signup,
+:root[data-theme="manga"] .nav-link.nav-signup.active { background: var(--acc-1); color: #fff; border-color: #000; box-shadow: 3px 3px 0 #000; }
+
+/* ── Titles: inked lettering ── */
+:root[data-theme="manga"] :is(.logo-main, .home-title, .idx-title, .forum-title, .store-title, .auth-title, .ov-masthead) {
+  background: none; -webkit-text-fill-color: #141414; color: #141414; animation: none; filter: none;
+  text-shadow: 3px 3px 0 #fff, 5px 5px 0 #141414;
+}
+:root[data-theme="manga"] .site-nav .logo-main { text-shadow: none; }
+:root[data-theme="manga"] .home-title { text-shadow: 4px 4px 0 var(--bg), 8px 8px 0 #141414; transform: rotate(-1.5deg); display: inline-block; }
+:root[data-theme="manga"] :is(.idx-title, .forum-title, .store-title, .auth-title) .accent {
+  background: none; -webkit-text-fill-color: var(--acc-1); color: var(--acc-1);
+}
+:root[data-theme="manga"] .logo-main:hover { filter: none; }
+/* Section headers sit on a halftone band that fades out to the right. */
+:root[data-theme="manga"] :is(.idx-section-header, .forum-section-header, .store-section-header, .ov-section-head) {
+  position: relative; padding-bottom: 18px;
+}
+:root[data-theme="manga"] :is(.idx-section-header, .forum-section-header, .store-section-header, .ov-section-head)::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 12px; pointer-events: none;
+  background: var(--halftone) 0 0 / 6px 6px;
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, rgb(0 0 0 / .35) 45%, transparent 85%);
+  mask-image: linear-gradient(90deg, #000 0%, rgb(0 0 0 / .35) 45%, transparent 85%);
+}
+:root[data-theme="manga"] .section-line { background: var(--halftone) 0 0 / 6px 6px; height: 8px; opacity: .8; }
+:root[data-theme="manga"] :is(.home-tile-kanji, .rec-row-kanji, .idx-kanji, .idx-section-kanji, .forum-kanji, .forum-section-kanji, .store-kanji, .store-section-kanji, .auth-kanji, .auth-side-kanji, .ov-kanji) {
+  color: #141414; opacity: 1; font-weight: 700;
+}
+
+/* ── Speech bubbles for small text blocks ── */
+:root[data-theme="manga"] :is(.home-subtitle, .card-notes, .empty-state, .ov-bubble, .ov-toast, .idx-toast, .auth-toast, .sync-toast, .undo-toast, .delete-toast) {
+  position: relative; background: #fff; color: #141414; border: 2.5px solid #000; border-radius: 22px;
+  box-shadow: none; outline: none;
+}
+:root[data-theme="manga"] .home-subtitle { display: inline-block; padding: .9rem 1.6rem; max-width: 40rem; }
+:root[data-theme="manga"] .card-notes { padding: .5rem .75rem; border-width: 2px; border-radius: 14px; font-style: normal; }
+:root[data-theme="manga"] :is(.home-subtitle, .card-notes, .ov-bubble)::after {
+  content: ""; position: absolute; left: 28px; top: -9px; width: 14px; height: 14px; background: #fff;
+  border: solid #000; border-width: 2.5px 0 0 2.5px; transform: skewX(-20deg) rotate(45deg);
+}
+:root[data-theme="manga"] .home-subtitle::after { left: 50%; margin-left: -7px; }
+:root[data-theme="manga"] .card-notes::after { left: 16px; top: -7px; width: 10px; height: 10px; border-width: 2px 0 0 2px; }
+
+/* ── Action text: the only colour on the page ── */
+:root[data-theme="manga"] :is(.rec-poster-rank, .rank-badge) {
+  background: var(--action); color: #000; border: 2px solid #000; text-shadow: none; font-weight: 700;
+  clip-path: polygon(50% 0, 62% 14%, 80% 6%, 82% 25%, 100% 28%, 90% 45%, 100% 62%, 82% 68%, 82% 88%, 63% 82%, 50% 100%, 37% 82%, 18% 88%, 18% 68%, 0 62%, 10% 45%, 0 28%, 18% 25%, 20% 6%, 38% 14%);
+  border: none; padding: .7em .8em;
+}
+:root[data-theme="manga"] :is(.rec-poster-badge, .idx-seasonal-badge, .product-badge) { background: var(--acc-1); color: #fff; border: 2px solid #000; }
+:root[data-theme="manga"] .home-eyebrow { color: var(--acc-1); font-weight: 700; }
+
+/* ── Controls ── */
+:root[data-theme="manga"] .btn { border: 2.5px solid #000; font-weight: 700; }
+:root[data-theme="manga"] :is(.btn-primary, .auth-submit, .feat-cta-btn, .forum-new-thread, .store-featured-cta, .ov-btn-primary) {
+  background: #141414; color: #fff; border: 2.5px solid #000; box-shadow: 4px 4px 0 var(--acc-1); text-shadow: none;
+}
+:root[data-theme="manga"] :is(.btn-primary, .auth-submit, .feat-cta-btn, .forum-new-thread, .store-featured-cta, .ov-btn-primary):hover {
+  background: var(--acc-1); color: #fff; transform: translate(-1px, -1px); box-shadow: 5px 5px 0 #000;
+}
+:root[data-theme="manga"] .btn-ghost { background: #fff; color: #141414; border-color: #000; }
+:root[data-theme="manga"] .btn-ghost:hover { background: #141414; color: #fff; border-color: #000; }
+:root[data-theme="manga"] :is(input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="search"], select, textarea) {
+  background: #fff; border: 2.5px solid #000;
+}
+:root[data-theme="manga"] :is(input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="search"], select, textarea):focus {
+  background: #fff; border-color: #000; box-shadow: 4px 4px 0 #000;
+}
+:root[data-theme="manga"] :is(.filter-tabs, .view-toggle) { background: #fff; border: 2.5px solid #000; box-shadow: none; }
+:root[data-theme="manga"] .tab-btn.active { background: #141414; color: #fff; box-shadow: none; }
+:root[data-theme="manga"] .tab-btn[data-type].active { color: #fff; }
+:root[data-theme="manga"] .tab-btn .tab-icon { color: currentColor; filter: none; }
+:root[data-theme="manga"] .view-btn.active { background: #141414; color: #fff; }
+:root[data-theme="manga"] :is(.idx-chip, .idx-genre-chip, .forum-cat-chip, .store-cat-chip, .td-pill, .badge, .section-count, .forum-thread-cat, .ov-chip) {
+  background: #fff; border: 2px solid #000; color: #141414; font-weight: 700; box-shadow: none;
+}
+:root[data-theme="manga"] :is(.idx-chip, .idx-genre-chip, .forum-cat-chip, .store-cat-chip, .ov-chip):is(.active, [aria-pressed="true"], [aria-selected="true"]) {
+  background: #141414; color: #fff;
+}
+
+/* ── Collection ── */
+:root[data-theme="manga"] header { background: #fff; border-bottom: 3px solid #000; backdrop-filter: none; }
+:root[data-theme="manga"] header::after { height: 8px; opacity: 1; background: var(--halftone) 0 0 / 6px 6px; }
+:root[data-theme="manga"] .controls { background: var(--bg); border-bottom: 3px solid #000; backdrop-filter: none; }
+/* Type stripes by pattern: solid, hatch, dots, vertical lines. */
+:root[data-theme="manga"] .card-type-stripe { height: 7px; background: #141414; }
+:root[data-theme="manga"] .card[data-type="manga"] .card-type-stripe { background: var(--hatch); }
+:root[data-theme="manga"] .card[data-type="webtoon"] .card-type-stripe { background: var(--halftone) 0 0 / 6px 6px; }
+:root[data-theme="manga"] .card[data-type="novel"] .card-type-stripe { background: repeating-linear-gradient(90deg, #141414 0 1.5px, transparent 1.5px 5px); }
+:root[data-theme="manga"] .star { color: #cfcfca; }
+:root[data-theme="manga"] .star.lit { color: #141414; text-shadow: none; }
+:root[data-theme="manga"] .progress-bar-fill { background: #141414 !important; }
+
+:root[data-theme="manga"] :focus-visible { outline: 3px solid var(--acc-1); outline-offset: 3px; }
+
+:root[data-theme="manga"] .auth-title-bar { display: none; }
+:root[data-theme="manga"] :is(.idx-hero, .forum-hero, .store-hero) { background: none; border-bottom: 3px solid #000; }
+:root[data-theme="manga"] :is(.idx-hero, .forum-hero, .store-hero)::before {
+  background: var(--halftone-fine) 0 0 / 5px 5px; opacity: 1;
+  -webkit-mask-image: linear-gradient(180deg, transparent 30%, #000 100%); mask-image: linear-gradient(180deg, transparent 30%, #000 100%);
+}
+/* Accent tints inside posters and products are ink, not colour. */
+:root[data-theme="manga"] :is(.rec-poster, .idx-seasonal-card, .product) { --poster-accent: #141414 !important; --card-accent: #141414 !important; --prod-accent: #141414 !important; }
+
+/* ── Preview card ── */
+.tp[data-theme="manga"] { border: 2px solid #000; }
+.tp[data-theme="manga"] .tp-nav { background: #fff; border-bottom: 2px solid #000; }
+.tp[data-theme="manga"] .tp-logo { color: #141414; }
+.tp[data-theme="manga"] .tp-link.on { background: var(--acc-1); }
+.tp[data-theme="manga"] .tp-title { display: inline-block; text-shadow: 2px 2px 0 var(--bg), 4px 4px 0 #141414; transform: rotate(-1.5deg); }
+.tp[data-theme="manga"] .tp-tile { border: 2px solid #000; outline: 1px solid #000; outline-offset: -5px; box-shadow: none; }
+.tp[data-theme="manga"] .tp-tile-icon { background: var(--halftone) 0 0 / 4px 4px; border: 1px solid #000; }
+.tp[data-theme="manga"] .tp-tile:first-child .tp-tile-icon { background: var(--acc-1); }
+.tp[data-theme="manga"] .tp-cta { background: #141414; box-shadow: 2px 2px 0 var(--acc-1); }
+.tp[data-theme="manga"] .tp-hero::after { content: ""; position: absolute; left: 0; right: 0; top: 84px; height: 6px; background: var(--halftone) 0 0 / 5px 5px; -webkit-mask-image: linear-gradient(90deg, #000, transparent 80%); mask-image: linear-gradient(90deg, #000, transparent 80%); }
+
+/* ── Community: forum posts are comic panels ── */
+/* The byline is the narration box in the panel's corner, the post text a speech bubble with its
+   tail pointing back at the speaker, and replies sit in the gutter rhythm of a page. */
+:root[data-theme="manga"] .fp { gap: var(--gutter); }
+:root[data-theme="manga"] .fp-by {
+  align-self: flex-start; padding: .3rem .7rem; background: var(--action); border: 2px solid #000;
+  box-shadow: 3px 3px 0 #000; margin: -.2rem 0 .2rem;
+}
+:root[data-theme="manga"] .fp-by :is(.au, .au-handle, .fp-time, time) { color: #000; }
+:root[data-theme="manga"] .fp-body {
+  position: relative; padding: .9rem 1.1rem; background: #fff; border: 2.5px solid #000; border-radius: 22px;
+}
+:root[data-theme="manga"] .fp-body::before {
+  content: ""; position: absolute; top: -13px; left: 34px; width: 20px; height: 14px; background: #000;
+  clip-path: polygon(0 100%, 30% 0, 100% 100%);
+}
+:root[data-theme="manga"] .fp-body::after {
+  content: ""; position: absolute; top: -8px; left: 37.5px; width: 13px; height: 10px; background: #fff;
+  clip-path: polygon(0 100%, 30% 0, 100% 100%);
+}
+:root[data-theme="manga"] .fp-gone { background-image: var(--hatch); opacity: 1; }
+:root[data-theme="manga"] .fp-deleted { background: #fff; display: inline-block; padding: .2rem .6rem; border: 2px dashed #000; align-self: flex-start; }
+:root[data-theme="manga"] .fp-list, :root[data-theme="manga"] .fp-children { gap: var(--gutter); }
+:root[data-theme="manga"] .fp-children { border-left: 3px solid #000; }
+:root[data-theme="manga"] .fp-children .fp { background: var(--surface); }
+:root[data-theme="manga"] .vote-score { font-family: var(--font-display); font-size: 1.25rem; font-weight: 400; }
+:root[data-theme="manga"] .vote-btn { border: 2px solid #000; border-radius: 0; color: #000; background: #fff; }
+:root[data-theme="manga"] .vote-btn.up[aria-pressed="true"] { background: var(--action); color: #000; border-color: #000; }
+:root[data-theme="manga"] .vote-btn.down[aria-pressed="true"] { background: #000; color: #fff; border-color: #000; }
+:root[data-theme="manga"] .fp-flag { background: #000; color: #fff; border-color: #000; }
+:root[data-theme="manga"] .fp-images a, :root[data-theme="manga"] .fp-entry, :root[data-theme="manga"] .pf-pin { border: 2.5px solid #000; }
+:root[data-theme="manga"] .fp-images img { filter: grayscale(1) contrast(1.1); transition: filter .25s; }
+:root[data-theme="manga"] .fp-images a:hover img { filter: none; }
+:root[data-theme="manga"] .ft-list .forum-thread { border-bottom: 2px solid #000; }
+:root[data-theme="manga"] .pf-head { background-image: var(--halftone-fine); background-position: right top; background-repeat: no-repeat; }

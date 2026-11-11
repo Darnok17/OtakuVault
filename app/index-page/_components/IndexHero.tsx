@@ -12,7 +12,7 @@ export default function IndexHero() {
       <div className="idx-hero-inner">
         <div className="idx-eyebrow">◆ Database ◆</div>
         <div className="idx-title">The <span className="accent">Index</span></div>
-        <div className="idx-kanji">索引</div>
+        <div className="idx-kanji" data-latin="Index">索引</div>
         <div className="idx-search-wrap">
           <span className="idx-search-icon" aria-hidden="true">
             <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>

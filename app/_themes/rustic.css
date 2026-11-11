@@ -1,0 +1,316 @@
+/* ═══════════════════════════════════════════════════════════
+   THEME · RUSTIC
+   Iron-gall ink on aged vellum: a tavern codex. Cormorant Garamond headings with illuminated
+   initials, Alegreya text, small-cap labels, double-ruled frames, corner flourishes.
+   ═══════════════════════════════════════════════════════════ */
+[data-theme="rustic"] {
+  color-scheme: light;
+
+  --bg: #e6d7b3;
+  --surface: #f1e6c9;
+  --surface-elevated: #f6eed8;
+  --surface-overlay: #e9dbb6;
+  --float-a: #f6eed8;
+  --float-b: #eee2c2;
+  --border: #c4ae80;
+  --border-strong: #8d7446;
+
+  --fg: #2a2016;
+  --fg-dim: #66563c;
+  --fg-faint: #8f7d5b;
+  --fg-bright: #170f07;
+  --on-accent: #f6eed8;
+  --on-acc-1: #f6eed8;
+
+  --acc-1: #7c1d23;            /* oxblood */
+  --accent-bright: #9c2b32;
+  --acc-1-deep: #5c1218;
+  --acc-2: #4b3d6e;            /* woad */
+  --acc-2-bright: #64538d;
+  --acc-3: #2f5a3a;            /* forest */
+  --acc-3-bright: #3f7450;
+  --acc-3-soft: #456f4f;
+  --gold: #9a7312;             /* tarnished brass */
+  --gold-bright: #b98d1c;
+  --azure: #3c607c;
+  --azure-bright: #4f7797;
+  --violet: #5a4578;
+  --orange: #a0561c;
+  --rose: #9c4458;
+  --danger-fg: #8a1b21;
+
+  --anime: #7c1d23;   --anime-deep: #5c1218;
+  --manga: #4b3d6e;   --manga-deep: #352a52;
+  --webtoon: #2f5a3a; --webtoon-deep: #1f4028;
+  --novel: #a0661a;   --novel-deep: #7a4c10;
+
+  --scrim: #1c130a;
+  --on-scrim: #f6eed8;
+  --on-scrim-dim: #cdbd98;
+
+  --shade: #3d2a12;
+  --shade-k: .38;
+  --glow-k: 0;
+  --well-k: .09;
+  --scan-k: 0;
+  --hi: #2a2016;
+  --shadow-elev-0: 0 1px 3px rgb(61 42 18 / .18);
+  --shadow-elev-1: 0 6px 18px rgb(61 42 18 / .2);
+  --shadow-elev-2: 0 18px 44px rgb(61 42 18 / .28);
+
+  --r-k: .3;
+  --radius: 3px;
+  --radius-pill: 3px;
+
+  --font-display: var(--font-cormorant), "Iowan Old Style", Palatino, Georgia, serif;
+  --font-body: var(--font-alegreya), Georgia, serif;
+  --font-mono: var(--font-alegreya-sc), var(--font-alegreya), Georgia, serif;
+  --font-jp: var(--font-noto-jp), serif;
+  --display-scale: .86;
+  --display-track: .22;
+  --display-weight: 700;
+  --display-case: none;
+  --label-scale: 1.24;
+  --label-track: .42;
+  --label-case: none;
+  --label-weight: 500;
+
+  --bg-dropdown: #f6eed8;
+  --fg-dropdown: #2a2016;
+  --fg-dropdown-dim: #66563c;
+  --accent-dropdown: #7c1d23;
+  --border-dropdown: #8d7446;
+  --hover-dropdown: rgb(124 29 35 / .08);
+  --on-hover-dropdown: #2a2016;
+  --menu-prompt: 'Signed in as';
+  --shadow-dropdown: 3px 3px 0 -1px #e6d7b3, 3px 3px 0 0 #8d7446, 0 14px 30px rgb(61 42 18 / .22);
+  --radius-dropdown: 2px;
+
+  /* Corner flourishes, one per corner (the same curl mirrored). */
+  --flourish-tl: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44' fill='none' stroke='%237c1d23' stroke-width='1.3' stroke-linecap='round'><path d='M3 41V15C3 8 8 3 15 3h26'/><path d='M8 41V19c0-6 5-11 11-11h22' opacity='.45'/><path d='M14 14c5-5 12-2 11 4-1 5-8 5-9 1-1-3 3-5 5-2'/></svg>");
+  --flourish-tr: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44' fill='none' stroke='%237c1d23' stroke-width='1.3' stroke-linecap='round'><g transform='matrix(-1 0 0 1 44 0)'><path d='M3 41V15C3 8 8 3 15 3h26'/><path d='M8 41V19c0-6 5-11 11-11h22' opacity='.45'/><path d='M14 14c5-5 12-2 11 4-1 5-8 5-9 1-1-3 3-5 5-2'/></g></svg>");
+  --flourish-bl: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44' fill='none' stroke='%237c1d23' stroke-width='1.3' stroke-linecap='round'><g transform='matrix(1 0 0 -1 0 44)'><path d='M3 41V15C3 8 8 3 15 3h26'/><path d='M8 41V19c0-6 5-11 11-11h22' opacity='.45'/><path d='M14 14c5-5 12-2 11 4-1 5-8 5-9 1-1-3 3-5 5-2'/></g></svg>");
+  --flourish-br: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44' fill='none' stroke='%237c1d23' stroke-width='1.3' stroke-linecap='round'><g transform='matrix(-1 0 0 -1 44 44)'><path d='M3 41V15C3 8 8 3 15 3h26'/><path d='M8 41V19c0-6 5-11 11-11h22' opacity='.45'/><path d='M14 14c5-5 12-2 11 4-1 5-8 5-9 1-1-3 3-5 5-2'/></g></svg>");
+  --flourishes:
+    var(--flourish-tl) top 7px left 7px / 34px 34px no-repeat,
+    var(--flourish-tr) top 7px right 7px / 34px 34px no-repeat,
+    var(--flourish-bl) bottom 7px left 7px / 34px 34px no-repeat,
+    var(--flourish-br) bottom 7px right 7px / 34px 34px no-repeat;
+  /* The second, slightly offset rule of a double-ruled frame. */
+  --double-rule: 4px 4px 0 -1px var(--bg), 4px 4px 0 0 var(--border-strong);
+}
+
+/* ── Page: lit vellum, foxed at the edges, with paper grain ── */
+:root[data-theme="rustic"] body { line-height: 1.55; }
+:root[data-theme="rustic"] body::before {
+  animation: none;
+  background:
+    radial-gradient(ellipse 80% 55% at 50% -5%, rgb(255 249 228 / .7) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 45% at 0% 100%, rgb(122 86 38 / .2) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 45% at 100% 8%, rgb(122 86 38 / .14) 0%, transparent 70%),
+    radial-gradient(ellipse 130% 70% at 50% 115%, rgb(122 86 38 / .22) 0%, transparent 60%);
+}
+:root[data-theme="rustic"] body::after {
+  opacity: .5; mix-blend-mode: multiply;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .36 0 0 0 0 .25 0 0 0 0 .1 0 0 0 .5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1000' height='1000'><filter id='s' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.005' numOctaves='2' seed='11' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45 0 0 0 0 .31 0 0 0 0 .13 0 0 0 .9 -.34'/></filter><rect width='100%25' height='100%25' filter='url(%23s)'/></svg>");
+}
+:root[data-theme="rustic"] *::selection { background: rgb(124 29 35 / .22); }
+
+/* ── Frames: a hairline in ink and a second rule set slightly off, as if ruled by hand ── */
+:root[data-theme="rustic"] :is(
+  .home-tile, .card, .rec-poster, .idx-seasonal-card, .idx-filters, .forum-pinned-card, .forum-trend-card,
+  .forum-filters, .forum-threads, .store-featured-card, .store-filters, .product, .auth-card, .auth-benefit,
+  .stat-pill, .watchlist-banner, .td-stat, .td-char-card, .td-relation, .demo-grid, .demo-board, .feat-stats,
+  .ov-panel, .theme-card
+) {
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--double-rule);
+}
+:root[data-theme="rustic"] :is(.home-tile, .card, .rec-poster, .product, .forum-pinned-card, .forum-trend-card, .td-char-card, .td-relation, .theme-card):hover {
+  transform: translate(-2px, -2px);
+  border-color: var(--acc-1);
+  box-shadow: 6px 6px 0 -1px var(--bg), 6px 6px 0 0 var(--acc-1);
+}
+:root[data-theme="rustic"] :is(.home-tile, .card, .auth-card, .modal, .product, .forum-pinned-card, .stat-pill, .ov-panel) {
+  background: linear-gradient(170deg, var(--surface-elevated) 0%, var(--surface) 60%, #ecdfbd 100%);
+}
+
+/* Floating things keep the same frame, lifted off the page. */
+:root[data-theme="rustic"] :is(.modal, .nav-user-menu, .idx-toast, .auth-toast, .sync-toast, .undo-toast, .delete-toast, .al-search-panel, .td-menu-list, .ov-toast) {
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--double-rule), var(--shadow-elev-2);
+  background: var(--surface-elevated);
+  backdrop-filter: none;
+}
+:root[data-theme="rustic"] :is(.modal, .auth-card, .empty-state, .td-not-found, .ov-flourished) {
+  background: var(--flourishes), linear-gradient(170deg, var(--surface-elevated) 0%, var(--surface) 70%, #ecdfbd 100%);
+}
+:root[data-theme="rustic"] :is(.modal, .auth-card)::before { display: none; }
+:root[data-theme="rustic"] .modal-overlay { background: rgb(42 32 22 / .5); }
+
+/* The home tiles already carry four corner marks: turn the HUD brackets into curls. */
+:root[data-theme="rustic"] .home-tile-corner {
+  width: 30px; height: 30px; border: none; opacity: .7; filter: none;
+  background: var(--flourish-tl) center / contain no-repeat;
+}
+:root[data-theme="rustic"] .home-tile-corner.tl { top: 6px; left: 6px; }
+:root[data-theme="rustic"] .home-tile-corner.tr { top: 6px; right: 6px; background-image: var(--flourish-tr); }
+:root[data-theme="rustic"] .home-tile-corner.bl { bottom: 6px; left: 6px; background-image: var(--flourish-bl); }
+:root[data-theme="rustic"] .home-tile-corner.br { bottom: 6px; right: 6px; background-image: var(--flourish-br); }
+:root[data-theme="rustic"] .home-tile:hover .home-tile-corner { border-width: 0; transform: none; filter: none; opacity: 1; }
+:root[data-theme="rustic"] .home-tile::before,
+:root[data-theme="rustic"] .home-tile::after { display: none; }
+:root[data-theme="rustic"] .home-tile { padding: 2.1rem 1.7rem 1.6rem; }
+
+/* ── Navigation: a ruled running head ── */
+:root[data-theme="rustic"] .site-nav {
+  background: rgb(from var(--surface) r g b / .94);
+  border-bottom: 3px double var(--border-strong);
+  backdrop-filter: none;
+}
+:root[data-theme="rustic"] .site-nav::after { display: none; }
+:root[data-theme="rustic"] .nav-link { border-radius: 0; border: none; border-bottom: 2px solid transparent; }
+:root[data-theme="rustic"] .nav-link::before { display: none; }
+:root[data-theme="rustic"] .nav-link:hover { background: transparent; color: var(--acc-1); border-bottom-color: var(--border); }
+:root[data-theme="rustic"] .nav-link.active {
+  color: var(--acc-1); background: transparent; box-shadow: none; text-shadow: none;
+  border-bottom-color: var(--acc-1);
+}
+:root[data-theme="rustic"] .nav-link.active::after { display: none; }
+:root[data-theme="rustic"] .nav-link.nav-signup,
+:root[data-theme="rustic"] .nav-link.nav-signup:hover,
+:root[data-theme="rustic"] .nav-link.nav-signup.active {
+  background: var(--acc-1); color: var(--on-acc-1); border: 1px solid var(--acc-1-deep); border-radius: 2px;
+  box-shadow: inset 0 0 0 2px var(--acc-1), inset 0 0 0 3px rgb(246 238 216 / .35);
+}
+
+/* ── Wordmark and titles: ink, not neon ── */
+:root[data-theme="rustic"] :is(.logo-main, .home-title, .idx-title, .forum-title, .store-title, .auth-title) {
+  background: none; -webkit-text-fill-color: currentColor; color: var(--fg-bright);
+  animation: none; filter: none; text-shadow: none;
+  font-variant-caps: small-caps; font-variant-numeric: oldstyle-nums;
+}
+:root[data-theme="rustic"] .logo-main { color: var(--acc-1); letter-spacing: .04em; }
+:root[data-theme="rustic"] .logo-main:hover { filter: none; color: var(--accent-bright); }
+/* A fleuron between two rules under the masthead. */
+:root[data-theme="rustic"] .home-title::after {
+  content: "❦"; display: block; margin: .5rem auto 0; width: min(420px, 80%);
+  font-size: 1.5rem; line-height: 1; letter-spacing: 0; font-variant-caps: normal;
+  color: var(--acc-1); -webkit-text-fill-color: var(--acc-1);
+  background:
+    linear-gradient(var(--border-strong), var(--border-strong)) left center / calc(50% - 1.4rem) 1px no-repeat,
+    linear-gradient(var(--border-strong), var(--border-strong)) right center / calc(50% - 1.4rem) 1px no-repeat;
+}
+:root[data-theme="rustic"] .home-eyebrow,
+:root[data-theme="rustic"] .logo-sub { text-shadow: none; color: var(--fg-dim); }
+:root[data-theme="rustic"] .logo-sub::before { box-shadow: none; animation: none; background: var(--acc-1); width: 5px; height: 5px; transform: translateY(-50%) rotate(45deg); border-radius: 0; }
+:root[data-theme="rustic"] .home-subtitle { font-style: italic; font-size: 1.2rem; color: var(--fg-dim); }
+
+/* Section headers open with an illuminated initial. */
+:root[data-theme="rustic"] :is(.section-title, .idx-section-title, .rec-row-title, .forum-section-title, .store-section-title, .feat-title, .td-section-title, .ov-title)::first-letter {
+  color: var(--acc-1); font-size: 1.42em; font-weight: 700;
+}
+:root[data-theme="rustic"] :is(.section-title, .idx-section-title, .rec-row-title, .forum-section-title, .store-section-title, .feat-title) {
+  text-shadow: none; color: var(--fg-bright);
+}
+
+/* Kanji subtitles become Latin small caps; data-latin carries the word, "Codex" is the fallback. */
+:root[data-theme="rustic"] :is(
+  .home-tile-kanji, .feat-kicker, .rec-row-kanji, .idx-kanji, .idx-section-kanji, .forum-kanji,
+  .forum-section-kanji, .store-kanji, .store-section-kanji, .auth-kanji, .auth-side-kanji, .td-section-kanji, .ov-kanji
+) {
+  font-size: 0; letter-spacing: 0; text-shadow: none;
+}
+:root[data-theme="rustic"] :is(
+  .home-tile-kanji, .feat-kicker, .rec-row-kanji, .idx-kanji, .idx-section-kanji, .forum-kanji,
+  .forum-section-kanji, .store-kanji, .store-section-kanji, .auth-kanji, .auth-side-kanji, .td-section-kanji, .ov-kanji
+)::after {
+  content: attr(data-latin, "Codex");
+  font-family: var(--font-mono); font-size: .82rem; font-weight: 500; letter-spacing: .14em;
+  text-transform: lowercase; color: var(--fg-faint);
+}
+
+/* ── Controls ── */
+:root[data-theme="rustic"] .btn { border-radius: 2px; font-weight: 700; }
+:root[data-theme="rustic"] .btn::before { display: none; }
+:root[data-theme="rustic"] :is(.btn-primary, .auth-submit, .feat-cta-btn, .forum-new-thread, .store-featured-cta, .ov-btn-primary) {
+  background: var(--acc-1); color: var(--on-acc-1);
+  border: 1px solid var(--acc-1-deep);
+  box-shadow: inset 0 0 0 2px var(--acc-1), inset 0 0 0 3px rgb(246 238 216 / .35), 2px 2px 0 rgb(61 42 18 / .25);
+  text-shadow: none;
+}
+:root[data-theme="rustic"] :is(.btn-primary, .auth-submit, .feat-cta-btn, .forum-new-thread, .store-featured-cta, .ov-btn-primary):hover {
+  background: var(--accent-bright); color: var(--on-acc-1); transform: translate(-1px, -1px);
+  box-shadow: inset 0 0 0 2px var(--accent-bright), inset 0 0 0 3px rgb(246 238 216 / .45), 3px 3px 0 rgb(61 42 18 / .3);
+}
+:root[data-theme="rustic"] .btn-ghost { border-color: var(--border-strong); color: var(--fg); }
+:root[data-theme="rustic"] .btn-ghost:hover { border-color: var(--acc-1); color: var(--acc-1); background: transparent; }
+:root[data-theme="rustic"] :is(input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="search"], select, textarea) {
+  background: rgb(255 251 238 / .55); border-color: var(--border-strong); border-radius: 2px;
+}
+:root[data-theme="rustic"] :is(input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="search"], select, textarea):focus {
+  background: rgb(255 251 238 / .9); border-color: var(--acc-1);
+  box-shadow: 0 0 0 3px rgb(124 29 35 / .12);
+}
+:root[data-theme="rustic"] :is(.filter-tabs, .view-toggle) { background: transparent; box-shadow: none; border-color: var(--border-strong); }
+:root[data-theme="rustic"] .tab-btn.active { background: var(--surface-overlay); box-shadow: none; }
+:root[data-theme="rustic"] .tab-btn.active::after { box-shadow: none; }
+
+/* Chips read as inked tags. */
+:root[data-theme="rustic"] :is(.idx-chip, .idx-genre-chip, .forum-cat-chip, .store-cat-chip, .td-pill, .td-chip, .section-count, .ov-chip) {
+  border-radius: 2px;
+}
+
+/* ── Collection ── */
+:root[data-theme="rustic"] header { background: transparent; border-bottom: 1px solid var(--border); backdrop-filter: none; }
+:root[data-theme="rustic"] header::after { display: none; }
+:root[data-theme="rustic"] .controls { background: rgb(from var(--surface) r g b / .9); border-bottom: 3px double var(--border-strong); backdrop-filter: none; }
+:root[data-theme="rustic"] .card::after { display: none; }
+:root[data-theme="rustic"] .card-notes { font-size: .95rem; }
+:root[data-theme="rustic"] .stat-pill::before { display: none; }
+:root[data-theme="rustic"] .section-line { background: none; border-top: 3px double var(--border); height: 0; }
+
+/* Focus is always an ink ring. */
+:root[data-theme="rustic"] :focus-visible { outline: 2px solid var(--acc-1); outline-offset: 2px; }
+
+:root[data-theme="rustic"] .auth-title-bar { display: none; }
+
+/* ── Preview card ── */
+.tp[data-theme="rustic"] { box-shadow: inset 0 0 0 3px var(--bg), inset 0 0 0 4px var(--border-strong); }
+.tp[data-theme="rustic"] .tp-nav { border-bottom: 3px double var(--border-strong); background: transparent; }
+.tp[data-theme="rustic"] :is(.tp-title, .tp-logo) { font-variant: small-caps; color: var(--fg-bright); }
+.tp[data-theme="rustic"] .tp-title::after { content: "❦"; display: block; font-size: 9px; color: var(--acc-1); margin-top: 2px; }
+.tp[data-theme="rustic"] .tp-hero { padding-top: 9px; padding-bottom: 6px; }
+.tp[data-theme="rustic"] .tp-tile { box-shadow: 3px 3px 0 -1px var(--bg), 3px 3px 0 0 var(--border-strong); }
+
+/* ── Community: forum posts are entries on a scroll ── */
+/* The opening post is the illuminated leaf (flourished corners, a drop cap); replies are
+   entries written beneath it, each closed with a fleuron; the score is a wax seal. */
+:root[data-theme="rustic"] .fp-root {
+  border-left: 1px solid var(--border-strong);
+  background: var(--flourishes), linear-gradient(170deg, var(--surface-elevated) 0%, var(--surface) 70%, #ecdfbd 100%);
+  padding: 2.2rem 2.4rem;
+}
+:root[data-theme="rustic"] .fp-root .fp-body > p:first-child::first-letter {
+  float: left; font-family: var(--font-display); font-weight: 700; font-size: 2.5em; line-height: .9;
+  padding: .04em .1em 0 0; color: var(--acc-1);
+}
+:root[data-theme="rustic"] .fp-body { font-size: 1.05rem; line-height: 1.75; }
+:root[data-theme="rustic"] .fp-list > .fp::after {
+  content: "❦"; grid-column: 1 / -1; text-align: center; color: var(--acc-1); opacity: .55; font-size: 1rem; margin-top: .2rem;
+}
+:root[data-theme="rustic"] .fp-children { border-left: 3px double var(--border-strong); }
+:root[data-theme="rustic"] .fp-children .fp { background: transparent; box-shadow: none; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; padding: .6rem 0 1rem; }
+:root[data-theme="rustic"] .vote-score {
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: #f6ecd2;
+  background: radial-gradient(circle at 35% 30%, #a3323a, var(--acc-1) 60%, #4d1014); box-shadow: 0 1px 0 #3a0c10, inset 0 0 0 2px rgb(255 255 255 / .12);
+  font-family: var(--font-display); font-size: .95rem;
+}
+:root[data-theme="rustic"] .vote[data-vote] .vote-score { color: #f6ecd2; }
+:root[data-theme="rustic"] .fp-by .au-name { font-family: var(--font-alegreya-sc), serif; letter-spacing: .04em; font-size: .95rem; }
+:root[data-theme="rustic"] .fp-deleted::before { content: "✗ "; }
+:root[data-theme="rustic"] .fp-gone { background-image: repeating-linear-gradient(-12deg, transparent 0 14px, rgb(124 29 35 / .06) 14px 15px); }
+:root[data-theme="rustic"] .pf-head { background: var(--flourishes), linear-gradient(170deg, var(--surface-elevated) 0%, var(--surface) 70%, #ecdfbd 100%); padding: 2.2rem 2.4rem; }
+:root[data-theme="rustic"] .ov-avatar { border: 2px solid var(--border-strong); box-shadow: 0 0 0 3px var(--surface), 0 0 0 4px var(--border-strong); }

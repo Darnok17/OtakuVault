@@ -7,6 +7,16 @@ import type { Entry, EntryStatus, EntryType } from "@/lib/types";
 import AniListSearch from "./AniListSearch";
 import CoverDropZone from "./CoverDropZone";
 import StarRating from "./StarRating";
+import ThemedSelect, { type SelectOption } from "@/app/_components/ThemedSelect";
+
+const TYPE_OPTIONS: SelectOption<EntryType>[] = [
+  { value: "anime", label: "Anime" }, { value: "manga", label: "Manga" },
+  { value: "webtoon", label: "Webtoon" }, { value: "novel", label: "Novel" },
+];
+const STATUS_OPTIONS: SelectOption<EntryStatus>[] = [
+  { value: "watching", label: "Watching / Reading" }, { value: "completed", label: "Completed" },
+  { value: "on-hold", label: "On Hold" }, { value: "plan-to", label: "Plan To" }, { value: "dropped", label: "Dropped" },
+];
 
 export default function EntryModal({
   entry, onSave, onClose,
@@ -84,22 +94,11 @@ export default function EntryModal({
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".75rem" }}>
             <label style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
               <span style={labelStyle}>Type</span>
-              <select value={form.type} onChange={(e) => set("type", e.target.value as EntryType)} style={inputStyle}>
-                <option value="anime">Anime</option>
-                <option value="manga">Manga</option>
-                <option value="webtoon">Webtoon</option>
-                <option value="novel">Novel</option>
-              </select>
+              <ThemedSelect variant="field" value={form.type} onChange={(v) => set("type", v)} options={TYPE_OPTIONS} aria-label="Type" />
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
               <span style={labelStyle}>Status</span>
-              <select value={form.status} onChange={(e) => set("status", e.target.value as EntryStatus)} style={inputStyle}>
-                <option value="watching">Watching / Reading</option>
-                <option value="completed">Completed</option>
-                <option value="on-hold">On Hold</option>
-                <option value="plan-to">Plan To</option>
-                <option value="dropped">Dropped</option>
-              </select>
+              <ThemedSelect variant="field" value={form.status} onChange={(v) => set("status", v)} options={STATUS_OPTIONS} aria-label="Status" />
             </label>
           </div>
 
@@ -158,17 +157,17 @@ export default function EntryModal({
 
 const inputStyle: React.CSSProperties = {
   padding: ".65rem .8rem",
-  background: "rgba(0,0,0,.3)",
+  background: "rgb(from var(--shade) r g b / calc(.3 * var(--well-k)))",
   border: "1px solid var(--border)",
-  borderRadius: "6px",
-  color: "var(--text)",
-  fontFamily: "var(--font-space-mono)",
-  fontSize: ".78rem",
+  borderRadius: "calc(6px * var(--r-k))",
+  color: "var(--fg)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "calc(.78rem * var(--label-scale))",
 };
 const labelStyle: React.CSSProperties = {
-  fontFamily: "var(--font-space-mono)",
-  fontSize: ".65rem",
-  letterSpacing: ".15em",
-  color: "var(--text-dim)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "calc(.65rem * var(--label-scale))",
+  letterSpacing: "calc(.15em * var(--label-track))",
+  color: "var(--fg-dim)",
   textTransform: "uppercase",
 };

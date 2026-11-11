@@ -9,6 +9,7 @@ import {
 } from "@/lib/anilist-shared";
 import { BROWSE_GENRES, filtersFromParams, filtersToQuery, parseYear } from "@/lib/index-filters";
 import type { EntryType } from "@/lib/types";
+import ThemedSelect, { type SelectOption } from "@/app/_components/ThemedSelect";
 import { useIndex } from "./IndexProvider";
 import { PosterCard } from "./posters";
 
@@ -18,7 +19,10 @@ type View = { key: string; items: Title[]; total: number; hasNext: boolean; page
 
 const TYPE_LABELS: [EntryType, string][] = [["anime", "Anime"], ["manga", "Manga"], ["webtoon", "Webtoon"], ["novel", "Light / Web Novel"]];
 const STATUS_LABELS: [BrowseStatus, string][] = [["RELEASING", "Airing / Ongoing"], ["FINISHED", "Completed / Finished"], ["NOT_YET_RELEASED", "Not Yet Released"], ["HIATUS", "Hiatus"]];
-const SORT_LABELS: [BrowseSort, string][] = [["popularity", "Popularity"], ["rating-desc", "Rating ↓"], ["rating-asc", "Rating ↑"], ["newest", "Newest"], ["oldest", "Oldest"]];
+const SORT_OPTIONS: SelectOption<BrowseSort>[] = [
+  { value: "popularity", label: "Popularity" }, { value: "rating-desc", label: "Rating ↓" }, { value: "rating-asc", label: "Rating ↑" },
+  { value: "newest", label: "Newest" }, { value: "oldest", label: "Oldest" },
+];
 
 const SEARCH_DEBOUNCE_MS = 350;
 const FILTER_DEBOUNCE_MS = 250;
@@ -196,9 +200,7 @@ export default function IndexBrowse({ initial, type }: { initial: Promise<Browse
           </Suspense>
           <div className="idx-sort-wrap">
             <span className="idx-sort-label">Sort</span>
-            <select value={sort} onChange={(e) => setSort(e.target.value as BrowseSort)} disabled={searching}>
-              {SORT_LABELS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-            </select>
+            <ThemedSelect value={sort} onChange={setSort} options={SORT_OPTIONS} disabled={searching} aria-label="Sort titles" />
           </div>
         </div>
         <Suspense fallback={<GridSkeleton />}>

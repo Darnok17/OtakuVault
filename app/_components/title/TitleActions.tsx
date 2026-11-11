@@ -1,5 +1,6 @@
 "use client";
 
+import PinButton from "@/app/_components/PinButton";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { addToCollectionFromAnilist } from "@/app/actions/anilist";
@@ -109,6 +110,7 @@ export default function TitleActions({ anilistId, type, title, userId, initialEn
           <StatusMenu label="Change Status" type={type} current={entry.status} busy={busy} onPick={changeStatus} />
           <Link className="btn btn-ghost" href={`/collection?edit=${entry.id}`}>Edit</Link>
           <Link className="btn btn-ghost" href={`/collection/${entry.id}/moodboard`}>Open Moodboard</Link>
+          <PinButton kind="entry" targetId={entry.id} label={title} className="btn btn-ghost" withText />
         </>
       ) : userId ? (
         <StatusMenu label="Add to Collection" type={type} busy={busy} primary onPick={add} />

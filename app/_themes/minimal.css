@@ -1,0 +1,224 @@
+/* ═══════════════════════════════════════════════════════════
+   THEME · MINIMAL
+   Black, white and one red hairline. Space Grotesk throughout, 1px rules, square corners, no
+   shadows, no gradients, nothing moves except the line that marks where you are.
+   ═══════════════════════════════════════════════════════════ */
+[data-theme="minimal"] {
+  color-scheme: light;
+
+  --bg: #fff;
+  --surface: #fff;
+  --surface-elevated: #fff;
+  --surface-overlay: #fff;
+  --float-a: #fff;
+  --float-b: #fff;
+  --border: #000;
+  --border-strong: #000;
+
+  --fg: #000;
+  --fg-dim: #5c5c5c;           /* secondary text is the only grey */
+  --fg-faint: #8a8a8a;
+  --fg-bright: #000;
+  --on-accent: #fff;
+  --on-acc-1: #fff;
+  --scrim: #000;
+  --on-scrim: #fff;
+  --on-scrim-dim: #fff;
+
+  /* One accent. Everything that used to be a colour is ink; red is placed by hand below. */
+  --acc-1: #e10600;
+  --accent-bright: #e10600;
+  --acc-1-deep: #e10600;
+  --acc-2: #000;
+  --acc-2-bright: #000;
+  --acc-3: #000;
+  --acc-3-bright: #000;
+  --acc-3-soft: #000;
+  --gold: #000;
+  --gold-bright: #000;
+  --azure: #000;
+  --azure-bright: #000;
+  --violet: #000;
+  --orange: #000;
+  --rose: #000;
+  --danger-fg: #e10600;
+
+  --anime: #000;   --anime-deep: #000;
+  --manga: #000;   --manga-deep: #000;
+  --webtoon: #000; --webtoon-deep: #000;
+  --novel: #000;   --novel-deep: #000;
+
+  --shade: #000;
+  --shade-k: 0;
+  --glow-k: 0;
+  --well-k: 0;
+  --scan-k: 0;
+  --hi: #fff;
+  --shadow-elev-0: none;
+  --shadow-elev-1: none;
+  --shadow-elev-2: none;
+
+  --r-k: 0;
+  --radius: 0px;
+  --radius-pill: 0px;
+
+  --font-display: var(--font-space-grotesk), "Helvetica Neue", Arial, sans-serif;
+  --font-body: var(--font-space-grotesk), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-space-grotesk), "Helvetica Neue", Arial, sans-serif;
+  --font-jp: var(--font-noto-jp), sans-serif;
+  --display-scale: .8;
+  --display-track: -.4;
+  --display-weight: 600;
+  --display-case: none;
+  --label-scale: 1.16;
+  --label-track: .12;
+  --label-case: none;
+  --label-weight: 500;
+
+  --bg-dropdown: #fff;
+  --fg-dropdown: #000;
+  --fg-dropdown-dim: #5c5c5c;
+  --accent-dropdown: #e10600;
+  --border-dropdown: #000;
+  --hover-dropdown: #000;
+  --on-hover-dropdown: #fff;
+  --menu-prompt: 'Account';
+  --shadow-dropdown: none;
+  --radius-dropdown: 0px;
+}
+
+/* ── Page: nothing behind the content ── */
+:root[data-theme="minimal"] body::before,
+:root[data-theme="minimal"] body::after { display: none; }
+:root[data-theme="minimal"] *::selection { background: #000; color: #fff; }
+/* Icons as thin strokes. */
+:root[data-theme="minimal"] svg:not(.board-wires, .demo-wires, .ov-wires) { stroke-width: 1.2; }
+:root[data-theme="minimal"] svg:not(.board-wires, .demo-wires, .ov-wires) :is(path, circle, rect, line, polyline, polygon, ellipse) { stroke-width: inherit; }
+
+/* ── No shadows, no gradients, no textures, no lift ── */
+:root[data-theme="minimal"] :is(
+  .home-tile, .card, .rec-poster, .idx-seasonal-card, .idx-filters, .forum-pinned-card, .forum-trend-card,
+  .forum-filters, .forum-threads, .store-featured-card, .store-filters, .product, .auth-card, .auth-benefit,
+  .stat-pill, .watchlist-banner, .td-stat, .td-char-card, .td-relation, .demo-grid, .demo-board, .feat-stats,
+  .modal, .nav-user-menu, .idx-toast, .auth-toast, .sync-toast, .undo-toast, .delete-toast, .al-search-panel,
+  .td-menu-list, .filter-tabs, .view-toggle, .ov-panel, .ov-toast, .theme-card
+) {
+  background: #fff; border: 1px solid #000; box-shadow: none; backdrop-filter: none;
+}
+:root[data-theme="minimal"] :is(
+  .home-tile, .card, .rec-poster, .idx-seasonal-card, .product, .forum-pinned-card, .forum-trend-card, .forum-thread,
+  .td-char-card, .td-relation, .btn, .btn-primary, .nav-link, .view-btn, .tab-btn, .feat-cta-btn, .theme-card
+):is(:hover, :active) { transform: none; box-shadow: none; }
+:root[data-theme="minimal"] :is(.home-tile, .card, .rec-poster, .idx-seasonal-card, .product, .forum-pinned-card, .forum-trend-card, .td-char-card, .td-relation, .theme-card):hover {
+  border-color: var(--acc-1);
+}
+:root[data-theme="minimal"] :is(.rec-poster, .idx-seasonal-card, .card, .product):hover :is(.rec-poster-img, .idx-seasonal-img, .rec-poster-glyph, .idx-seasonal-glyph, .card-cover img, .home-tile-icon) { transform: none; }
+:root[data-theme="minimal"] :is(.home-tile, .card, .stat-pill, .modal, .auth-card, .forum-thread, .btn, .nav-link, .rec-row-title, .section-title)::before,
+:root[data-theme="minimal"] :is(.home-tile, .card, .feat-title)::after { display: none; }
+:root[data-theme="minimal"] .home-tile-corner { display: none; }
+:root[data-theme="minimal"] .modal-overlay { background: rgb(255 255 255 / .9); backdrop-filter: none; }
+
+/* ── Navigation: a black rule; the red line is where you are ── */
+:root[data-theme="minimal"] .site-nav { background: #fff; border-bottom: 1px solid #000; backdrop-filter: none; }
+:root[data-theme="minimal"] .site-nav::after { display: none; }
+:root[data-theme="minimal"] .nav-link { border: none; overflow: visible; background: transparent; }
+:root[data-theme="minimal"] .nav-link:hover { background: transparent; color: #000; text-decoration: underline; text-underline-offset: .5em; text-decoration-thickness: 1px; }
+:root[data-theme="minimal"] .nav-link.active { background: transparent; color: #000; box-shadow: none; text-shadow: none; }
+:root[data-theme="minimal"] .nav-link.active::after {
+  display: block; left: 0; right: 0; bottom: calc(-.9rem - 1px); height: 1px; border-radius: 0;
+  background: var(--acc-1); box-shadow: none;
+}
+:root[data-theme="minimal"] .nav-link.nav-signup,
+:root[data-theme="minimal"] .nav-link.nav-signup.active { background: #000; color: #fff; border: 1px solid #000; box-shadow: none; }
+:root[data-theme="minimal"] .nav-link.nav-signup:hover { background: #fff; color: #000; text-decoration: none; }
+:root[data-theme="minimal"] :is(.nav-user-avatar, .forum-thread-avatar, .ov-avatar) { border-radius: 0; }
+
+/* ── Type: ink, set tight; the wordmark ends on the accent ── */
+:root[data-theme="minimal"] :is(.logo-main, .home-title, .idx-title, .forum-title, .store-title, .auth-title) {
+  background: none; -webkit-text-fill-color: currentColor; color: #000; animation: none; filter: none; text-shadow: none;
+}
+:root[data-theme="minimal"] :is(.logo-main, .home-title)::after { content: "."; color: var(--acc-1); -webkit-text-fill-color: var(--acc-1); }
+:root[data-theme="minimal"] :is(.idx-title, .forum-title, .store-title, .auth-title) .accent { background: none; -webkit-text-fill-color: currentColor; color: #000; }
+:root[data-theme="minimal"] .logo-main:hover { filter: none; }
+:root[data-theme="minimal"] .logo-sub::before { animation: none; border-radius: 0; background: var(--acc-1); width: 12px; height: 1px; left: -18px; }
+:root[data-theme="minimal"] :is(.home-eyebrow, .feat-kicker) { color: var(--fg-dim); }
+:root[data-theme="minimal"] .home-hero { padding-top: 6rem; padding-bottom: 4.5rem; }
+/* The three home tiles share their rules, like cells of one table. */
+:root[data-theme="minimal"] .home-tiles { gap: 0; }
+:root[data-theme="minimal"] .home-tile { padding: 2.4rem 2rem 2rem; margin: 0 -1px -1px 0; }
+:root[data-theme="minimal"] .home-tile:hover { position: relative; z-index: 1; }
+
+/* ── Controls: ink blocks that invert ── */
+:root[data-theme="minimal"] :is(.btn-primary, .auth-submit, .feat-cta-btn, .forum-new-thread, .store-featured-cta, .ov-btn-primary) {
+  background: #000; color: #fff; border: 1px solid #000; box-shadow: none; text-shadow: none;
+}
+:root[data-theme="minimal"] :is(.btn-primary, .auth-submit, .feat-cta-btn, .forum-new-thread, .store-featured-cta, .ov-btn-primary):hover {
+  background: #fff; color: #000;
+}
+:root[data-theme="minimal"] .btn-ghost { border-color: #000; color: #000; }
+:root[data-theme="minimal"] .btn-ghost:hover { background: #000; color: #fff; border-color: #000; }
+:root[data-theme="minimal"] :is(input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="search"], select, textarea) { background: #fff; }
+:root[data-theme="minimal"] :is(input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="search"], select, textarea):focus {
+  background: #fff; border-color: var(--acc-1); box-shadow: none;
+}
+:root[data-theme="minimal"] .tab-btn.active { background: #000; color: #fff; box-shadow: none; }
+:root[data-theme="minimal"] .tab-btn[data-type].active { color: #fff; }
+:root[data-theme="minimal"] .tab-btn .tab-icon { color: currentColor; filter: none; }
+:root[data-theme="minimal"] .view-btn.active { background: #000; color: #fff; box-shadow: none; border-color: #000; }
+/* Tinted chips become outlined chips; the selected one is filled. */
+:root[data-theme="minimal"] :is(.idx-chip, .idx-genre-chip, .forum-cat-chip, .store-cat-chip, .td-pill, .td-chip, .badge, .section-count, .rec-poster-badge, .idx-seasonal-badge, .forum-thread-cat, .product-badge, .ov-chip) {
+  background: #fff; border: 1px solid #000; color: #000; box-shadow: none; text-shadow: none;
+}
+:root[data-theme="minimal"] :is(.idx-chip, .idx-genre-chip, .forum-cat-chip, .store-cat-chip, .ov-chip):is(.active, [aria-pressed="true"], [aria-selected="true"]) {
+  background: #000; color: #fff;
+}
+/* On artwork the captions stay white on black. */
+:root[data-theme="minimal"] :is(.rec-poster-badge, .idx-seasonal-badge) { background: #000; color: #fff; border-color: #fff; }
+:root[data-theme="minimal"] :is(.rec-poster-rank, .rec-poster-rating, .rec-poster-add) { color: #fff; background: #000; border-color: #fff; }
+:root[data-theme="minimal"] .rec-poster-rating { background: none; }
+
+/* ── Collection ── */
+:root[data-theme="minimal"] header { background: #fff; border-bottom: 1px solid #000; backdrop-filter: none; }
+:root[data-theme="minimal"] header::after { display: none; }
+:root[data-theme="minimal"] .controls { background: #fff; border-bottom: 1px solid #000; backdrop-filter: none; }
+:root[data-theme="minimal"] .section-line { background: #000; opacity: 1; height: 1px; }
+:root[data-theme="minimal"] .card-type-stripe { height: 1px; }
+:root[data-theme="minimal"] .progress-bar-fill { background: var(--acc-1) !important; }
+:root[data-theme="minimal"] .star { color: #cfcfcf; }
+:root[data-theme="minimal"] .star.lit { color: #000; }
+
+:root[data-theme="minimal"] :focus-visible { outline: 1px solid var(--acc-1); outline-offset: 3px; }
+
+:root[data-theme="minimal"] .auth-title-bar { display: none; }
+:root[data-theme="minimal"] :is(.idx-hero, .forum-hero, .store-hero) { background: #fff; border-bottom: 1px solid #000; }
+:root[data-theme="minimal"] :is(.idx-hero, .forum-hero, .store-hero)::before { display: none; }
+/* Per-title accent tints are ink here; red stays where it was placed by hand. */
+:root[data-theme="minimal"] :is(.rec-poster, .idx-seasonal-card, .product) { --poster-accent: #000 !important; --card-accent: #000 !important; --prod-accent: #000 !important; }
+:root[data-theme="minimal"] :is(.product-img, .rec-poster-cover, .store-featured-visual) { background-image: none; }
+
+/* ── Preview card ── */
+.tp[data-theme="minimal"] :is(.tp-title, .tp-logo) { color: #000; }
+.tp[data-theme="minimal"] :is(.tp-title, .tp-logo)::after { content: "."; color: var(--acc-1); }
+.tp[data-theme="minimal"] .tp-link.on { background: var(--acc-1); height: 1px; }
+.tp[data-theme="minimal"] .tp-link { height: 1px; background: #000; }
+.tp[data-theme="minimal"] .tp-tiles { gap: 0; }
+.tp[data-theme="minimal"] .tp-tile { margin-right: -1px; }
+.tp[data-theme="minimal"] .tp-tile-icon { background: none; border: 1px solid #000; }
+.tp[data-theme="minimal"] .tp-cta { background: #000; }
+.tp[data-theme="minimal"] .tp-dots i:not(:first-child) { background: #fff !important; border-color: #000; }
+
+/* ── Community ── */
+:root[data-theme="minimal"] .fp-root { border-left: 1px solid #e10600; }
+:root[data-theme="minimal"] .fp:target { border-color: #e10600; box-shadow: none; }
+:root[data-theme="minimal"] .fp-children .fp { background: #fff; border: 0; border-top: 1px solid #000; padding: 1rem 0 0; }
+:root[data-theme="minimal"] .fp-children { border-left: 1px solid #000; }
+:root[data-theme="minimal"] .vote-btn.up[aria-pressed="true"] { background: #000; color: #fff; border-color: #000; }
+:root[data-theme="minimal"] .vote-btn.down[aria-pressed="true"] { background: #fff; color: #e10600; border-color: #e10600; }
+:root[data-theme="minimal"] .vote[data-vote="-1"] .vote-score { color: #e10600; }
+:root[data-theme="minimal"] .vote[data-vote="1"] .vote-score { color: #000; text-decoration: underline; text-underline-offset: 3px; }
+:root[data-theme="minimal"] :is(.fp-flag, .fp-flag.mod) { border-color: #000; color: #000; }
+:root[data-theme="minimal"] .ov-avatar { background: #000; color: #fff; }
+:root[data-theme="minimal"] :is(.pf-pin, .fp-root) { border-left-width: 1px; }
+:root[data-theme="minimal"] .pf-pin { border-left-color: #000; }
+:root[data-theme="minimal"] .ft-list .forum-thread.pinned { background: #fff; box-shadow: inset 2px 0 0 #e10600; }
+:root[data-theme="minimal"] .bp { background: #fff; }

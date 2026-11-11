@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { browseTitles, getSeasonalLineup, getTrendingNow } from "@/lib/anilist";
 import { getRecommendationsAction, type Recommendations } from "@/app/actions/anilist";
 import { DEFAULT_FILTERS, SEASON_INFO, badgeFor, glyphFor, hueFor, hueToVar, lengthFor, seasonOf, titleHref, type BrowseFilters, type Title } from "@/lib/anilist-shared";
+import { LINEUP_SECTION, browseHref, seasonSlug } from "@/lib/browse-sections";
 import type { EntryType } from "@/lib/types";
 import { RecRow } from "./posters";
 
@@ -43,8 +44,11 @@ export async function SeasonalSection() {
   return (
     <div className="idx-section" data-accent="violet">
       <div className="idx-section-header">
-        <div className="idx-section-title">{info.label} {year} Season <span className="idx-section-kanji">{info.kanji}</span></div>
-        <div className="idx-section-meta">{info.months} {year}{page ? ` · ${page.total} TITLES` : ""}</div>
+        <div className="idx-section-title">{info.label} {year} Season <span className="idx-section-kanji" data-latin="Seasonal">{info.kanji}</span></div>
+        <div className="idx-section-side">
+          <div className="idx-section-meta">{info.months} {year}{page ? ` · ${page.total} TITLES` : ""}</div>
+          <Link className="ov-see-more" href={browseHref("anime/seasonal", seasonSlug(year, season))}>See more</Link>
+        </div>
       </div>
       <FeaturedRail items={page?.items} />
     </div>
@@ -79,8 +83,11 @@ export async function LineupSection({ type }: { type: LineupType }) {
   return (
     <div className="idx-section" data-accent="violet">
       <div className="idx-section-header">
-        <div className="idx-section-title">{title} <span className="idx-section-kanji">{kanji}</span></div>
-        <div className="idx-section-meta">{meta}{page ? ` · ${page.total} TITLES` : ""}</div>
+        <div className="idx-section-title">{title} <span className="idx-section-kanji" data-latin="❧">{kanji}</span></div>
+        <div className="idx-section-side">
+          <div className="idx-section-meta">{meta}{page ? ` · ${page.total} TITLES` : ""}</div>
+          <Link className="ov-see-more" href={browseHref(LINEUP_SECTION[type])}>See more</Link>
+        </div>
       </div>
       <FeaturedRail items={page?.items} />
     </div>
@@ -91,7 +98,7 @@ export function SeasonalFallback({ title = "This Season", kanji = "今期アニ�
   return (
     <div className="idx-section" data-accent="violet">
       <div className="idx-section-header">
-        <div className="idx-section-title">{title} <span className="idx-section-kanji">{kanji}</span></div>
+        <div className="idx-section-title">{title} <span className="idx-section-kanji" data-latin="❧">{kanji}</span></div>
         <div className="idx-section-meta">LOADING…</div>
       </div>
       <div className="idx-seasonal-track" aria-busy="true">
