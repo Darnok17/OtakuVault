@@ -135,7 +135,7 @@ export default function SettingsClient({ account }: { account: Account }) {
                 <span className="ov-toggle-track" />
                 <span className="ov-toggle-text">
                   <span className="ov-toggle-title">Screen effects</span>
-                  <span className="ov-toggle-desc">The CRT scanline overlay in Retro and the cursor sparkle trail in Super Anime. Kept on this device.</span>
+                  <span className="ov-toggle-desc">The CRT scanline overlay in Retro and the cursor sparkle trail in Comic Strip. Kept on this device.</span>
                 </span>
               </label>
             </section>

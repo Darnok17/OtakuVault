@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db, entries, users } from "@/lib/db";
 import { getTitleById } from "@/lib/anilist";
-import { lengthFor, type Title } from "@/lib/anilist-shared";
+import { entryLengthFor, type Title } from "@/lib/anilist-shared";
 import type { EntryStatus } from "@/lib/types";
 
 // The starter collection every new account gets, so the Collection page isn't empty on day one.
@@ -26,7 +26,7 @@ const STARTERS: Starter[] = [
 const MINUTE = 60_000;
 
 function rowFor(s: Starter, t: Title | null, userId: string, createdAt: Date) {
-  const length = t ? lengthFor(t) : { label: s.totalEps, total: s.total };
+  const length = t ? entryLengthFor(t) : { label: s.totalEps, total: s.total };
   return {
     userId, createdAt,
     title: t?.title ?? s.title,

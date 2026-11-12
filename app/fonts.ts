@@ -26,7 +26,7 @@ const chakra = Chakra_Petch({ weight: ["400", "500", "600", "700"], subsets: ["l
 /* Minimal */
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk", preload: false });
 
-/* Super Anime (Bebas Neue is shared with Terminal) */
+/* Comic Strip (Bebas Neue is shared with Terminal) */
 const rampart = Rampart_One({ weight: "400", subsets: ["latin"], variable: "--font-rampart", preload: false });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", preload: false });
 

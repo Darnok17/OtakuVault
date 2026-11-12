@@ -81,8 +81,23 @@ function AuthControls() {
 }
 
 export default function SiteNav() {
+  const ref = useRef<HTMLElement>(null);
+
+  // Publishes the nav's real height as --nav-h. Bars that stick below the nav (the collection's
+  // stats bar) use it; the height depends on the theme's type and borders and on wrapping, so a
+  // fixed number left those bars tucked under the nav in some themes.
+  useEffect(() => {
+    const nav = ref.current;
+    if (!nav) return;
+    const publish = () => document.documentElement.style.setProperty("--nav-h", `${nav.offsetHeight}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <nav className="site-nav">
+    <nav className="site-nav" ref={ref}>
       <Link href="/" className="site-nav-brand">
         <span className="logo-main">OtakuVault</span>
         <span className="logo-sub">Personal Collection Tracker</span>

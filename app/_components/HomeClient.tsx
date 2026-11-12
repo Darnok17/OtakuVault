@@ -229,7 +229,7 @@ export default function HomeClient({ track, board, discover }: { track: ReactNod
               <div className="feat-kicker" data-latin="Design">意匠</div>
               <h2 className="feat-title">{THEMES.length} Selectable Themes</h2>
               <p className="feat-body">
-                From {THEMES[0].name} to {THEMES.find((t) => t.id === "anime")!.name}: the same vault as a neon terminal, a parchment codex, a paused VHS tape, a black-and-white grid, a shonen cover or a printed manga page. Each one changes the type, the shapes and the way things move, not just the colors.
+                From {THEMES[0].name} to {THEMES.find((t) => t.id === "comic-strip")!.name}: the same vault as a neon terminal, a parchment codex, a paused VHS tape, a black-and-white grid, a comic strip or a printed manga page. Each one changes the type, the shapes and the way things move, not just the colors.
               </p>
               <p className="feat-body feat-themes-hint">Pick one. It applies right away and follows your account.</p>
             </div>

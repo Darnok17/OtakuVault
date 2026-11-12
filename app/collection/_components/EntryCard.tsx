@@ -89,7 +89,7 @@ export function CardFace({
         {!isPlanTo && (
           <div className="card-footer">
             <div className="stars"><Stars rating={entry.rating} /></div>
-            <span className={`rank-badge ${isTop ? "top" : ""}`}>#{rank}</span>
+            <span className={`rank-badge${rank <= 3 ? " podium" : ""}${isTop ? " top" : ""}`}>#{rank}</span>
           </div>
         )}
       </div>

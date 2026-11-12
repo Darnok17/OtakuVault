@@ -22,6 +22,13 @@
       "when": 1794365405599,
       "tag": "0002_themes_community_store",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794444462752,
+      "tag": "0003_rename_theme_comic_strip",
+      "breakpoints": true
     }
   ]
 }

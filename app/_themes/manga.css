@@ -166,7 +166,12 @@
   text-shadow: 3px 3px 0 #fff, 5px 5px 0 #141414;
 }
 :root[data-theme="manga"] .site-nav .logo-main { text-shadow: none; }
-:root[data-theme="manga"] .home-title { text-shadow: 4px 4px 0 var(--bg), 8px 8px 0 #141414; transform: rotate(-1.5deg); display: inline-block; }
+/* Block + fit-content, not inline-block: two inline-blocks in a row share a line, which put the
+   subtitle bubble on top of the title. */
+:root[data-theme="manga"] .home-title {
+  text-shadow: 4px 4px 0 var(--bg), 8px 8px 0 #141414; transform: rotate(-1.5deg);
+  display: block; width: fit-content; max-width: 100%; margin: 0 auto 1.9rem;
+}
 :root[data-theme="manga"] :is(.idx-title, .forum-title, .store-title, .auth-title) .accent {
   background: none; -webkit-text-fill-color: var(--acc-1); color: var(--acc-1);
 }
@@ -191,7 +196,7 @@
   position: relative; background: #fff; color: #141414; border: 2.5px solid #000; border-radius: 22px;
   box-shadow: none; outline: none;
 }
-:root[data-theme="manga"] .home-subtitle { display: inline-block; padding: .9rem 1.6rem; max-width: 40rem; }
+:root[data-theme="manga"] .home-subtitle { display: block; width: fit-content; padding: .9rem 1.6rem; max-width: min(40rem, 100%); }
 :root[data-theme="manga"] .card-notes { padding: .5rem .75rem; border-width: 2px; border-radius: 14px; font-style: normal; }
 :root[data-theme="manga"] :is(.home-subtitle, .card-notes, .ov-bubble)::after {
   content: ""; position: absolute; left: 28px; top: -9px; width: 14px; height: 14px; background: #fff;
@@ -201,7 +206,10 @@
 :root[data-theme="manga"] .card-notes::after { left: 16px; top: -7px; width: 10px; height: 10px; border-width: 2px 0 0 2px; }
 
 /* ── Action text: the only colour on the page ── */
-:root[data-theme="manga"] :is(.rec-poster-rank, .rank-badge) {
+/* The starburst is for the top three. .rec-poster-rank is only rendered for ranks 1-3; the
+   collection's .rank-badge is on every card, so it needs the .podium class. */
+:root[data-theme="manga"] .rank-badge { color: #141414; text-shadow: none; }
+:root[data-theme="manga"] :is(.rec-poster-rank, .rank-badge.podium) {
   background: var(--action); color: #000; border: 2px solid #000; text-shadow: none; font-weight: 700;
   clip-path: polygon(50% 0, 62% 14%, 80% 6%, 82% 25%, 100% 28%, 90% 45%, 100% 62%, 82% 68%, 82% 88%, 63% 82%, 50% 100%, 37% 82%, 18% 88%, 18% 68%, 0 62%, 10% 45%, 0 28%, 18% 25%, 20% 6%, 38% 14%);
   border: none; padding: .7em .8em;

@@ -264,7 +264,8 @@
 }
 
 /* ── Collection ── */
-:root[data-theme="rustic"] header { background: transparent; border-bottom: 1px solid var(--border); backdrop-filter: none; }
+/* Sticky like every other theme, so it needs a ground: parchment, a touch translucent. */
+:root[data-theme="rustic"] header { background: rgb(from var(--surface) r g b / .95); border-bottom: 1px solid var(--border); backdrop-filter: none; }
 :root[data-theme="rustic"] header::after { display: none; }
 :root[data-theme="rustic"] .controls { background: rgb(from var(--surface) r g b / .9); border-bottom: 3px double var(--border-strong); backdrop-filter: none; }
 :root[data-theme="rustic"] .card::after { display: none; }

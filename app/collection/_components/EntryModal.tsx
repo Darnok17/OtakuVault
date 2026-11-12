@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { lengthFor, titleHref, type Title } from "@/lib/anilist-shared";
+import { getTitleByIdAction } from "@/app/actions/anilist";
+import { entryLengthFor, titleHref, type Title } from "@/lib/anilist-shared";
 import type { Entry, EntryStatus, EntryType } from "@/lib/types";
 import AniListSearch from "./AniListSearch";
 import CoverDropZone from "./CoverDropZone";
@@ -36,13 +37,19 @@ export default function EntryModal({
 
   const [uploading, setUploading] = useState(false);
   const titleInput = useRef<HTMLInputElement>(null);
+  // The title last picked from the AniList search, when AniList has no length for it.
+  const [noLength, setNoLength] = useState<Title | null>(null);
+  const pickId = useRef(0);
 
   // Functional update: the cover image is set asynchronously, after the upload finishes.
   const set = <K extends keyof Entry>(k: K, v: Entry[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   // AniList autofill: fills the fields a title card needs; everything stays editable before saving.
+  // anilistId is what links the saved card to the title's detail page.
   const fillFromAniList = (t: Title) => {
-    const length = lengthFor(t);
+    const pick = ++pickId.current;
+    const length = entryLengthFor(t);
+    setNoLength(length.known ? null : t);
     setForm((f) => ({
       ...f,
       title: t.title,
@@ -52,7 +59,24 @@ export default function EntryModal({
       progressTotal: length.total,
       imageUrl: t.cover ?? "",
       status: "plan-to",
+      anilistId: t.anilistId,
     }));
+    // Search results can predate the aired-episode count; the title lookup has it. Only fills
+    // the two length fields, and only if they are still as the pick left them.
+    if (!length.known && t.entryType === "anime") {
+      getTitleByIdAction(t.anilistId).then((full) => {
+        const fresh = entryLengthFor(full);
+        if (pick !== pickId.current || !fresh.known) return;
+        setNoLength(null);
+        setForm((f) => (f.anilistId === t.anilistId && !f.totalEps && !f.progressTotal ? { ...f, totalEps: fresh.label, progressTotal: fresh.total } : f));
+      }).catch(() => {}); // the fields simply stay empty and editable
+    }
+  };
+
+  // Changing the type by hand means the entry is no longer the picked AniList title.
+  const setType = (type: EntryType) => {
+    setNoLength(null);
+    setForm((f) => ({ ...f, type, anilistId: !isEdit && type !== f.type ? undefined : f.anilistId }));
   };
 
   const submit = (e: React.FormEvent) => {
@@ -94,7 +118,7 @@ export default function EntryModal({
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".75rem" }}>
             <label style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
               <span style={labelStyle}>Type</span>
-              <ThemedSelect variant="field" value={form.type} onChange={(v) => set("type", v)} options={TYPE_OPTIONS} aria-label="Type" />
+              <ThemedSelect variant="field" value={form.type} onChange={setType} options={TYPE_OPTIONS} aria-label="Type" />
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
               <span style={labelStyle}>Status</span>
@@ -110,6 +134,11 @@ export default function EntryModal({
           <label style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
             <span style={labelStyle}>Total episodes/chapters</span>
             <input type="text" value={form.totalEps} onChange={(e) => set("totalEps", e.target.value)} placeholder="24 eps" style={inputStyle} />
+            {noLength && !form.totalEps && (
+              <span className="al-search-note al-length-note" role="status">
+                &gt; AniList has no {noLength.entryType === "anime" ? "episode" : noLength.entryType === "novel" ? "volume" : "chapter"} count for this title yet{noLength.status === "RELEASING" ? " (still releasing)" : ""}. Enter it yourself.
+              </span>
+            )}
           </label>
 
           {(form.status === "watching" || form.status === "dropped") && (

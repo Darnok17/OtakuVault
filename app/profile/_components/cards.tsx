@@ -4,13 +4,15 @@ import { entryHref, type ProfileBoard, type ResolvedPin } from "@/lib/profile";
 import type { Entry } from "@/lib/types";
 
 const cssUrl = (url: string) => `url(${JSON.stringify(url)})`;
-const stars = (rating: number) => (rating > 0 ? `★ ${rating % 1 ? rating.toFixed(1) : rating}` : "Unrated");
+// Just the number: .rec-poster-rating draws the star itself.
+const ratingText = (rating: number) => (rating % 1 ? rating.toFixed(1) : String(rating));
 
 // A collection entry as a poster: the same card the Index uses, without the add button.
 // Entries linked to AniList open their title page; hand-made ones are not clickable.
 export function EntryPoster({ entry, progress = false }: { entry: Entry; progress?: boolean }) {
   const href = entryHref(entry);
   const pct = entry.progressTotal > 0 ? Math.min(100, Math.round((entry.progressCurrent / entry.progressTotal) * 100)) : null;
+  const showProgress = progress && entry.progressTotal > 0;
   return (
     <div className="rec-poster" style={{ "--poster-accent": `var(--${entry.type})` } as React.CSSProperties}>
       {href && <Link className="td-card-link" href={href} aria-label={entry.title} />}
@@ -24,7 +26,9 @@ export function EntryPoster({ entry, progress = false }: { entry: Entry; progres
         <div className="rec-poster-title">{entry.title}</div>
         <div className="rec-poster-meta">
           <span className="rec-poster-badge">{entry.type}</span>
-          <span className="rec-poster-rating">{progress && entry.progressTotal > 0 ? `${entry.progressCurrent}/${entry.progressTotal}` : stars(entry.rating)}</span>
+          {showProgress ? <span className="rec-poster-rating plain">{entry.progressCurrent}/{entry.progressTotal}</span>
+            : entry.rating > 0 ? <span className="rec-poster-rating" aria-label={`Rated ${ratingText(entry.rating)} out of 5`}>{ratingText(entry.rating)}</span>
+            : <span className="rec-poster-rating plain">Unrated</span>}
         </div>
       </div>
     </div>

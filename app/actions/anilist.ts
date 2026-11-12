@@ -9,7 +9,7 @@ import {
   browseTitles, getRecommendations, getSeasonalLineup, getTitleById, getTitleDetails, getTrendingNow, getTypeCounts, searchTitles,
 } from "@/lib/anilist";
 import {
-  DEFAULT_FILTERS, ENTRY_TYPES, lengthFor,
+  DEFAULT_FILTERS, ENTRY_TYPES, entryLengthFor,
   type AddResult, type BrowseFilters, type BrowseSort, type BrowseStatus, type DetailsResult, type Season, type Title, type TitlePage,
 } from "@/lib/anilist-shared";
 import type { EntryStatus, EntryType } from "@/lib/types";
@@ -142,7 +142,7 @@ export async function addToCollectionFromAnilist(anilistId: number, type: EntryT
   const dupe = await findCollectionEntry(userId, t.anilistId, type, [t.title, t.romaji, t.native]);
   if (dupe) return { status: "exists", entry: toEntry(dupe) };
 
-  const length = lengthFor(t);
+  const length = entryLengthFor(t);
   const [row] = await db.insert(entries).values({
     userId,
     anilistId: t.anilistId,

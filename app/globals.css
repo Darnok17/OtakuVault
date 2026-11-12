@@ -28,7 +28,11 @@
     radial-gradient(ellipse 40% 30% at 50% 50%,rgb(from var(--acc-3) r g b / .04) 0%,transparent 60%),
     repeating-linear-gradient(0deg,transparent,transparent 60px,rgb(from var(--hi) r g b / calc(.012 * var(--scan-k))) 60px,rgb(from var(--hi) r g b / calc(.012 * var(--scan-k))) 61px),
     repeating-linear-gradient(90deg,transparent,transparent 60px,rgb(from var(--hi) r g b / calc(.012 * var(--scan-k))) 60px,rgb(from var(--hi) r g b / calc(.012 * var(--scan-k))) 61px);
-    pointer-events:none;z-index:0;
+    /* Behind the page, not level with it: at z-index 0 a fixed layer paints over all content
+       that is not itself positioned. Invisible while the layer is a faint glow, but the themes
+       that make it opaque (Retro's sky, Manga Panel's paper) lost every unpositioned element on
+       pages without a z-indexed wrapper: the forum's chips, tabs and panels, the title pages. */
+    pointer-events:none;z-index:-1;
     animation:auroraShift 24s ease-in-out infinite;}
   @keyframes auroraShift{
     0%,100%{background-position:0 0, 0 0, 0 0, 0 0, 0 0;}
@@ -112,7 +116,7 @@
   }
 
   /* Collection's own header now sits BELOW the site nav */
-  #page-collection header{top:63px;}  /* nav height roughly */
+  #page-collection header{top:var(--nav-h,63px);}  /* --nav-h: the nav's measured height (SiteNav.tsx) */
   /* Hide the duplicate OtakuVault title in the collection header now that
      the site nav carries the brand. Stats + layout stay. */
   #page-collection header .logo{display:none;}
@@ -641,7 +645,10 @@
     background-size:200% 200%;
     -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
     animation:gradientShift 8s ease-in-out infinite;
-    margin-bottom:.3rem;
+    /* Gradient text is only painted inside the element's own box, and at line-height 1 that box
+       ends above the descenders of the taller display faces (Cormorant Garamond loses ~.1em).
+       The padding extends the painted box; the margin takes the same amount back. */
+    padding-bottom:.16em;margin-bottom:calc(.3rem - .16em);
     text-shadow:none;
   }
   .stat-lbl{
@@ -675,7 +682,8 @@
     background-size:200% 200%;
     -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
     animation:gradientShift 8s ease-in-out infinite;
-    margin:0 0 1rem;
+    /* Room for descenders inside the painted box — see .stat-big. */
+    padding-bottom:.16em;margin:0 0 calc(1rem - .16em);
   }
   .feat-cta-body{
     color:var(--fg-dim);font-size:1rem;line-height:1.6;
@@ -896,6 +904,8 @@
     font-weight:700;
   }
   .rec-poster-rating::before{content:'★ ';}
+  /* Progress counts and "Unrated" share the slot but are not ratings: no star. */
+  .rec-poster-rating.plain::before{content:none;}
   /* Top-right rank corner for "trending #1" style */
   .rec-poster-rank{
     position:absolute;top:.4rem;right:.4rem;z-index:2;
@@ -923,6 +933,9 @@
     margin-bottom:1.4rem;
     color:var(--fg);
   }
+  /* Gradient accents are inline: block padding widens what gets painted (descenders included)
+     without changing the line's height. */
+  :is(.placeholder-title,.idx-title,.forum-title,.store-title,.auth-title) .accent{padding-block:.12em;}
   .placeholder-title .accent{
     background:linear-gradient(135deg,var(--acc-1) 0%,var(--acc-3) 100%);
     -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
@@ -1874,6 +1887,9 @@
     color:var(--fg-dim);
     min-width:70px;
   }
+  /* Number and label are adjacent inline spans with no space between them; without a gap the
+     label sits against (and, with the slanted display faces, under) the number. */
+  .forum-thread-stats > div{display:flex;align-items:baseline;gap:.4em;white-space:nowrap;}
   .forum-thread-stats .count-num{
     color:var(--fg);font-weight:700;font-size:calc(.95rem * var(--display-scale));letter-spacing:calc(.03em * var(--display-track));
     font-family:var(--font-display);text-transform:var(--display-case);line-height:1;
@@ -3481,23 +3497,24 @@
       minmax(100px, 1fr)  /* 6 progress bar */
       70px                /* 7 stars */
       44px;               /* 8 rank */
+    grid-template-areas:"handle cover title actions meta progress stars rank";
     gap:.9rem;
     align-items:center;
     padding:.55rem .8rem;
     min-height:60px;
     height:auto;
   }
-  /* Explicit visual order so title lands at col 3 (next to cover) and
-     action buttons at col 4 — regardless of DOM order. Everything else
-     flows left-to-right as declared. */
-  .view-list .drag-handle   {order:1;}
-  .view-list .card-cover-wrap{order:2;}
-  .view-list .card-title    {order:3;}
-  .view-list .card-actions  {order:4;}
-  .view-list .card-meta     {order:5;}
-  .view-list .card-progress {order:6;}
-  .view-list .stars         {order:7;}
-  .view-list .rank-badge    {order:8;}
+  /* Every part is pinned to its own column, so a row that lacks one (no drag handle when its
+     rating tier has a single entry, no progress, no stars on a watchlist row) leaves that column
+     empty instead of sliding everything after it one column left. */
+  .view-list .drag-handle   {grid-area:handle;}
+  .view-list .card-cover-wrap{grid-area:cover;}
+  .view-list .card-title    {grid-area:title;}
+  .view-list .card-actions  {grid-area:actions;}
+  .view-list .card-meta     {grid-area:meta;}
+  .view-list .card-progress {grid-area:progress;}
+  .view-list .stars         {grid-area:stars;}
+  .view-list .rank-badge    {grid-area:rank;}
   .view-list .card:hover{transform:translateY(-1px);}
 
   /* Drag handle: visible as a column in list view, not an overlay */
@@ -3614,11 +3631,6 @@
     width:26px;height:26px;font-size:.75rem;
   }
 
-  /* When a plan-to (watchlist) card appears in list view, slots left empty
-     are still reserved so columns line up with other rows. */
-  .view-list .card[data-watchlist] .card-footer,
-  .view-list .card:not(:has(.drag-handle))::before{content:'';}
-
   /* Hide the big-grid-only cover hover zoom in list view */
   .view-list .card:hover .card-cover{transform:none;}
 
@@ -3627,6 +3639,7 @@
     .view-list .card{
       grid-template-columns:
         24px 44px minmax(0,2fr) minmax(0,1fr) 60px 44px;
+      grid-template-areas:"handle cover title meta stars rank";
     }
     .view-list .card-progress,
     .view-list .card-actions{display:none;}
@@ -3634,6 +3647,7 @@
   @media (max-width: 640px){
     .view-list .card{
       grid-template-columns: 44px minmax(0,2fr) 60px 44px;
+      grid-template-areas:"cover title stars rank";
       gap:.6rem;
     }
     .view-list .drag-handle,

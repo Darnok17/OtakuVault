@@ -58,6 +58,7 @@ async function gql<T>(query: string, variables: Record<string, unknown> = {}): P
 
 const MEDIA_FIELDS = `
   id type format status episodes chapters volumes averageScore popularity genres countryOfOrigin
+  nextAiringEpisode { episode }
   season seasonYear startDate { year }
   title { romaji english native }
   coverImage { extraLarge large medium color }
@@ -66,6 +67,7 @@ const MEDIA_FIELDS = `
 type RawMedia = {
   id: number; type: MediaKind; format: string | null; status: string | null;
   episodes: number | null; chapters: number | null; volumes: number | null;
+  nextAiringEpisode?: { episode: number } | null;
   averageScore: number | null; popularity: number | null; genres: string[] | null; countryOfOrigin: string | null;
   season: Season | null; seasonYear: number | null; startDate: { year: number | null } | null;
   title: { romaji: string | null; english: string | null; native: string | null };
@@ -94,6 +96,7 @@ function normalize(m: RawMedia): Title {
     format: m.format,
     status: m.status,
     episodes: m.episodes,
+    airedEpisodes: m.nextAiringEpisode ? Math.max(m.nextAiringEpisode.episode - 1, 0) : null,
     chapters: m.chapters,
     volumes: m.volumes,
     score: m.averageScore,
@@ -295,10 +298,19 @@ export async function getTypeCounts(): Promise<number[] | null> {
   }
 }
 
+// The title as last cached, without asking AniList. Null if we have never seen it.
+export async function getCachedTitle(anilistId: number): Promise<Title | null> {
+  const [row] = await db.select({ meta: cachedTitles.meta }).from(cachedTitles).where(eq(cachedTitles.anilistId, anilistId));
+  return (row?.meta as Title | undefined) ?? null;
+}
+
 export async function getTitleById(anilistId: number): Promise<Title> {
   const [row] = await db.select().from(cachedTitles).where(eq(cachedTitles.anilistId, anilistId));
   const cached = row?.meta as Title | undefined;
-  if (row && cached?.description !== undefined && isFresh(row.updatedAt, TITLE_TTL)) return cached!;
+  // An anime with no final count that was cached before airedEpisodes existed is refetched once,
+  // so its aired count is known.
+  const lacksAired = cached?.kind === "ANIME" && !cached.episodes && cached.airedEpisodes === undefined;
+  if (row && cached?.description !== undefined && !lacksAired && isFresh(row.updatedAt, TITLE_TTL)) return cached!;
   try {
     const data = await gql<{ Media: RawMedia | null }>(`
       query ($id: Int) { Media(id: $id) { ${MEDIA_FIELDS} description(asHtml: false) studios(isMain: true) { nodes { name } } } }`,

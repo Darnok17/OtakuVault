@@ -186,6 +186,9 @@
 :root[data-theme="minimal"] .progress-bar-fill { background: var(--acc-1) !important; }
 :root[data-theme="minimal"] .star { color: #cfcfcf; }
 :root[data-theme="minimal"] .star.lit { color: #000; }
+/* --border is black here; an unlit star must not look lit. */
+:root[data-theme="minimal"] :is(.stars-display, .star-rating-input) .star-bg { color: #cfcfcf; }
+:root[data-theme="minimal"] :is(.stars-display, .star-rating-input) .star-on { color: #000; }
 
 :root[data-theme="minimal"] :focus-visible { outline: 1px solid var(--acc-1); outline-offset: 3px; }
 

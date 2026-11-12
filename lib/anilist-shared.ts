@@ -16,6 +16,9 @@ export type Title = {
   format: string | null;
   status: string | null;
   episodes: number | null;
+  // Episodes aired so far, for anime AniList has no final count for (long-runners such as One
+  // Piece). Null when nothing is scheduled; absent on titles cached before it was added.
+  airedEpisodes?: number | null;
   chapters: number | null;
   volumes: number | null;
   score: number | null; // averageScore, 0–100
@@ -241,4 +244,14 @@ export function lengthFor(t: Title): { label: string; total: number } {
     t.entryType === "novel" ? [t.volumes, "vol"] :
     [t.chapters, "ch"];
   return n ? { label: `${n} ${unit}`, total: n } : { label: "", total: 0 };
+}
+
+// The length a new collection entry starts with: the final count, or for an anime still airing
+// without one, the episodes aired so far. AniList keeps no chapter or volume count for a manga,
+// webtoon or novel that is still releasing, so those come back empty (`known: false`).
+export function entryLengthFor(t: Title): { label: string; total: number; known: boolean } {
+  const final = lengthFor(t);
+  if (final.total) return { ...final, known: true };
+  if (t.entryType === "anime" && t.airedEpisodes) return { label: `${t.airedEpisodes} eps`, total: t.airedEpisodes, known: true };
+  return { ...final, known: false };
 }

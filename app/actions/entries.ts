@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { deleteImage, isDataImage, isOwnedUpload, uploadDataUrl } from "@/lib/storage";
 import { saveMoodboard } from "./moodboards";
 import { db, entries, entryStatus, entryType, moodboards } from "@/lib/db";
+import { getCachedTitle } from "@/lib/anilist";
 import { toEntry } from "@/lib/entries-db";
 import { seedStarterEntries } from "@/lib/starter-entries";
 import type { Entry, EntryStatus, EntryType, Moodboard } from "@/lib/types";
@@ -36,6 +37,12 @@ function int(v: unknown, field: string) {
 }
 function id(v: unknown) {
   return str(v, "id", 100);
+}
+// Absent means "not linked to AniList".
+function anilistIdOf(v: unknown) {
+  if (v == null) return null;
+  if (!Number.isInteger(v) || (v as number) < 1 || (v as number) > 10_000_000) throw new Error("Invalid anilistId");
+  return v as number;
 }
 
 // legacyImage: the row's current imageUrl. A pre-upload data URL is accepted only when it's
@@ -75,7 +82,15 @@ export async function getEntriesForUser(): Promise<Entry[]> {
 
 export async function addEntryAction(entry: NewEntryInput): Promise<Entry> {
   const userId = await requireUserId();
-  const [row] = await db.insert(entries).values({ ...entryFields(entry), userId }).returning();
+  const fields = entryFields(entry);
+  // Set when the title was picked from the AniList search; it is what links the card to its detail
+  // page. A link to a title of another type (the type was changed after picking) is dropped.
+  let anilistId = anilistIdOf(entry.anilistId);
+  if (anilistId !== null) {
+    const title = await getCachedTitle(anilistId);
+    if (title && title.entryType !== fields.type) anilistId = null;
+  }
+  const [row] = await db.insert(entries).values({ ...fields, anilistId, userId }).returning();
   return toEntry(row);
 }
 
@@ -123,8 +138,7 @@ export async function restoreEntryAction(entry: Entry, board?: Moodboard | null)
   const userId = await requireUserId();
   if (!Number.isFinite(entry.created)) throw new Error("Invalid created");
   const entryId = id(entry.id);
-  const anilistId = entry.anilistId ?? null;
-  if (anilistId !== null && (!Number.isInteger(anilistId) || anilistId < 1 || anilistId > 10_000_000)) throw new Error("Invalid anilistId");
+  const anilistId = anilistIdOf(entry.anilistId);
   // An entry deleted before the backfill ran may still carry base64 images: store them as uploads now.
   if (isDataImage(entry.imageUrl)) entry = { ...entry, imageUrl: await uploadDataUrl(entry.imageUrl, "cover", userId) };
   if (board?.nodes.some((n) => Object.values(n.data ?? {}).some(isDataImage))) {

@@ -170,7 +170,8 @@ export const useEntriesStore = create<EntriesState>()(
         async () => {
           const saved = await addEntryAction(fields);
           serverIds.set(tempId, saved.id);
-          // Keep any edits made while the insert was in flight; only adopt the server id/timestamp.
+          // Keep any edits made while the insert was in flight; only adopt the server id/timestamp
+          // and the AniList link as the server stored it.
           set((s) => {
             const moodboards = { ...s.moodboards };
             if (moodboards[tempId]) {
@@ -179,7 +180,7 @@ export const useEntriesStore = create<EntriesState>()(
             }
             return {
               moodboards,
-              entries: s.entries.map((e) => (e.id === tempId ? { ...e, id: saved.id, created: saved.created } : e)),
+              entries: s.entries.map((e) => (e.id === tempId ? { ...e, id: saved.id, created: saved.created, anilistId: saved.anilistId } : e)),
             };
           });
         },

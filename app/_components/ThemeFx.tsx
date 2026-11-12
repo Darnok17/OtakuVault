@@ -7,7 +7,7 @@ const MAX_LIVE = 24;
 const MIN_GAP_PX = 22;
 const COLORS = ["var(--pop)", "var(--acc-1)", "var(--acc-2)"];
 
-// Pointer effects that belong to one theme. Today that is Super Anime's sparkle trail: small
+// Pointer effects that belong to one theme. Today that is Comic Strip's sparkle trail: small
 // stars shed by the cursor. It only runs with a mouse (not touch), with screen effects switched
 // on in Settings, and never for people who asked their system for reduced motion.
 export default function ThemeFx() {
@@ -16,7 +16,7 @@ export default function ThemeFx() {
   const ready = useThemeStore((s) => s.ready);
 
   useEffect(() => {
-    if (!ready || theme !== "anime" || !fx) return;
+    if (!ready || theme !== "comic-strip" || !fx) return;
     if (!window.matchMedia("(pointer: fine)").matches || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const layer = document.createElement("div");

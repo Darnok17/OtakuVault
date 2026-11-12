@@ -5,7 +5,7 @@ import "./_themes/terminal.css";
 import "./_themes/rustic.css";
 import "./_themes/retro.css";
 import "./_themes/minimal.css";
-import "./_themes/anime.css";
+import "./_themes/comic-strip.css";
 import "./_themes/manga.css";
 import { fontVariables } from "./fonts";
 import { DEFAULT_THEME, THEME_INIT_SCRIPT } from "@/lib/themes";

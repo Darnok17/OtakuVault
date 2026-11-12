@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { authClient } from "@/lib/auth-client";
 import { saveThemePreference } from "@/app/actions/settings";
-import { DEFAULT_THEME, THEME_COOKIE, THEME_STORAGE_KEY, isThemeId, type ThemeId } from "@/lib/themes";
+import { DEFAULT_THEME, THEME_COOKIE, THEME_STORAGE_KEY, isThemeId, toThemeId, type ThemeId } from "@/lib/themes";
 
 /* The theme lives in three places:
      • <html data-theme> + a cookie — set before first paint by the inline script in the root
@@ -18,7 +18,7 @@ type Synced = { userId: string; theme: ThemeId };
 
 type ThemeState = {
   theme: ThemeId;
-  // Decorative extras a theme may add (Retro's CRT overlay, Super Anime's cursor sparkles).
+  // Decorative extras a theme may add (Retro's CRT overlay, Comic Strip's cursor sparkles).
   fx: boolean;
   // The account value this browser last saw or wrote; tells "changed here" from "changed elsewhere".
   synced: Synced | null;
@@ -62,6 +62,16 @@ export const useThemeStore = create<ThemeState>()(
     {
       name: THEME_STORAGE_KEY,
       partialize: ({ theme, fx, synced }) => ({ theme, fx, synced }),
+      // A saved theme may carry an id from before a rename (see toThemeId).
+      merge: (saved, current) => {
+        const s = (saved ?? {}) as Partial<Pick<ThemeState, "theme" | "fx" | "synced">>;
+        const syncedTheme = toThemeId(s.synced?.theme);
+        return {
+          ...current, ...s,
+          theme: toThemeId(s.theme) ?? current.theme,
+          synced: s.synced && syncedTheme ? { ...s.synced, theme: syncedTheme } : null,
+        };
+      },
       // Loaded in ThemeProvider's layout effect instead of at import, so the first client render
       // matches the server's (which only knows the default theme).
       skipHydration: true,
@@ -100,8 +110,8 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     void useThemeStore.persist.rehydrate();
     if (!hadSaved) {
       // Nothing in localStorage: trust what the inline script took from the cookie.
-      const fromDom = document.documentElement.getAttribute("data-theme");
-      if (isThemeId(fromDom)) useThemeStore.setState({ theme: fromDom });
+      const fromDom = toThemeId(document.documentElement.getAttribute("data-theme"));
+      if (fromDom) useThemeStore.setState({ theme: fromDom });
     }
     useThemeStore.setState({ ready: true });
     const { theme, fx } = useThemeStore.getState();
@@ -124,7 +134,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     useThemeStore.setState({ userId });
     if (!userId || pendingSaves > 0) return;
-    const remote = isThemeId(accountTheme) ? accountTheme : DEFAULT_THEME;
+    const remote = toThemeId(accountTheme) ?? DEFAULT_THEME;
     const { theme, synced } = useThemeStore.getState();
     if (synced?.userId !== userId || synced.theme !== remote) {
       // First time this browser sees the account, or the theme was changed on another device:

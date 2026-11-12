@@ -73,7 +73,8 @@ async function MainTab({ user, viewerId }: { user: ProfileUser; viewerId: string
 async function CollectionTab({ user, viewerId }: { user: ProfileUser; viewerId: string | null }) {
   const { owner, can } = visibility(user, viewerId);
   if (!can("collection")) return <Hidden what="collection" owner={user.displayName} />;
-  const entries = await getProfileEntries(user.id);
+  // Planned titles are the owner's watchlist, not their collection (same rule as /collection).
+  const entries = (await getProfileEntries(user.id)).filter((e) => e.status !== "plan-to");
   if (!entries.length) return <div className="ov-empty"><strong>Empty collection</strong>{owner ? "Add your first title from the Index." : `${user.displayName} hasn't added anything yet.`}</div>;
   return (
     <>
