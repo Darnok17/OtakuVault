@@ -36,6 +36,13 @@
       "when": 1794886963953,
       "tag": "0004_theme_matrix",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794889168964,
+      "tag": "0005_notifications",
+      "breakpoints": true
     }
   ]
 }
