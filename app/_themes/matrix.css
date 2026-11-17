@@ -143,9 +143,14 @@
   .home-tile, .card, .rec-poster, .idx-seasonal-card, .product, .forum-pinned-card, .forum-trend-card, .forum-thread,
   .td-char-card, .td-relation, .btn, .btn-primary, .nav-link, .view-btn, .tab-btn, .feat-cta-btn, .theme-card
 ):is(:hover, :active) { transform: none; }
-:root[data-theme="matrix"] :is(.home-tile, .card, .rec-poster, .idx-seasonal-card, .product, .forum-pinned-card, .forum-trend-card, .td-char-card, .td-relation, .theme-card):hover {
-  border-color: var(--acc-1); box-shadow: inset 0 0 0 1px rgb(0 255 65 / .25), 0 0 18px rgb(0 255 65 / .08);
+/* Hover/focus indicator: the tile's own 1px rule lights up phosphor green, plus a second pixel
+   and a faint glow drawn outside it with box-shadow, so nothing shifts. It never touches the art
+   inside. Tiles take focus through a stretched link that the tile's overflow clips, so the edge
+   also lights when anything inside it has keyboard focus. */
+:root[data-theme="matrix"] :is(.home-tile, .card, .rec-poster, .idx-seasonal-card, .product, .forum-pinned-card, .forum-trend-card, .td-char-card, .td-relation, .theme-card):is(:hover, :focus-visible, :has(:focus-visible)) {
+  border-color: var(--acc-1); box-shadow: 0 0 0 1px rgb(0 255 65 / .45), 0 0 14px rgb(0 255 65 / .2);
 }
+:root[data-theme="matrix"] :is(.home-tile, .card, .rec-poster, .idx-seasonal-card, .product, .forum-pinned-card, .forum-trend-card, .td-char-card, .td-relation, .theme-card):focus-visible { outline: none; }
 :root[data-theme="matrix"] :is(.modal, .nav-user-menu, .idx-toast, .auth-toast, .sync-toast, .undo-toast, .delete-toast, .al-search-panel, .td-menu-list, .ov-toast) {
   background: var(--float-a); border: 1px solid var(--border-strong); box-shadow: var(--shadow-elev-2);
   backdrop-filter: none; -webkit-backdrop-filter: none;
@@ -160,13 +165,11 @@
 :root[data-theme="matrix"] .home-tile-corner { border-width: 1px; width: 10px; height: 10px; opacity: .8; }
 :root[data-theme="matrix"] .home-tile:hover .home-tile-corner { transform: none; border-width: 1px; filter: none; box-shadow: none; }
 
-/* Cover art is phosphor-tinted until you point at it. */
-:root[data-theme="matrix"] :is(.rec-poster-img, .idx-seasonal-img, .card-cover img, .td-relation-img, .td-char-card img, .product-img) {
-  filter: grayscale(1) sepia(1) hue-rotate(68deg) saturate(2.4) brightness(.78) contrast(1.15);
-  transition: filter .35s steps(4);
-}
-:root[data-theme="matrix"] :is(.rec-poster, .idx-seasonal-card, .card, .td-relation, .td-char-card, .product):hover :is(.rec-poster-img, .idx-seasonal-img, .card-cover img, .td-relation-img, img, .product-img) {
-  filter: none; transform: none;
+/* Cover art keeps its own colours: no filter, and no type-coloured aura (green here) over it on
+   hover. It still doesn't zoom, like everything else in this theme. */
+:root[data-theme="matrix"] .card::after { display: none; }
+:root[data-theme="matrix"] :is(.rec-poster, .idx-seasonal-card, .card, .td-relation, .td-char-card, .product):hover :is(.rec-poster-img, .idx-seasonal-img, .card-cover, .td-relation-img, .td-char-card img) {
+  transform: none;
 }
 
 /* ── Navigation: a status line ── */
