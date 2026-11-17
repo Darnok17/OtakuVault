@@ -69,7 +69,7 @@
   --shade-k: 1;
   --glow-k: .55;
   --well-k: 1;
-  --scan-k: 1.6;
+  --scan-k: 0;                   /* no scanline textures */
   --hi: #00ff41;
   --shadow-elev-0: none;
   --shadow-elev-1: 0 0 0 1px #000;
@@ -110,10 +110,9 @@
 
   /* Matrix-only */
   --phosphor: 0 0 1px rgb(0 255 65 / .9), 0 0 9px rgb(0 255 65 / .38);
-  --scanlines: repeating-linear-gradient(0deg, rgb(0 0 0 / .32) 0 1px, transparent 1px 3px);
 }
 
-/* ── Page: black glass, a faint grid of green, scanlines on top ── */
+/* ── Page: black glass with a faint grid of green ── */
 :root[data-theme="matrix"] body { font-size: 15px; }
 :root[data-theme="matrix"] body::before {
   animation: none;
@@ -123,10 +122,6 @@
     #010401;
 }
 :root[data-theme="matrix"] body::after { display: none; }
-:root[data-theme="matrix"]:not([data-fx="off"]) body::after {
-  display: block; z-index: 10000; opacity: 1; mix-blend-mode: normal;
-  background-image: var(--scanlines);
-}
 :root[data-theme="matrix"] *::selection { background: #00ff41; color: #000; text-shadow: none; -webkit-text-fill-color: #000; }
 :root[data-theme="matrix"] :focus-visible { outline: 1px solid var(--acc-1); outline-offset: 3px; }
 :root[data-theme="matrix"] a { text-underline-offset: 3px; }
@@ -320,7 +315,6 @@
     #010401;
   border: 1px solid var(--border-strong);
 }
-.tp[data-theme="matrix"]::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--scanlines); }
 .tp[data-theme="matrix"] .tp-nav { background: #000; border-bottom-color: var(--border-strong); }
 .tp[data-theme="matrix"] :is(.tp-title, .tp-logo) { color: var(--acc-1); text-shadow: var(--phosphor); }
 .tp[data-theme="matrix"] .tp-title::after { content: ""; display: inline-block; width: .5em; height: .8em; margin-left: .1em; background: var(--acc-1); vertical-align: -.05em; }
