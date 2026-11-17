@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import NotificationBell from "./NotificationBell";
 
 function ActiveLink({ href, children }: { href: string; children: ReactNode }) {
   const path = usePathname();
@@ -70,7 +71,7 @@ function UserMenu({ name, email, image, username, isAdmin }: { name: string; ema
 
 function AuthControls() {
   const { data, isPending } = authClient.useSession();
-  if (data) return <div className="auth-cta-group"><UserMenu name={data.user.name} email={data.user.email} image={data.user.avatarUrl ?? data.user.image} username={data.user.username} isAdmin={data.user.isAdmin} /></div>;
+  if (data) return <div className="auth-cta-group"><NotificationBell key={data.user.id} /><UserMenu name={data.user.name} email={data.user.email} image={data.user.avatarUrl ?? data.user.image} username={data.user.username} isAdmin={data.user.isAdmin} /></div>;
   return (
     // Hidden (not removed) while the session loads so the nav doesn't jump.
     <div className="auth-cta-group" style={isPending ? { visibility: "hidden" } : undefined}>

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db, users } from "@/lib/db";
+import { getNotificationPrefs } from "@/lib/notifications";
 import SettingsClient from "./SettingsClient";
 
 export const metadata: Metadata = { title: "Settings · OtakuVault" };
@@ -17,9 +18,11 @@ async function SettingsData() {
     .select({ name: users.displayName, email: users.email, username: users.username, isProfilePublic: users.isProfilePublic, createdAt: users.createdAt })
     .from(users).where(eq(users.id, session.user.id));
   if (!row) redirect("/login?redirect=/settings");
+  const notificationPrefs = await getNotificationPrefs(session.user.id);
   return (
     <SettingsClient
       account={{ name: row.name, email: row.email, username: row.username ?? "", isProfilePublic: row.isProfilePublic, joined: row.createdAt.toISOString() }}
+      notificationPrefs={notificationPrefs}
     />
   );
 }

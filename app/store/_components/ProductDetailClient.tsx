@@ -6,6 +6,7 @@ import PinButton from "@/app/_components/PinButton";
 import { useCartStore } from "@/lib/cart-store";
 import { CART_MAX_QTY, cartKey, formatPrice, hueToken, type ProductDetail } from "@/lib/store-shared";
 import ProductArt from "./ProductArt";
+import RestockAlert from "./RestockAlert";
 
 const uniq = <T,>(list: T[]) => [...new Set(list)];
 
@@ -21,7 +22,7 @@ export default function ProductDetailClient({ product: p }: { product: ProductDe
   const [added, setAdded] = useState(false);
 
   const variant = p.variants.find((v) => (v.size ?? null) === size && (v.color ?? null) === color) ?? null;
-  const soldOut = p.variants.length > 0 && (!variant || variant.stock <= 0);
+  const soldOut = p.variants.length > 0 ? !variant || variant.stock <= 0 : p.stock !== null && p.stock <= 0;
   const price = variant?.price ?? p.basePrice;
   const hex = p.variants.find((v) => v.color === color)?.colorHex ?? null;
   const stockOf = (s: string | null, c: string | null) => p.variants.find((v) => (v.size ?? null) === s && (v.color ?? null) === c)?.stock ?? 0;
@@ -96,6 +97,8 @@ export default function ProductDetailClient({ product: p }: { product: ProductDe
           <button type="button" className="btn btn-primary pd-add" disabled={soldOut} onClick={addToCart}>{soldOut ? "Sold out" : `Add to cart · ${formatPrice(price * qty)}`}</button>
           <PinButton kind="product" targetId={p.id} label={p.title} className="btn btn-ghost" withText />
         </div>
+        {/* A size/colour pairing that isn't made at all has nothing to wait for. */}
+        {soldOut && (variant || !p.variants.length) && <RestockAlert productId={p.id} variantId={variant?.id ?? null} />}
         {added && (
           <div className="ov-ok" role="status">
             Added {qty > 1 ? `${qty} × ` : ""}{p.title}{label ? ` (${label})` : ""} to your cart. <Link className="ov-link" href="/store/cart">View cart</Link>

@@ -4,6 +4,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { EntryStatus, EntryType, MoodNode, MoodWire, PinKind, PublicFields } from "@/lib/types";
+import type { NotificationType } from "@/lib/notifications-shared";
 
 const id = () => text("id").primaryKey().$defaultFn(() => crypto.randomUUID());
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
@@ -154,6 +155,9 @@ export const products = pgTable("products", {
   // AniList titles this product belongs to; drives "Recommended for You".
   relatedAnilistIds: integer("related_anilist_ids").array().notNull().default(sql`'{}'`),
   featured: boolean("featured").notNull().default(false),
+  // Stock of a product sold without variants; null = not tracked (always available). Products
+  // with variants keep stock per variant. Change it through lib/inventory.ts so restock alerts fire.
+  stock: integer("stock"),
   createdAt: createdAt(),
 }, (t) => [index("products_cat_idx").on(t.cat)]);
 
@@ -293,4 +297,59 @@ export const forumReports = pgTable("forum_reports", {
 }, (t) => [
   unique("forum_reports_post_reporter_uq").on(t.postId, t.reporterId),
   index("forum_reports_status_idx").on(t.status, t.createdAt),
+]);
+
+/* ---------- Notifications ---------- */
+
+// Which notifications a member wants, one switch per kind. A member without a row gets
+// DEFAULT_NOTIFICATION_PREFS (lib/notifications-shared.ts), so existing accounts need no backfill.
+// These are the in-app switches; an email channel would add its own columns (email_replies, …).
+export const notificationPreferences = pgTable("notification_preferences", {
+  userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  replies: boolean("replies").notNull().default(true),
+  newEpisodes: boolean("new_episodes").notNull().default(true),
+  restocks: boolean("restocks").notNull().default(false),
+  updatedAt: updatedAt(),
+});
+
+export const notificationType = pgEnum("notification_type",
+  ["reply", "new_episode", "restock"] as const satisfies readonly NotificationType[]);
+
+// In-app notifications. dedupe_key names the event (e.g. "reply:<postId>", "episode:<anilistId>:<n>")
+// so the same event can only ever reach a member once, however often a job or action retries.
+export const notifications = pgTable("notifications", {
+  id: id(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: notificationType("type").notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull().default(""),
+  link: text("link"),
+  dedupeKey: text("dedupe_key").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: createdAt(),
+}, (t) => [
+  unique("notifications_user_dedupe_uq").on(t.userId, t.dedupeKey),
+  index("notifications_user_created_idx").on(t.userId, t.createdAt),
+  index("notifications_user_unread_idx").on(t.userId).where(sql`${t.readAt} is null`),
+]);
+
+// The newest aired episode the new-episodes job has already announced, per AniList anime.
+// Only shows somebody is watching get a row; checked_at goes stale when nobody watches it any more.
+export const airingWatermarks = pgTable("airing_watermarks", {
+  anilistId: integer("anilist_id").primaryKey(),
+  lastEpisode: integer("last_episode").notNull(),
+  checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// "Notify me when restocked". variant_id null = the product itself (or any of its variants).
+// One-shot: the row is removed once the alert has been delivered.
+export const restockSubscriptions = pgTable("restock_subscriptions", {
+  id: id(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  productId: text("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  variantId: text("variant_id").references(() => productVariants.id, { onDelete: "cascade" }),
+  createdAt: createdAt(),
+}, (t) => [
+  unique("restock_subscriptions_user_target_uq").on(t.userId, t.productId, t.variantId).nullsNotDistinct(),
+  index("restock_subscriptions_product_idx").on(t.productId),
 ]);

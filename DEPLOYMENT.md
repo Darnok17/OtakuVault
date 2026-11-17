@@ -22,6 +22,7 @@ Set these in **Vercel → Project → Settings → Environment Variables**. Neve
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Optional | Google sign-in. Provider is disabled unless both are set. | Google Cloud Console → APIs & Services → Credentials → OAuth client (Web). |
 | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | Optional | Discord sign-in. | discord.com/developers → Applications → OAuth2. |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | Optional | GitHub sign-in. | GitHub → Settings → Developer settings → OAuth Apps. |
+| `CRON_SECRET` | Yes, for new-episode notifications | Bearer token the scheduled job at `/api/jobs/new-episodes` requires. Without it the job answers 503 and no episode notifications go out. | Generate: `openssl rand -hex 32`. Use the same value in the scheduler (see "Scheduled jobs"). |
 | `ANILIST_API_URL` | No | Override for the AniList GraphQL endpoint. Leave unset in production. | n/a |
 | `VERCEL_BLOB_READ_WRITE_TOKEN` | No | Takes precedence over `BLOB_READ_WRITE_TOKEN` if set. Not needed on Vercel. | n/a |
 | `STORAGE_DRIVER` | No | `local` or `blob`; overrides the NODE_ENV default. Leave unset in production (defaults to `blob`). | n/a |
@@ -119,6 +120,35 @@ Alternative: `git revert <bad commit>` and push to `main`. Vercel builds and dep
 
 ---
 
+## Scheduled jobs (new-episode notifications)
+
+`GET` or `POST /api/jobs/new-episodes` with `Authorization: Bearer <CRON_SECRET>` checks AniList for newly aired episodes of every anime someone has marked **Watching** and notifies them. It is safe to call as often as you like (every event has a dedupe key); **hourly** is a good default. Anything AniList's rate limit cuts short is picked up on the next run. No scheduler is wired into the repo on purpose, so it works on either platform:
+
+**Vercel Cron.** Set `CRON_SECRET` in the project's env vars (Vercel then sends it as the bearer token automatically) and add a cron to `vercel.ts` / `vercel.json`:
+
+```json
+{ "crons": [{ "path": "/api/jobs/new-episodes", "schedule": "0 * * * *" }] }
+```
+
+Hobby plans only allow daily crons; use `"0 9 * * *"` there, or an external scheduler.
+
+**Cloudflare Cron Trigger.** Set `CRON_SECRET` as a secret on the app (`wrangler secret put CRON_SECRET`). Then either add a `scheduled` handler to the app's worker entry, or deploy a tiny separate worker:
+
+```ts
+// wrangler.toml: [triggers] crons = ["0 * * * *"]; secrets CRON_SECRET and APP_URL
+export default {
+  async scheduled(_event, env, ctx) {
+    ctx.waitUntil(fetch(`${env.APP_URL}/api/jobs/new-episodes`, {
+      method: "POST", headers: { Authorization: `Bearer ${env.CRON_SECRET}` },
+    }));
+  },
+};
+```
+
+**Anything else** (GitHub Actions `schedule`, cron + curl): `curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://<your domain>/api/jobs/new-episodes`. The JSON response reports shows checked, watermarks initialized and notifications sent.
+
+---
+
 ## Custom domain (later)
 
 1. Vercel → project → **Settings → Domains** → **Add** → enter `yourdomain.com` (Vercel offers to add `www` too).
@@ -139,3 +169,5 @@ There is no Stripe code in the app yet: no `stripe` dependency, no `/api/webhook
 4. Redeploy, then use **Send test event** in the Stripe dashboard to confirm it returns 200.
 
 Update the table at the top of this file when those variables exist.
+
+**Restock notifications.** Whatever ends up changing stock (the Stripe webhook decrementing it on a sale, an inventory admin, a supplier sync) should go through `setVariantStock()` / `setProductStock()` in `lib/inventory.ts`. Those notice a sold-out item coming back (0 → more than 0) and call `notifyRestock()`, which tells everyone who pressed "Notify me when restocked". A flow that writes stock some other way can call `notifyRestock(productId, variantId)` itself.
