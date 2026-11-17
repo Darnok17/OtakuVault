@@ -51,7 +51,7 @@ export async function getProduct(id: string): Promise<ProductDetail | null> {
     db.select().from(productImages).where(eq(productImages.productId, id)).orderBy(asc(productImages.order)),
   ]);
   return {
-    ...toView(p, variants), description: p.description, basePrice: p.price, relatedAnilistIds: p.relatedAnilistIds,
+    ...toView(p, variants), description: p.description, basePrice: p.price, relatedAnilistIds: p.relatedAnilistIds, stock: p.stock,
     images: [...new Set([...(p.imageUrl ? [p.imageUrl] : []), ...images.map((i) => i.url)])],
     variants: variants.map((v) => ({ id: v.id, size: v.size, color: v.color, colorHex: v.colorHex, price: v.price ?? p.price, stock: v.stock })),
   };
