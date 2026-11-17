@@ -251,9 +251,9 @@ export const forumPosts = pgTable("forum_posts", {
   threadId: text("thread_id").notNull().references(() => forumThreads.id, { onDelete: "cascade" }),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   body: text("body").notNull(),
-  // 0 = the thread's opening post, 1 = a reply to it, 2 = a reply to a reply (the deepest level).
+  // 0 = the thread's opening post, 1 = a reply to it, n + 1 = a reply to a depth-n reply (no limit).
   depth: smallint("depth").notNull().default(1),
-  // The depth-1 reply a depth-2 post hangs under; null otherwise.
+  // The reply this post answers; null for the opening post and for top-level replies to it.
   parentId: text("parent_id").references((): AnyPgColumn => forumPosts.id, { onDelete: "cascade" }),
   score: integer("score").notNull().default(0),
   images: jsonb("images").$type<string[]>().notNull().default([]),

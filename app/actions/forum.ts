@@ -125,15 +125,16 @@ export async function createReply(input: { threadId: string; parentId?: string |
   if (!thread) return { ok: false, error: "Thread not found." };
   if (thread.deletedAt) return { ok: false, error: "This thread was deleted and can't take new replies." };
 
-  // Replies nest two deep: a reply to a reply-of-a-reply joins its parent's level.
+  // Replies nest to any depth under the post they answer. `parent` (with its author, `userId`) is
+  // the post being replied to; replying to the opening post makes a top-level reply (parentId null).
   let depth = 1, parentId: string | null = null;
   if (input.parentId) {
     if (!isId(input.parentId)) return { ok: false, error: "That post can't be replied to." };
-    const [parent] = await db.select({ id: forumPosts.id, depth: forumPosts.depth, parentId: forumPosts.parentId, deletedAt: forumPosts.deletedAt })
+    const [parent] = await db.select({ id: forumPosts.id, userId: forumPosts.userId, depth: forumPosts.depth, parentId: forumPosts.parentId, deletedAt: forumPosts.deletedAt })
       .from(forumPosts).where(and(eq(forumPosts.id, input.parentId), eq(forumPosts.threadId, thread.id)));
     if (!parent) return { ok: false, error: "That post can't be replied to." };
-    if (parent.depth === 1) { depth = 2; parentId = parent.id; }
-    else if (parent.depth === 2) { depth = 2; parentId = parent.parentId; }
+    depth = parent.depth + 1;
+    parentId = parent.depth === 0 ? null : parent.id;
   }
   if (await tooFast(me.id)) return { ok: false, error: "You're posting very quickly. Wait a few seconds and try again." };
 
