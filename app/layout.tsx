@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./ov.css";
-import "./_themes/terminal.css";
+import "./_themes/matrix.css";
 import "./_themes/rustic.css";
 import "./_themes/retro.css";
 import "./_themes/minimal.css";

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* Design tokens (colours, type, radii, shadows) live in app/_themes/ — one file per theme.
-   terminal.css is the default and documents every token. Only theme-independent values are
+   matrix.css is the default and documents every token. Only theme-independent values are
    defined here. */
 :root {
     --ease-out:cubic-bezier(.22,.9,.3,1);
@@ -2461,7 +2461,7 @@
 
   /* ═══════════════════════════════════════════════════════════
      AUTH PAGES — sign up / login
-     Terminal/mono aesthetic; two-column with a benefits panel.
+     Console/mono aesthetic; two-column with a benefits panel.
      ═══════════════════════════════════════════════════════════ */
   #page-signup,#page-login{padding:0;}
   .auth-cta-group{
@@ -2613,7 +2613,7 @@
     opacity:.4;
   }
 
-  /* Terminal-style card */
+  /* Console-style card */
   .auth-card{
     width:100%;max-width:460px;
     background:var(--surface);
@@ -2632,7 +2632,7 @@
     opacity:.8;
   }
 
-  /* Terminal title bar */
+  /* Console title bar */
   .auth-title-bar{
     display:flex;align-items:center;gap:.5rem;
     padding:.65rem 1rem;

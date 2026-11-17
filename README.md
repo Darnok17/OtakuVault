@@ -2,7 +2,7 @@
 
 **Personal Collection Tracker · 収蔵庫**
 
-A dark, terminal-themed hub for everything anime, manga, webtoon, and light novel. Track what you've watched, rank it, build visual moodboards of what it means to you, discover what's next, and shop merch for the series you love — all in one place.
+A dark, Matrix-themed hub for everything anime, manga, webtoon, and light novel. Track what you've watched, rank it, build visual moodboards of what it means to you, discover what's next, and shop merch for the series you love — all in one place.
 
 ---
 

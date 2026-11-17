@@ -21,7 +21,7 @@ export const users = pgTable("users", {
   displayName: text("display_name").notNull(),
   avatar: text("avatar"),
   // Theme chosen in Settings; follows the account across devices (see lib/themes.ts for the ids).
-  preferredTheme: text("preferred_theme").notNull().default("terminal"),
+  preferredTheme: text("preferred_theme").notNull().default("matrix"),
   // Flipped once the starter collection has been added, so it is only ever seeded once.
   seeded: boolean("seeded").notNull().default(false),
   agreedToTermsAt: timestamp("agreed_to_terms_at", { withTimezone: true }),
