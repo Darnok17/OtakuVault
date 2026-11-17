@@ -74,3 +74,49 @@ export type ThreadView = {
 };
 
 export type ForumViewer = { id: string; isAdmin: boolean } | null;
+
+/* ---------- Reply tree ---------- */
+
+// How many reply levels a page draws before it links to "Continue this thread".
+export const REPLY_VISUAL_DEPTH = 7;
+
+export type ReplyNode = {
+  post: ForumPostView;
+  // 0 for a top-level reply, counted from the tree rather than the stored depth.
+  level: number;
+  parent: ReplyNode | null;
+  children: ReplyNode[];
+  // Every reply anywhere below this one.
+  descendants: number;
+};
+
+// Turns a thread's flat, oldest-first post list into a reply tree in one pass. Replies whose
+// parent is missing are shown at the top level rather than dropped. No recursion, so a very
+// deep chain can't overflow the stack.
+export function buildReplyTree(posts: ForumPostView[]): { root: ForumPostView | null; top: ReplyNode[]; byId: Map<string, ReplyNode> } {
+  let root: ForumPostView | null = null;
+  const byId = new Map<string, ReplyNode>();
+  for (const post of posts) {
+    if (post.depth === 0) root ??= post;
+    else byId.set(post.id, { post, level: 0, parent: null, children: [], descendants: 0 });
+  }
+  const top: ReplyNode[] = [];
+  for (const node of byId.values()) {
+    const parent = node.post.parentId ? byId.get(node.post.parentId) : undefined;
+    if (parent && parent !== node) { node.parent = parent; parent.children.push(node); }
+    else top.push(node);
+  }
+  // Levels top-down in pre-order, then descendant counts bottom-up over the same order reversed.
+  const order: ReplyNode[] = [];
+  const stack = [...top];
+  while (stack.length) {
+    const node = stack.pop()!;
+    order.push(node);
+    for (const child of node.children) { child.level = node.level + 1; stack.push(child); }
+  }
+  for (let i = order.length - 1; i >= 0; i--) {
+    const node = order[i];
+    node.descendants = node.children.reduce((n, c) => n + 1 + c.descendants, 0);
+  }
+  return { root, top, byId };
+}

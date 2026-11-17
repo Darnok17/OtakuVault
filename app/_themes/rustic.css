@@ -299,8 +299,8 @@
   padding: .04em .1em 0 0; color: var(--acc-1);
 }
 :root[data-theme="rustic"] .fp-body { font-size: 1.05rem; line-height: 1.75; }
-:root[data-theme="rustic"] .fp-list > .fp::after {
-  content: "❦"; grid-column: 1 / -1; text-align: center; color: var(--acc-1); opacity: .55; font-size: 1rem; margin-top: .2rem;
+:root[data-theme="rustic"] .fp-list > .fp-node::after {
+  content: "❦"; text-align: center; color: var(--acc-1); opacity: .55; font-size: 1rem; margin-top: .6rem;
 }
 :root[data-theme="rustic"] .fp-children { border-left: 3px double var(--border-strong); }
 :root[data-theme="rustic"] .fp-children .fp { background: transparent; box-shadow: none; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; padding: .6rem 0 1rem; }

@@ -10,14 +10,15 @@ import ThreadClient from "../_components/ThreadClient";
 
 export const metadata: Metadata = { title: "Thread · Forum · OtakuVault" };
 
-async function Thread({ params }: PageProps<"/forum/[threadId]">) {
-  const [{ threadId }, session] = await Promise.all([params, auth.api.getSession({ headers: await headers() })]);
+async function Thread({ params, searchParams }: PageProps<"/forum/[threadId]">) {
+  const [{ threadId }, { comment }, session] = await Promise.all([params, searchParams, auth.api.getSession({ headers: await headers() })]);
   // Moderator rights come from the database row, not from whatever the session cached.
   const [me] = session ? await db.select({ id: users.id, isAdmin: users.isAdmin }).from(users).where(eq(users.id, session.user.id)) : [];
   const thread = await getThread(threadId, me?.id ?? null);
   if (!thread) notFound();
   await countView(thread.id).catch(() => {});
-  return <ThreadClient thread={thread} viewer={me ?? null} />;
+  // ?comment=<postId> focuses the page on one reply and everything under it ("Continue this thread").
+  return <ThreadClient thread={thread} viewer={me ?? null} focusId={typeof comment === "string" ? comment : null} />;
 }
 
 export default function ThreadPage(props: PageProps<"/forum/[threadId]">) {
