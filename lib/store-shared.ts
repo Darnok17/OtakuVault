@@ -40,6 +40,8 @@ export type VariantView = { id: string; size: string | null; color: string | nul
 
 export type ProductDetail = ProductView & {
   description: string; basePrice: number; images: string[]; variants: VariantView[]; relatedAnilistIds: number[];
+  // Stock of a product sold without variants; null = not tracked (always available).
+  stock: number | null;
 };
 
 export type Recommended = {

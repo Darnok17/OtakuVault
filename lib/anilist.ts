@@ -505,3 +505,47 @@ export const getTitleDetails = cache(async (anilistId: number, type: EntryType):
   }
   return details.entryType === type ? { status: "ok", details } : { status: "wrong-type", entryType: details.entryType };
 });
+
+/* ---------- Airing status (new-episodes job) ---------- */
+
+export type AiringStatus = {
+  anilistId: number;
+  title: string;
+  status: string | null;
+  // The newest episode that has aired, or null when AniList can't tell (no schedule, on hiatus).
+  latestEpisode: number | null;
+};
+
+const AIRING_BATCH = 50; // AniList's maximum perPage
+
+// Always fresh (no cache): the job runs on a schedule and needs the current airing state.
+// Batches run one after another under the shared rate limiter; if one fails, the statuses
+// fetched so far are returned with the error, and the remaining titles wait for the next run.
+export async function fetchAiringStatus(ids: number[]): Promise<{ statuses: Map<number, AiringStatus>; error: string | null }> {
+  const statuses = new Map<number, AiringStatus>();
+  const unique = [...new Set(ids)];
+  for (let i = 0; i < unique.length; i += AIRING_BATCH) {
+    const batch = unique.slice(i, i + AIRING_BATCH);
+    try {
+      const data = await gql<{ Page: { media: { id: number; status: string | null; episodes: number | null; title: RawMedia["title"]; nextAiringEpisode: { episode: number; airingAt: number } | null }[] } }>(
+        `query ($ids: [Int], $perPage: Int) {
+          Page(page: 1, perPage: $perPage) {
+            media(id_in: $ids, type: ANIME) { id status episodes title { romaji english native } nextAiringEpisode { episode airingAt } }
+          }
+        }`,
+        { ids: batch, perPage: AIRING_BATCH },
+      );
+      for (const m of data.Page.media) {
+        const latestEpisode =
+          m.nextAiringEpisode ? Math.max(m.nextAiringEpisode.episode - 1, 0)
+          : m.status === "FINISHED" ? m.episodes
+          : m.status === "NOT_YET_RELEASED" ? 0
+          : null;
+        statuses.set(m.id, { anilistId: m.id, title: m.title.english ?? m.title.romaji ?? `#${m.id}`, status: m.status, latestEpisode });
+      }
+    } catch (err) {
+      return { statuses, error: (err as Error).message };
+    }
+  }
+  return { statuses, error: null };
+}

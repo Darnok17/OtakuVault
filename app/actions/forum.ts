@@ -8,6 +8,7 @@ import { listThreads } from "@/lib/forum";
 import {
   POST_BODY_MAX, POST_IMAGES_MAX, THREAD_TITLE_MAX, isForumCategory, isForumSort, isReportReason, type ThreadPage,
 } from "@/lib/forum-shared";
+import { createNotification, excerpt } from "@/lib/notifications";
 import { deleteImage, isOwnedUpload } from "@/lib/storage";
 
 // Forum writes. Every action re-reads the session and, for moderation, the caller's admin flag
@@ -121,18 +122,21 @@ export async function createReply(input: { threadId: string; parentId?: string |
   const images = cleanImages(input.images, me.id);
   if (!images) return { ok: false, error: `Attach up to ${POST_IMAGES_MAX} images you uploaded here.` };
 
-  const [thread] = await db.select({ id: forumThreads.id, deletedAt: forumThreads.deletedAt }).from(forumThreads).where(eq(forumThreads.id, input.threadId));
+  const [thread] = await db.select({ id: forumThreads.id, userId: forumThreads.userId, title: forumThreads.title, deletedAt: forumThreads.deletedAt }).from(forumThreads).where(eq(forumThreads.id, input.threadId));
   if (!thread) return { ok: false, error: "Thread not found." };
   if (thread.deletedAt) return { ok: false, error: "This thread was deleted and can't take new replies." };
 
   // Replies nest to any depth under the post they answer. `parent` (with its author, `userId`) is
   // the post being replied to; replying to the opening post makes a top-level reply (parentId null).
   let depth = 1, parentId: string | null = null;
+  // Who is being replied to: the post's author, or the thread's when replying to the thread.
+  let recipient: { userId: string; isThread: boolean } | null = { userId: thread.userId, isThread: true };
   if (input.parentId) {
     if (!isId(input.parentId)) return { ok: false, error: "That post can't be replied to." };
     const [parent] = await db.select({ id: forumPosts.id, userId: forumPosts.userId, depth: forumPosts.depth, parentId: forumPosts.parentId, deletedAt: forumPosts.deletedAt })
       .from(forumPosts).where(and(eq(forumPosts.id, input.parentId), eq(forumPosts.threadId, thread.id)));
     if (!parent) return { ok: false, error: "That post can't be replied to." };
+    recipient = parent.deletedAt ? null : { userId: parent.userId, isThread: parent.depth === 0 };
     depth = parent.depth + 1;
     parentId = parent.depth === 0 ? null : parent.id;
   }
@@ -143,6 +147,23 @@ export async function createReply(input: { threadId: string; parentId?: string |
     await tx.update(forumThreads).set({ replyCount: sql`${forumThreads.replyCount} + 1`, lastActivityAt: new Date() }).where(eq(forumThreads.id, thread.id));
     return p.id;
   });
+
+  // Nobody hears about their own replies. A failed notification must not fail the reply.
+  if (recipient && recipient.userId !== me.id) {
+    try {
+      const [author] = await db.select({ name: users.displayName }).from(users).where(eq(users.id, me.id));
+      await createNotification({
+        userId: recipient.userId,
+        type: "reply",
+        title: `${author?.name ?? "Someone"} replied to your ${recipient.isThread ? "thread" : "post"} in “${thread.title}”`,
+        body: excerpt(body),
+        link: `/forum/${thread.id}#post-${postId}`,
+        dedupeKey: `reply:${postId}`,
+      });
+    } catch (err) {
+      console.error("Couldn't create a reply notification:", err);
+    }
+  }
   return { ok: true, postId };
 }
 
