@@ -661,3 +661,59 @@ h2.store-featured-title,h2.store-section-title,h1.store-title,h1.forum-title{mar
 .co-submit{width:100%;}
 @media (max-width:900px){.ct{grid-template-columns:1fr;}.ct-summary{position:static;}}
 @media (max-width:560px){.ct-item{grid-template-columns:56px minmax(0,1fr) auto;}.ct-item .qty{grid-column:2;justify-self:start;}.ct-art{width:56px;}.co-grid{grid-template-columns:1fr;}}
+
+/* ═══ Notifications: the nav bell, its dropdown, the /notifications page, restock alerts ═══ */
+.nav-notif-trigger{position:relative;padding:.3rem .45rem;justify-content:center;}
+.nav-notif-icon{display:block;}
+.nav-notif-count{
+  position:absolute;top:-.35rem;right:-.4rem;min-width:1.15rem;height:1.15rem;padding:0 .3rem;
+  display:grid;place-items:center;border-radius:var(--radius-pill);
+  background:var(--acc-1);color:var(--on-acc-1);border:1px solid var(--bg);
+  font-family:var(--font-mono);font-weight:700;font-size:.62rem;line-height:1;
+}
+.nav-notif-menu{width:min(360px,calc(100vw - 2rem));padding:.35rem;}
+.nav-notif-head{
+  display:flex;align-items:center;justify-content:space-between;gap:.8rem;
+  padding:.5rem .6rem .6rem;margin-bottom:.25rem;border-bottom:1px solid var(--border-dropdown);
+}
+.nav-notif-heading{color:var(--accent-dropdown);font-size:calc(.72rem * var(--label-scale));letter-spacing:calc(.12em * var(--label-track));text-transform:var(--label-case);font-weight:700;}
+.nav-notif-markall{
+  background:none;border:0;padding:.15rem 0;cursor:pointer;color:var(--fg-dropdown-dim);
+  font-family:inherit;font-size:calc(.6rem * var(--label-scale));letter-spacing:calc(.1em * var(--label-track));text-transform:var(--label-case);
+}
+.nav-notif-markall:hover:not(:disabled){color:var(--accent-dropdown);}
+.nav-notif-markall:disabled{opacity:.45;cursor:default;}
+.nav-notif-list{list-style:none;margin:0;padding:0;max-height:min(60vh,420px);overflow-y:auto;}
+.nav-notif-item{
+  display:flex;flex-direction:column;gap:.2rem;padding:.6rem .7rem .6rem 1.1rem;position:relative;
+  border-radius:calc(6px * var(--r-k));color:var(--fg-dropdown-dim);text-decoration:none;
+  font-family:var(--font-body);text-transform:none;letter-spacing:normal;
+  transition:background .18s,color .18s;
+}
+.nav-notif-item.unread{color:var(--fg-dropdown);}
+.nav-notif-item.unread::before{
+  content:"";position:absolute;left:.4rem;top:.95rem;width:6px;height:6px;border-radius:50%;background:var(--accent-dropdown);
+}
+.nav-notif-item:hover,.nav-notif-item:focus-visible{background:var(--hover-dropdown);color:var(--on-hover-dropdown);outline:none;}
+.nav-notif-item:hover::before,.nav-notif-item:focus-visible::before{background:currentColor;}
+.nav-notif-title{font-size:.8rem;line-height:1.4;font-weight:600;}
+.nav-notif-item:not(.unread) .nav-notif-title{font-weight:400;}
+.nav-notif-body{font-size:.74rem;line-height:1.45;opacity:.85;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.nav-notif-time{font-family:var(--font-mono);font-size:calc(.58rem * var(--label-scale));letter-spacing:calc(.08em * var(--label-track));text-transform:var(--label-case);opacity:.75;}
+.nav-notif-empty,.nav-notif-error{margin:0;padding:.9rem .7rem;font-family:var(--font-body);font-size:.78rem;line-height:1.5;color:var(--fg-dropdown-dim);text-transform:none;letter-spacing:normal;}
+.nav-notif-error{color:var(--danger-fg);padding-bottom:.2rem;}
+.nav-notif-foot{display:flex;gap:.2rem;margin-top:.25rem;padding-top:.25rem;border-top:1px solid var(--border-dropdown);}
+.nav-notif-foot .nav-user-item{text-align:center;}
+
+.nt-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.nt-item{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:.95rem .2rem .95rem 1.1rem;border-top:1px solid var(--border);position:relative;}
+.nt-item:first-child{border-top:0;}
+.nt-item.unread::before{content:"";position:absolute;left:.1rem;top:1.45rem;width:7px;height:7px;border-radius:50%;background:var(--acc-1);}
+.nt-main{display:flex;flex-direction:column;gap:.25rem;min-width:0;}
+.nt-title{color:var(--fg);font-size:.92rem;line-height:1.45;text-decoration:none;overflow-wrap:anywhere;}
+.nt-item.unread .nt-title{font-weight:600;}
+a.nt-title:hover{color:var(--acc-3);}
+.nt-body{margin:0;color:var(--fg-dim);font-size:.84rem;line-height:1.5;overflow-wrap:anywhere;}
+
+.pd-restock{display:flex;flex-direction:column;align-items:flex-start;gap:.6rem;margin:.2rem 0 .4rem;}
+.pd-restock-on{background:none;border:0;padding:0;cursor:pointer;font:inherit;font-weight:600;}

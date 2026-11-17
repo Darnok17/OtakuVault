@@ -4,6 +4,8 @@ import { useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { setProfilePublic } from "@/app/actions/settings";
+import { setNotificationPreference } from "@/app/actions/notifications";
+import { NOTIFICATION_PREFS, type NotificationPrefKey, type NotificationPrefs } from "@/lib/notifications-shared";
 import { ThemeGrid } from "@/app/_components/ThemePicker";
 import { useThemeStore } from "@/app/_components/ThemeProvider";
 
@@ -65,13 +67,71 @@ function ChangePassword() {
   );
 }
 
-export default function SettingsClient({ account }: { account: Account }) {
+// Settings → Notifications. Each switch saves as soon as it flips; a failed save flips it back.
+// The switches' state lives in SettingsClient so it survives switching tabs.
+function NotificationSettings({ prefs, setPrefs }: { prefs: NotificationPrefs; setPrefs: React.Dispatch<React.SetStateAction<NotificationPrefs>> }) {
+  const [pending, setPending] = useState<Partial<Record<NotificationPrefKey, boolean>>>({});
+  const [status, setStatus] = useState<{ kind: "saved" | "error"; text: string } | null>(null);
+
+  const toggle = async (key: NotificationPrefKey, enabled: boolean) => {
+    setPrefs((p) => ({ ...p, [key]: enabled }));
+    setPending((p) => ({ ...p, [key]: true }));
+    setStatus(null);
+    const res = await setNotificationPreference(key, enabled).catch(() => null);
+    setPending((p) => ({ ...p, [key]: false }));
+    if (res?.ok) {
+      setPrefs((p) => ({ ...p, [key]: res.prefs[key] }));
+      const title = NOTIFICATION_PREFS.find((p) => p.key === key)?.title ?? "Setting";
+      setStatus({ kind: "saved", text: `Saved. ${title} notifications are ${enabled ? "on" : "off"}.` });
+    } else {
+      setPrefs((p) => ({ ...p, [key]: !enabled }));
+      setStatus({ kind: "error", text: res && !res.ok ? res.error : "Couldn't save that. Try again." });
+    }
+  };
+
+  return (
+    <>
+      <section className="ov-panel">
+        <h2 className="ov-title">Notifications</h2>
+        <p className="ov-sub" style={{ marginBottom: "1.2rem" }}>
+          Choose what you hear about. Notifications show up under the bell at the top of the page and on your <Link className="ov-link" href="/notifications">notifications page</Link>.
+        </p>
+        <div className="ov-stack">
+          {NOTIFICATION_PREFS.map(({ key, title, desc }) => (
+            <label key={key} className="ov-toggle">
+              <input type="checkbox" checked={prefs[key]} disabled={!!pending[key]} onChange={(e) => void toggle(key, e.target.checked)} />
+              <span className="ov-toggle-track" />
+              <span className="ov-toggle-text">
+                <span className="ov-toggle-title">{title}</span>
+                <span className="ov-toggle-desc">{desc}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        <div aria-live="polite">
+          {status && <div className={status.kind === "saved" ? "ov-ok" : "ov-error"} role={status.kind === "error" ? "alert" : "status"} style={{ marginTop: "1rem" }}>{status.text}</div>}
+        </div>
+      </section>
+      <section className="ov-panel">
+        <h2 className="ov-title">Where they go</h2>
+        <dl className="set-facts" style={{ marginTop: ".9rem", marginBottom: 0 }}>
+          <dt>In-app</dt><dd>On. The bell in the top bar and the notifications page.</dd>
+          <dt>Email</dt><dd><span className="ov-soon">Coming soon</span></dd>
+        </dl>
+      </section>
+    </>
+  );
+}
+
+export default function SettingsClient({ account, notificationPrefs }: { account: Account; notificationPrefs: NotificationPrefs }) {
   const hash = useSyncExternalStore(subscribeHash, readHash, () => "");
   const tab: TabId = isTab(hash) ? hash : "profile";
   const pickTab = (id: TabId) => {
     history.replaceState(null, "", `#${id}`);
     window.dispatchEvent(new HashChangeEvent("hashchange"));
   };
+
+  const [prefs, setPrefs] = useState(notificationPrefs);
 
   const fx = useThemeStore((s) => s.fx);
   const setFx = useThemeStore((s) => s.setFx);
@@ -162,12 +222,7 @@ export default function SettingsClient({ account }: { account: Account }) {
           </>
         )}
 
-        {tab === "notifications" && (
-          <section className="ov-panel">
-            <div className="ov-row"><h2 className="ov-title">Notifications</h2><span className="ov-soon">Coming soon</span></div>
-            <p className="ov-sub">Choose what you hear about: replies to your threads, new episodes of what you&apos;re watching, and store restocks. Nothing is sent today.</p>
-          </section>
-        )}
+        {tab === "notifications" && <NotificationSettings prefs={prefs} setPrefs={setPrefs} />}
 
         {tab === "privacy" && (
           <section className="ov-panel">
