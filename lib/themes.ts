@@ -3,7 +3,7 @@
 // app/_themes/<id>.css.
 
 export const THEMES = [
-  { id: "terminal", name: "Terminal", blurb: "Neon on midnight. The original.", mode: "dark" },
+  { id: "matrix", name: "Matrix", blurb: "Phosphor on black, with the code falling behind it.", mode: "dark" },
   { id: "rustic", name: "Rustic", blurb: "Ink on parchment, bound like a tavern codex.", mode: "light" },
   { id: "retro", name: "Retro", blurb: "VHS chrome, hot pink and a CRT hum.", mode: "dark" },
   { id: "minimal", name: "Minimal", blurb: "Black, white, one red line.", mode: "light" },
@@ -13,14 +13,15 @@ export const THEMES = [
 
 export type ThemeId = (typeof THEMES)[number]["id"];
 
-export const DEFAULT_THEME: ThemeId = "terminal";
+export const DEFAULT_THEME: ThemeId = "matrix";
 export const THEME_IDS: readonly ThemeId[] = THEMES.map((t) => t.id);
 export const isThemeId = (v: unknown): v is ThemeId => typeof v === "string" && (THEME_IDS as readonly string[]).includes(v);
 export const themeName = (id: ThemeId) => THEMES.find((t) => t.id === id)!.name;
 
-// Ids a theme used to have. Cookies, localStorage and account rows written before a rename still
+// Ids a theme used to have (or a retired theme's id, mapped to its replacement). Cookies, localStorage and account rows written before a rename still
 // hold the old id; it is read as the new one instead of falling back to the default theme.
-const LEGACY_THEME_IDS: Record<string, ThemeId> = { anime: "comic-strip" };
+// Terminal was retired for Matrix, which took its place as the default.
+const LEGACY_THEME_IDS: Record<string, ThemeId> = { anime: "comic-strip", terminal: "matrix" };
 export const toThemeId = (v: unknown): ThemeId | null =>
   isThemeId(v) ? v : typeof v === "string" && Object.hasOwn(LEGACY_THEME_IDS, v) ? LEGACY_THEME_IDS[v] : null;
 

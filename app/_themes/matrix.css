@@ -1,0 +1,352 @@
+/* ═══════════════════════════════════════════════════════════
+   THEME · MATRIX (default)
+   Phosphor on black: a green-screen console with the code rain falling behind it.
+
+   This file is the reference for every design token. A theme is a block of token values under
+   [data-theme="<id>"] plus, in its own file, the component overrides that give it a distinct
+   silhouette. Tokens are declared on any element carrying data-theme (not just <html>) so the
+   theme previews can nest one theme inside another.
+
+   Matrix's own rules: square corners, 1px rules, no gradients and no lift. Light is emitted, not
+   cast, so depth comes from glow on a few headings and never from drop shadows. The rain itself
+   is a canvas drawn by ThemeFx (off with Settings → Effects or prefers-reduced-motion).
+   ═══════════════════════════════════════════════════════════ */
+:root,
+[data-theme="matrix"] {
+  color-scheme: dark;
+
+  /* ── Surfaces ── */
+  --bg: #010401;                 /* page */
+  --surface: #030a04;            /* cards, panels */
+  --surface-elevated: #061208;   /* raised controls, hover */
+  --surface-overlay: #0a1c0d;    /* highest layer */
+  --float-a: #030a04;            /* floating panels (menus, toasts) — flat on purpose */
+  --float-b: #030a04;
+  --border: #0f3b18;
+  --border-strong: #1d6b2e;
+
+  /* ── Text ── (contrast on --bg: fg 14:1, fg-dim 8:1, fg-faint 4.6:1) */
+  --fg: #a9f5b9;
+  --fg-dim: #52c26c;
+  --fg-faint: #2f8c46;
+  --fg-bright: #d8ffe0;          /* headings, emphasised text */
+  --on-accent: #000;             /* text and icons on an interface-accent or gold fill */
+  --on-acc-1: #000;              /* text on a primary (accent 1) fill */
+  /* Captions that sit on artwork keep a dark scrim and light text whatever the theme. */
+  --scrim: #000;
+  --on-scrim: #c8ffd2;
+  --on-scrim-dim: #52c26c;
+
+  /* ── Accents ── one hue, several intensities; red is kept for errors (the other pill). */
+  --acc-1: #00ff41;              /* primary: brand, calls to action */
+  --accent-bright: #7dff9c;
+  --acc-1-deep: #00b52e;
+  --acc-2: #13a83a;              /* secondary */
+  --acc-2-bright: #2fd45a;
+  --acc-3: #3dffa0;              /* interface: focus, active, links */
+  --acc-3-bright: #8affc4;
+  --acc-3-soft: #5ee8a2;
+  --gold: #c9ff3b;               /* ratings, ranks: the yellow edge of P1 phosphor */
+  --gold-bright: #e0ff85;
+  --azure: #3de0c4;
+  --azure-bright: #7cf0dc;
+  --violet: #7fd48f;
+  --orange: #b8e83c;
+  --rose: #8dffb3;
+  --danger-fg: #ff5e4f;          /* error text */
+
+  /* ── Media types ── */
+  --anime: #00ff41;   --anime-deep: #008f24;
+  --manga: #2fd45a;   --manga-deep: #126b29;
+  --webtoon: #3dffa0; --webtoon-deep: #138a55;
+  --novel: #c9ff3b;   --novel-deep: #6b8a14;
+
+  /* ── Light and shadow ──
+     Shadows are written as rgb(from var(--shade) r g b / calc(alpha * var(--shade-k))), glows
+     with --glow-k, recessed fills with --well-k and scanline/grid textures with --scan-k, so a
+     theme can soften or switch off each of them with one number. --hi is the edge highlight. */
+  --shade: #000;
+  --shade-k: 1;
+  --glow-k: .55;
+  --well-k: 1;
+  --scan-k: 0;                   /* no scanline textures */
+  --hi: #00ff41;
+  --shadow-elev-0: none;
+  --shadow-elev-1: 0 0 0 1px #000;
+  --shadow-elev-2: 0 0 0 1px #000, 0 18px 40px rgb(0 0 0 / .8);
+
+  /* ── Shape ── every radius is its px value × --r-k; pills use --radius-pill. */
+  --r-k: 0;
+  --radius: 0px;
+  --radius-pill: 0px;
+
+  /* ── Type ──
+     Display and label sizes/tracking are multiplied by the scale/track numbers below, because
+     a replacement typeface rarely has the proportions of the one a rule was tuned for. */
+  --font-display: var(--font-share-tech), "Courier New", monospace;
+  --font-body: var(--font-plex-mono), ui-monospace, monospace;
+  --font-mono: var(--font-share-tech), ui-monospace, monospace;   /* labels, metadata, buttons */
+  --font-jp: var(--font-noto-jp), sans-serif;       /* kanji accents */
+  --display-scale: .78;
+  --display-track: .9;
+  --display-weight: 400;
+  --display-case: uppercase;
+  --label-scale: 1.08;
+  --label-track: 1.1;
+  --label-case: uppercase;
+  --label-weight: 400;
+
+  /* ── Dropdowns (ThemedSelect, menus) ── */
+  --bg-dropdown: #020702;
+  --fg-dropdown: #a9f5b9;
+  --fg-dropdown-dim: #52c26c;
+  --accent-dropdown: #00ff41;
+  --border-dropdown: #1d6b2e;
+  --hover-dropdown: #00ff41;
+  --on-hover-dropdown: #000;
+  --menu-prompt: '> whoami_';
+  --shadow-dropdown: 0 0 0 1px #000, 0 16px 34px rgb(0 0 0 / .85);
+  --radius-dropdown: 0px;
+
+  /* Matrix-only */
+  --phosphor: 0 0 1px rgb(0 255 65 / .9), 0 0 9px rgb(0 255 65 / .38);
+}
+
+/* ── Page: black glass with a faint grid of green ── */
+:root[data-theme="matrix"] body { font-size: 15px; }
+:root[data-theme="matrix"] body::before {
+  animation: none;
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 40%, transparent 55%, rgb(0 0 0 / .7) 100%),
+    repeating-linear-gradient(0deg, transparent 0 63px, rgb(0 255 65 / .022) 63px 64px),
+    #010401;
+}
+:root[data-theme="matrix"] body::after { display: none; }
+:root[data-theme="matrix"] *::selection { background: #00ff41; color: #000; text-shadow: none; -webkit-text-fill-color: #000; }
+:root[data-theme="matrix"] :focus-visible { outline: 1px solid var(--acc-1); outline-offset: 3px; }
+:root[data-theme="matrix"] a { text-underline-offset: 3px; }
+
+/* The rain canvas (ThemeFx). Fixed behind the content, like body::before. */
+.mx-rain { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: .3; }
+
+/* ── Panels: flat black, a 1px rule, no lift ── */
+:root[data-theme="matrix"] :is(
+  .home-tile, .card, .rec-poster, .idx-seasonal-card, .idx-filters, .forum-pinned-card, .forum-trend-card,
+  .forum-filters, .forum-threads, .store-featured-card, .store-filters, .product, .auth-card, .auth-benefit,
+  .stat-pill, .watchlist-banner, .td-stat, .td-char-card, .td-relation, .demo-grid, .demo-board, .feat-stats,
+  .modal, .ov-panel, .theme-card, .filter-tabs, .view-toggle
+) {
+  background: var(--surface); border: 1px solid var(--border); box-shadow: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+:root[data-theme="matrix"] :is(
+  .home-tile, .card, .rec-poster, .idx-seasonal-card, .product, .forum-pinned-card, .forum-trend-card, .forum-thread,
+  .td-char-card, .td-relation, .btn, .btn-primary, .nav-link, .view-btn, .tab-btn, .feat-cta-btn, .theme-card
+):is(:hover, :active) { transform: none; }
+:root[data-theme="matrix"] :is(.home-tile, .card, .rec-poster, .idx-seasonal-card, .product, .forum-pinned-card, .forum-trend-card, .td-char-card, .td-relation, .theme-card):hover {
+  border-color: var(--acc-1); box-shadow: inset 0 0 0 1px rgb(0 255 65 / .25), 0 0 18px rgb(0 255 65 / .08);
+}
+:root[data-theme="matrix"] :is(.modal, .nav-user-menu, .idx-toast, .auth-toast, .sync-toast, .undo-toast, .delete-toast, .al-search-panel, .td-menu-list, .ov-toast) {
+  background: var(--float-a); border: 1px solid var(--border-strong); box-shadow: var(--shadow-elev-2);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+:root[data-theme="matrix"] .modal-overlay { background: rgb(0 0 0 / .86); backdrop-filter: none; -webkit-backdrop-filter: none; }
+/* The sheen sweeps and glossy top bars belong to other themes. */
+:root[data-theme="matrix"] :is(.btn, .nav-link, .card, .stat-pill, .modal, .forum-thread)::before { display: none; }
+:root[data-theme="matrix"] .home-tile::before { background: none; }
+:root[data-theme="matrix"] .home-tile::after { height: 1px; opacity: .6; box-shadow: none; background: var(--tile-accent); }
+:root[data-theme="matrix"] .home-tile:hover::after { height: 1px; opacity: 1; }
+/* Corner brackets stay: they are the ASCII frame. They just stop growing. */
+:root[data-theme="matrix"] .home-tile-corner { border-width: 1px; width: 10px; height: 10px; opacity: .8; }
+:root[data-theme="matrix"] .home-tile:hover .home-tile-corner { transform: none; border-width: 1px; filter: none; box-shadow: none; }
+
+/* Cover art is phosphor-tinted until you point at it. */
+:root[data-theme="matrix"] :is(.rec-poster-img, .idx-seasonal-img, .card-cover img, .td-relation-img, .td-char-card img, .product-img) {
+  filter: grayscale(1) sepia(1) hue-rotate(68deg) saturate(2.4) brightness(.78) contrast(1.15);
+  transition: filter .35s steps(4);
+}
+:root[data-theme="matrix"] :is(.rec-poster, .idx-seasonal-card, .card, .td-relation, .td-char-card, .product):hover :is(.rec-poster-img, .idx-seasonal-img, .card-cover img, .td-relation-img, img, .product-img) {
+  filter: none; transform: none;
+}
+
+/* ── Navigation: a status line ── */
+:root[data-theme="matrix"] .site-nav {
+  background: rgb(1 4 1 / .94); border-bottom: 1px solid var(--border-strong);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+:root[data-theme="matrix"] .site-nav::after { display: none; }
+:root[data-theme="matrix"] .nav-link { border: 1px solid transparent; color: var(--fg-dim); padding-inline: .8rem; }
+:root[data-theme="matrix"] .nav-link:hover { background: transparent; color: var(--fg-bright); border-color: var(--border); }
+:root[data-theme="matrix"] .nav-link.active {
+  background: transparent; color: var(--acc-1); border-color: transparent; box-shadow: none;
+  text-shadow: var(--phosphor);
+}
+/* The current page is bracketed: [ INDEX ]. */
+:root[data-theme="matrix"] .nav-link.active::before,
+:root[data-theme="matrix"] .nav-link.active::after {
+  display: inline; position: static; inset: auto; width: auto; height: auto;
+  background: none; box-shadow: none; transform: none; border-radius: 0;
+}
+:root[data-theme="matrix"] .nav-link.active::before { content: "["; margin-right: .4em; }
+:root[data-theme="matrix"] .nav-link.active::after { content: "]"; margin-left: .4em; }
+:root[data-theme="matrix"] .nav-link.nav-signup,
+:root[data-theme="matrix"] .nav-link.nav-signup.active {
+  background: var(--acc-1); color: #000; border-color: var(--acc-1); box-shadow: none; text-shadow: none;
+}
+:root[data-theme="matrix"] .nav-link.nav-signup:hover { background: #000; color: var(--acc-1); }
+:root[data-theme="matrix"] .nav-link.nav-signup.active::before,
+:root[data-theme="matrix"] .nav-link.nav-signup.active::after { display: none; }
+:root[data-theme="matrix"] :is(.nav-user-avatar, .forum-thread-avatar, .ov-avatar) { border-radius: 0; }
+
+/* ── Type: phosphor that glows, set as one solid colour ── */
+:root[data-theme="matrix"] :is(.logo-main, .home-title, .idx-title, .forum-title, .store-title, .auth-title, .ov-masthead, .stat-big, .feat-cta-title, .modal-title, .td-not-found-code) {
+  background: none; -webkit-text-fill-color: currentColor; color: var(--fg-bright);
+  animation: none; filter: none; text-shadow: var(--phosphor);
+}
+:root[data-theme="matrix"] :is(.logo-main, .stat-big, .feat-cta-title) { color: var(--acc-1); }
+:root[data-theme="matrix"] .logo-main:hover { filter: none; text-shadow: 0 0 1px #00ff41, 0 0 14px rgb(0 255 65 / .55); }
+:root[data-theme="matrix"] :is(.idx-title, .forum-title, .store-title, .auth-title, .placeholder-title) .accent {
+  background: none; -webkit-text-fill-color: var(--acc-1); color: var(--acc-1);
+}
+/* The block cursor after the wordmark and the home masthead. */
+:root[data-theme="matrix"] :is(.logo-main, .home-title, .ov-masthead)::after {
+  content: ""; display: inline-block; width: .52em; height: .82em; margin-left: .12em; vertical-align: -.04em;
+  background: var(--acc-1); box-shadow: 0 0 8px rgb(0 255 65 / .6);
+  animation: mxBlink 1.06s steps(1) infinite;
+}
+:root[data-theme="matrix"] .site-nav .logo-main::after { width: .45em; height: .7em; }
+@keyframes mxBlink { 50% { opacity: 0; } }
+:root[data-theme="matrix"] .logo-sub::before { animation: none; border-radius: 0; width: 6px; height: 6px; background: var(--acc-1); box-shadow: none; }
+/* Prompt markers on the small all-caps lines. */
+:root[data-theme="matrix"] :is(.home-eyebrow, .feat-eyebrow, .auth-eyebrow) { color: var(--acc-3); text-shadow: none; }
+:root[data-theme="matrix"] :is(.home-eyebrow, .feat-eyebrow)::before { content: "> "; color: var(--acc-1); }
+:root[data-theme="matrix"] .auth-eyebrow::before, :root[data-theme="matrix"] .auth-eyebrow::after { background: var(--border-strong); opacity: 1; }
+:root[data-theme="matrix"] .home-subtitle { color: var(--fg-dim); }
+:root[data-theme="matrix"] .home-title { font-size: calc(clamp(2.6rem, 7vw, 5rem) * var(--display-scale)); letter-spacing: .04em; }
+
+/* Section titles read like comments in a listing. */
+:root[data-theme="matrix"] .section-title::before { display: none; }
+:root[data-theme="matrix"] :is(.section-title, .idx-section-title, .forum-section-title, .store-section-title, .td-section-title, .rec-row-title, .ov-title)::before {
+  content: "// "; display: inline; position: static; width: auto; background: none; box-shadow: none;
+  color: var(--fg-faint); text-shadow: none;
+}
+:root[data-theme="matrix"] .section-title { padding-left: 0; }
+:root[data-theme="matrix"] .section-line { background: var(--border-strong); opacity: 1; height: 1px; box-shadow: none; }
+:root[data-theme="matrix"] :is(.home-tile-kanji, .rec-row-kanji, .idx-kanji, .idx-section-kanji, .forum-kanji, .forum-section-kanji, .store-kanji, .store-section-kanji, .auth-kanji, .auth-side-kanji, .ov-kanji, .td-section-kanji) {
+  color: var(--acc-2); text-shadow: none; opacity: .85;
+}
+
+/* ── Controls: inverse-video blocks ── */
+:root[data-theme="matrix"] .btn { border: 1px solid var(--border-strong); font-weight: 400; letter-spacing: .14em; }
+:root[data-theme="matrix"] .btn:active { transform: none; }
+:root[data-theme="matrix"] :is(.btn-primary, .auth-submit, .feat-cta-btn, .forum-new-thread, .store-featured-cta, .ov-btn-primary) {
+  background: var(--acc-1); color: #000; border: 1px solid var(--acc-1); box-shadow: none; text-shadow: none;
+  border-radius: 0;
+}
+:root[data-theme="matrix"] :is(.btn-primary, .auth-submit, .feat-cta-btn, .forum-new-thread, .store-featured-cta, .ov-btn-primary):hover {
+  background: #000; color: var(--acc-1); border-color: var(--acc-1); box-shadow: 0 0 14px rgb(0 255 65 / .25); text-shadow: var(--phosphor);
+}
+:root[data-theme="matrix"] :is(.btn-primary, .auth-submit, .feat-cta-btn, .forum-new-thread, .store-featured-cta, .ov-btn-primary)::before {
+  content: "> "; display: inline; position: static; inset: auto; background: none; transform: none;
+}
+:root[data-theme="matrix"] .btn-ghost { background: transparent; color: var(--fg-dim); border-color: var(--border-strong); }
+:root[data-theme="matrix"] .btn-ghost:hover { background: var(--surface-elevated); color: var(--acc-1); border-color: var(--acc-1); box-shadow: none; }
+
+:root[data-theme="matrix"] :is(input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="search"], input[type="url"], select, textarea) {
+  background: #000; border: 1px solid var(--border-strong); border-radius: 0; color: var(--fg-bright);
+  caret-color: var(--acc-1); font-family: var(--font-body);
+}
+:root[data-theme="matrix"] :is(input, textarea)::placeholder { color: var(--fg-faint); opacity: 1; }
+:root[data-theme="matrix"] :is(input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="search"], input[type="url"], select, textarea):focus {
+  background: #000; border-color: var(--acc-1); box-shadow: inset 3px 0 0 var(--acc-1); outline: none;
+}
+:root[data-theme="matrix"] :is(input[type="checkbox"], input[type="radio"], input[type="range"]) { accent-color: var(--acc-1); }
+
+:root[data-theme="matrix"] .tab-btn.active { background: var(--acc-1); color: #000; box-shadow: none; text-shadow: none; }
+:root[data-theme="matrix"] .tab-btn[data-type].active { color: #000; }
+:root[data-theme="matrix"] .tab-btn .tab-icon { color: currentColor; filter: none; }
+:root[data-theme="matrix"] .view-btn.active { background: var(--acc-1); color: #000; box-shadow: none; border-color: var(--acc-1); }
+/* Chips are bracketed tags; the selected one is inverse video. */
+:root[data-theme="matrix"] :is(.idx-chip, .idx-genre-chip, .forum-cat-chip, .store-cat-chip, .td-pill, .td-chip, .badge, .section-count, .forum-thread-cat, .product-badge, .ov-chip) {
+  background: transparent; border: 1px solid var(--border-strong); color: var(--fg-dim); box-shadow: none; text-shadow: none;
+}
+:root[data-theme="matrix"] :is(.idx-chip, .idx-genre-chip, .forum-cat-chip, .store-cat-chip, .ov-chip):hover { color: var(--acc-1); border-color: var(--acc-1); }
+:root[data-theme="matrix"] :is(.idx-chip, .idx-genre-chip, .forum-cat-chip, .store-cat-chip, .ov-chip):is(.active, [aria-pressed="true"], [aria-selected="true"]) {
+  background: var(--acc-1); color: #000; border-color: var(--acc-1);
+}
+/* Badges over artwork stay readable: black plate, green type. */
+:root[data-theme="matrix"] :is(.rec-poster-badge, .idx-seasonal-badge, .rec-poster-rank, .rec-poster-rating, .rec-poster-add) {
+  background: #000; color: var(--acc-1); border: 1px solid var(--acc-2); box-shadow: none; text-shadow: none; backdrop-filter: none;
+}
+:root[data-theme="matrix"] .rec-poster-rating { background: rgb(0 0 0 / .8); }
+
+/* ── Collection ── */
+:root[data-theme="matrix"] header { background: rgb(1 4 1 / .94); border-bottom: 1px solid var(--border); backdrop-filter: none; -webkit-backdrop-filter: none; }
+:root[data-theme="matrix"] header::after { display: none; }
+:root[data-theme="matrix"] .controls { background: var(--bg); border-bottom: 1px solid var(--border); backdrop-filter: none; -webkit-backdrop-filter: none; }
+:root[data-theme="matrix"] .card-type-stripe { height: 1px; box-shadow: none; }
+:root[data-theme="matrix"] .rank-badge { text-shadow: none; }
+:root[data-theme="matrix"] .rank-badge.podium { color: var(--gold); text-shadow: 0 0 8px rgb(201 255 59 / .45); }
+:root[data-theme="matrix"] .progress-bar-fill { background: var(--acc-1) !important; box-shadow: none; }
+:root[data-theme="matrix"] .star { color: #12401c; text-shadow: none; }
+:root[data-theme="matrix"] .star.lit { color: var(--gold); text-shadow: none; }
+:root[data-theme="matrix"] :is(.stars-display, .star-rating-input) .star-bg { color: #12401c; }
+:root[data-theme="matrix"] :is(.stars-display, .star-rating-input) .star-on { color: var(--gold); }
+:root[data-theme="matrix"] .empty-state { border: 1px dashed var(--border-strong); background: transparent; }
+
+/* ── Heroes and auth: no glow pools, just the rule underneath ── */
+:root[data-theme="matrix"] :is(.idx-hero, .forum-hero, .store-hero) { background: transparent; border-bottom: 1px solid var(--border); }
+:root[data-theme="matrix"] :is(.idx-hero, .forum-hero, .store-hero)::before { display: none; }
+:root[data-theme="matrix"] .auth-card::before { display: none; }
+:root[data-theme="matrix"] .auth-side::before { background: var(--border); opacity: 1; }
+/* Window chrome dots are another OS. The bar becomes a tty header. */
+:root[data-theme="matrix"] .auth-title-bar { background: #000; color: var(--fg-faint); }
+:root[data-theme="matrix"] .auth-title-dots { display: none; }
+:root[data-theme="matrix"] .auth-title-path::before { content: "tty1 :: "; color: var(--acc-2); }
+:root[data-theme="matrix"] .auth-title .accent { background: none; color: var(--acc-1); -webkit-text-fill-color: var(--acc-1); }
+/* Per-title accent tints collapse to the one green. */
+:root[data-theme="matrix"] :is(.rec-poster, .idx-seasonal-card, .product) { --poster-accent: #00ff41 !important; --card-accent: #00ff41 !important; --prod-accent: #00ff41 !important; }
+:root[data-theme="matrix"] :is(.product-img, .rec-poster-cover, .store-featured-visual) { background-image: none; background-color: #000; }
+
+/* ── Preview card ── */
+.tp[data-theme="matrix"] {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 13px, rgb(0 255 65 / .05) 13px 14px),
+    #010401;
+  border: 1px solid var(--border-strong);
+}
+.tp[data-theme="matrix"] .tp-nav { background: #000; border-bottom-color: var(--border-strong); }
+.tp[data-theme="matrix"] :is(.tp-title, .tp-logo) { color: var(--acc-1); text-shadow: var(--phosphor); }
+.tp[data-theme="matrix"] .tp-title::after { content: ""; display: inline-block; width: .5em; height: .8em; margin-left: .1em; background: var(--acc-1); vertical-align: -.05em; }
+.tp[data-theme="matrix"] .tp-link { height: 1px; background: var(--border-strong); }
+.tp[data-theme="matrix"] .tp-link.on { height: 1px; background: var(--acc-1); }
+.tp[data-theme="matrix"] .tp-tile { background: #000; box-shadow: none; }
+.tp[data-theme="matrix"] .tp-tile-icon { background: none; border: 1px solid var(--c); }
+.tp[data-theme="matrix"] .tp-line { background: var(--fg-faint); }
+.tp[data-theme="matrix"] .tp-cta { background: var(--acc-1); color: #000; box-shadow: none; }
+
+/* ── Community: posts read like a log ── */
+:root[data-theme="matrix"] .fp { box-shadow: none; }
+:root[data-theme="matrix"] .fp-root { border-left: 1px solid var(--acc-1); box-shadow: none; }
+:root[data-theme="matrix"] .fp:target { border-color: var(--acc-1); box-shadow: inset 0 0 0 1px var(--acc-1); }
+:root[data-theme="matrix"] .fp-children { border-left: 1px dashed var(--border-strong); }
+:root[data-theme="matrix"] .fp-children .fp { background: transparent; }
+:root[data-theme="matrix"] .fp-by :is(.fp-time, time)::before { content: "@ "; color: var(--fg-faint); }
+:root[data-theme="matrix"] .fp-deleted { color: var(--fg-faint); }
+:root[data-theme="matrix"] .fp-deleted::before { content: "> "; color: var(--danger-fg); font-style: normal; font-family: var(--font-mono); }
+:root[data-theme="matrix"] .fp-deleted::after { content: " [SIGNAL LOST]"; color: var(--fg-faint); font-style: normal; font-family: var(--font-mono); }
+:root[data-theme="matrix"] .vote-score { font-family: var(--font-mono); color: var(--fg-bright); }
+:root[data-theme="matrix"] .vote-btn { border: 1px solid var(--border-strong); border-radius: 0; background: transparent; color: var(--fg-dim); }
+:root[data-theme="matrix"] .vote-btn.up[aria-pressed="true"] { background: var(--acc-1); color: #000; border-color: var(--acc-1); }
+:root[data-theme="matrix"] .vote-btn.down[aria-pressed="true"] { background: transparent; color: var(--danger-fg); border-color: var(--danger-fg); }
+:root[data-theme="matrix"] .vote[data-vote="1"] .vote-score { color: var(--acc-1); }
+:root[data-theme="matrix"] .vote[data-vote="-1"] .vote-score { color: var(--danger-fg); }
+:root[data-theme="matrix"] :is(.fp-flag, .fp-flag.mod) { background: transparent; border: 1px solid var(--acc-2); color: var(--acc-1); }
+:root[data-theme="matrix"] .ov-avatar { background: #000; color: var(--acc-1); border: 1px solid var(--acc-2); }
+:root[data-theme="matrix"] .ft-list .forum-thread.pinned { background: transparent; box-shadow: inset 2px 0 0 var(--acc-1); }
+:root[data-theme="matrix"] :is(.pf-pin, .fp-entry, .fp-images a) { border: 1px solid var(--border-strong); border-radius: 0; box-shadow: none; }
+:root[data-theme="matrix"] .pf-name { color: var(--fg-bright); text-shadow: var(--phosphor); }
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme="matrix"] :is(.logo-main, .home-title, .ov-masthead)::after { animation: none; }
+}
