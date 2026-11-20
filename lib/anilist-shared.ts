@@ -1,11 +1,11 @@
  import type { Entry, EntryType } from "@/lib/types";
 
-// Client-safe AniList types and display helpers. The fetching/caching layer is lib/anilist.ts.
+// Client-safe title types and display helpers. Server-side reads are in lib/catalog.
 
 export type MediaKind = "ANIME" | "MANGA";
 export type Season = "WINTER" | "SPRING" | "SUMMER" | "FALL";
 
-// A normalized AniList media record; this is what cached_titles.meta holds.
+// A normalized title as pages use it, read from the catalog (lib/catalog).
 export type Title = {
   anilistId: number;
   kind: MediaKind;
@@ -80,8 +80,8 @@ export type TitleStaff = { id: number; name: string; role: string | null; image:
 export type TitleRelation = { id: number; relationType: string | null; entryType: EntryType; format: string | null; title: string; cover: string | null };
 export type TitleLink = { url: string; site: string; language: string | null; icon: string | null; color: string | null };
 
-// Everything a detail page shows; this is what cached_titles.details holds. Normalized so lists
-// are always arrays and absent values are null. Bump DETAILS_VERSION when the shape changes.
+// Everything a detail page shows, assembled from a titles row and its extras. Normalized so lists
+// are always arrays and absent values are null. Bump DETAILS_VERSION when the extras' shape changes.
 export const DETAILS_VERSION = 2;
 
 export type TitleDetails = {
@@ -128,6 +128,10 @@ export type TitleDetails = {
   externalLinks: TitleLink[];
   trailer: { id: string; site: string } | null;
 };
+
+// The part of TitleDetails that takes its own provider request per title; stored in titles.extras.
+export type TitleExtras = Pick<TitleDetails,
+  "staff" | "characters" | "relations" | "recommendations" | "streamingEpisodes" | "externalLinks" | "trailer"> & { v: number };
 
 export type DetailsResult =
   | { status: "ok"; details: TitleDetails }
