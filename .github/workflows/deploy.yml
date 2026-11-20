@@ -1,8 +1,8 @@
 # Deploys to Cloudflare Workers (OpenNext). See docs/cloudflare-migration-guide.md, Phase 7.
 #   push to main  → lint, typecheck, build, deploy the production Worker (otakuvault.app)
-#   pull request  → lint, typecheck, build, upload an unpromoted preview version with a stable
-#                   alias: https://pr-<number>-otakuvault.<account-subdomain>.workers.dev
-# Preview versions run with PRODUCTION bindings and secrets (same database, same media bucket).
+#   pull request  → lint, typecheck, build, and a `wrangler deploy --dry-run` bundle check.
+#                   No preview URL: Cloudflare doesn't generate preview URLs for Workers that
+#                   export a Durable Object, and this one exports OpenNext's DOQueueHandler.
 #
 # Needs repo secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
 name: Deploy (Cloudflare)
@@ -56,6 +56,7 @@ jobs:
         if: github.event_name == 'push'
         run: pnpm exec opennextjs-cloudflare deploy
 
-      - name: Upload preview version
+      # Bundles the Worker with the real wrangler.jsonc (bindings, size limits) without uploading.
+      - name: Check Worker bundle
         if: github.event_name == 'pull_request'
-        run: pnpm exec opennextjs-cloudflare upload -- --preview-alias "pr-${{ github.event.number }}"
+        run: pnpm exec wrangler deploy --dry-run --outdir .wrangler/dry-run
