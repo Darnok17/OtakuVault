@@ -3,7 +3,7 @@
 //
 //   pnpm catalog:sync incremental [--extras 30]   the hourly run (GitHub Actions: catalog-sync.yml)
 //   pnpm catalog:sync backfill [--min-popularity 1000] [--kinds ANIME,MANGA] [--max-pages N] [--restart]
-//   pnpm catalog:sync images [--limit 5000]       copy missing cover/banner images to R2
+//   pnpm catalog:sync images [--limit 5000] [--concurrency 6]   copy missing cover/banner images to R2
 //   pnpm catalog:sync probe                       one AniList request, no database (CI smoke test)
 //
 // Image copies need CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN (R2 write) and MEDIA_BASE_URL;
@@ -25,6 +25,7 @@ const { positionals, values } = parseArgs({
     restart: { type: "boolean" },
     limit: { type: "string" },
     extras: { type: "string" },
+    concurrency: { type: "string" },
   },
 });
 const mode = positionals[0] ?? "incremental";
@@ -68,7 +69,7 @@ async function main(): Promise<boolean> {
     if (mode === "images") {
       const store = imageStore();
       if (!store) throw new Error("CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN and MEDIA_BASE_URL are required");
-      const r = await copyImages(store, num(values.limit) ?? 5000, { log });
+      const r = await copyImages(store, num(values.limit) ?? 5000, { log, concurrency: num(values.concurrency) });
       log(`images: ${JSON.stringify(r)}`);
       return r.failed === 0 || r.copied > 0;
     }

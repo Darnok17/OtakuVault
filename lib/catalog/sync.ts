@@ -113,7 +113,7 @@ export async function runIncremental(ctx: SyncContext, opts: IncrementalOptions 
   const now = () => ctx.now?.() ?? new Date();
   const log = ctx.log ?? (() => {});
   const o = {
-    minPopularity: DEFAULT_MIN_POPULARITY, updatedPages: 20, trendingPages: 4, refreshBatches: 20,
+    minPopularity: DEFAULT_MIN_POPULARITY, updatedPages: 40, trendingPages: 4, refreshBatches: 20,
     extrasLimit: 30, extrasMaxAge: 7 * DAY, imageLimit: 2000, seasonEvery: 6 * HOUR, ...opts,
   };
   const report: IncrementalReport = {};
@@ -134,8 +134,10 @@ export async function runIncremental(ctx: SyncContext, opts: IncrementalOptions 
     let newest = since;
     let seen = 0;
     let saved = 0;
+    let pages = 0;
     for await (const pageItems of ctx.source.fetchUpdatedSince(since, o.updatedPages)) {
       seen += pageItems.length;
+      pages++;
       const ids = pageItems.map((t) => t.ids.anilist);
       const have = new Set((await db.select({ id: titles.anilistId }).from(titles).where(sql`${titles.anilistId} = any(${sql.param(ids)}::int[])`)).map((r) => r.id));
       const keep = pageItems.filter((t) => keepable(t) && (have.has(t.ids.anilist) || (t.popularity ?? 0) >= o.minPopularity));
@@ -144,7 +146,9 @@ export async function runIncremental(ctx: SyncContext, opts: IncrementalOptions 
       for (const t of pageItems) if (t.updatedAt && t.updatedAt > newest) newest = t.updatedAt;
     }
     await setState("updated", { since: newest.toISOString() });
-    return `${seen} edited since ${since.toISOString()}, ${saved} saved`;
+    // At the page cap the oldest edits of the hour are skipped; the refresh step catches them.
+    const truncated = pages >= o.updatedPages ? " (page cap reached; older edits left to the refresh step)" : "";
+    return `${seen} edited since ${since.toISOString()}, ${saved} saved${truncated}`;
   });
 
   // 2. Airing schedule: yesterday through next week.

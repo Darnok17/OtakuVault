@@ -41,12 +41,14 @@ separate, destructive migration, deliberately not part of this change.
 anime and manga with AniList popularity ≥ 1000 (about 10k anime + 11k manga, Nov 2026). AniList
 can't page deeper than 5000 results and has no id cursor, so it walks most-popular-first in
 popularity windows and saves its place after every page. At AniList's degraded 30 req/min it takes
-about 20 minutes, then `pnpm catalog:sync images` copies the images.
+about 20 minutes, then `pnpm catalog:sync images --concurrency 16` copies the images (about 40 minutes).
 
-**Incremental** (hourly, ~100 AniList requests, about 4 minutes):
+**Incremental** (hourly, ~120 AniList requests, about 5 minutes):
 
 1. **updated**: titles edited at AniList since the last run (`UPDATED_AT_DESC`). New ones join
    if popularity ≥ 1000; ones already in the catalog are refreshed whatever their popularity.
+   AniList records 1000+ edits an hour, so this reads up to 40 pages (2000 titles); past that
+   the run says so, and the refresh step picks up what was skipped.
 2. **airing**: the airing schedule for yesterday through next week, with the airing titles.
 3. **trending**: the top 200 trending per entry type; trending scores are replaced wholesale.
 4. **seasons** (every 6 h): the current and next anime season, complete.
