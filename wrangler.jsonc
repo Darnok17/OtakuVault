@@ -14,6 +14,13 @@
   "placement": { "mode": "smart" },
   "observability": { "enabled": true },
 
+  // Apex and www are Workers Custom Domains (DNS records and certificates are managed by Cloudflare).
+  // A zone Redirect Rule sends www → apex with a 301 before the Worker runs.
+  "routes": [
+    { "pattern": "otakuvault.app", "custom_domain": true },
+    { "pattern": "www.otakuvault.app", "custom_domain": true }
+  ],
+  // workers.dev stays on for preview URLs; robots/canonicals point at otakuvault.app.
   "workers_dev": true,
   "preview_urls": true,
 
@@ -41,10 +48,14 @@
   // Hourly: the new-episodes job (app/api/jobs/new-episodes) is idempotent and rate-limit tolerant.
   "triggers": { "crons": ["0 * * * *"] },
 
-  // Non-secret runtime config. Secrets (BETTER_AUTH_SECRET, CRON_SECRET, OAuth) via `wrangler secret put`.
+  // Non-secret runtime config. Secrets (BETTER_AUTH_SECRET, CRON_SECRET, ANILIST_RELAY_SECRET, OAuth)
+  // via `wrangler secret put`.
   "vars": {
     "BETTER_AUTH_URL": "https://otakuvault.app",
     "STORAGE_DRIVER": "r2",
-    "MEDIA_BASE_URL": "https://img.otakuvault.app"
+    "MEDIA_BASE_URL": "https://img.otakuvault.app",
+    // TEMPORARY: AniList blocks Cloudflare Workers, so AniList calls go through the relay route on
+    // the Vercel project (app/api/anilist-relay). Needs the ANILIST_RELAY_SECRET secret.
+    "ANILIST_API_URL": "https://otaku-vault-gold.vercel.app/api/anilist-relay"
   }
 }

@@ -3,6 +3,8 @@
 NEXTJS_ENV=development
 BETTER_AUTH_SECRET=
 CRON_SECRET=
+# Only when ANILIST_API_URL points at the relay (production)
+ANILIST_RELAY_SECRET=
 # Optional OAuth (leave blank to disable a provider)
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
