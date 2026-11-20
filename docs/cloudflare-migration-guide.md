@@ -4,8 +4,9 @@ This manual moves OtakuVault's hosting from Vercel to **Cloudflare Workers** and
 
 Follow the phases in order. Each step says where to click, what to type, or what file to change. Where this guide had to make a call you might disagree with, it's listed under [Decisions to make](#1-decisions-to-make) first.
 
+- **Updated:** 2026-11-20 after the actual migration. Start with [section 0](#0-status-and-corrections-2026-11-20).
 - **Written:** 2026-11-16, against `next@16.4.5`, `better-auth@1.7.12`, `drizzle-orm@0.45.4`, `pg@8.23.1`.
-- **Placeholders:** `yourdomain.com` is your new domain. `<account-subdomain>` is your `*.workers.dev` subdomain. Replace both everywhere.
+- **Placeholders:** `yourdomain.com` is `otakuvault.app`. `<account-subdomain>` is `conrad-seegert`.
 - **Ground rule:** do all code work on a branch (`git switch -c cloudflare-migration`). Vercel keeps serving production from `main` until the cutover in [Phase 12](#phase-12--cutover).
 
 > **Re-check versions before you start.** Cloudflare's Next.js support changes quickly. Before Phase 3, open the [OpenNext Cloudflare docs](https://opennext.js.org/cloudflare) and confirm the adapter still lists "all minor and patch versions of Next.js 16" as supported, and that its `next` peer dependency covers the version in `package.json`.
@@ -14,6 +15,7 @@ Follow the phases in order. Each step says where to click, what to type, or what
 
 ## Contents
 
+0. [Status and corrections (2026-11-20)](#0-status-and-corrections-2026-11-20)
 1. [Decisions to make](#1-decisions-to-make)
 2. [Dependency inventory](#2-dependency-inventory)
 3. [What's hard or blocked on Cloudflare](#3-whats-hard-or-blocked-on-cloudflare)
@@ -37,6 +39,41 @@ Follow the phases in order. Each step says where to click, what to type, or what
 21. [Troubleshooting](#troubleshooting)
 22. [Reference links](#reference-links)
 
+## 0. Status and corrections (2026-11-20)
+
+The migration was carried out on branch `feat/cloudflare-migration` (base `main` at `5ee9331`, which is 15 commits newer than the `7dcbe91` this guide audited). **The repo is now the source of truth:** where a snippet below differs from the committed file, the committed file wins. What actually exists:
+
+| Item | State |
+| --- | --- |
+| Worker | `otakuvault` on account subdomain `conrad-seegert`: <https://otakuvault.conrad-seegert.workers.dev> |
+| Custom domains | `otakuvault.app` and `www.otakuvault.app` (Workers Custom Domains, declared in `wrangler.jsonc` `routes`). `www` → apex is a zone Redirect Rule (301, path and query kept). |
+| Zone settings | SSL **Full (strict)**, Always Use HTTPS **on**, minimum TLS **1.2**. HSTS still off (turn on after a stable week, Phase 12). The zone had **no DNS records** before the migration (no email records to keep). |
+| Hyperdrive | `otakuvault-db` → production Neon `main` branch, direct (non-pooler) host, **caching disabled**. Uses the existing owner role (the "simpler alternative" in 2.1); no `hyperdrive_user` role was created. |
+| R2 | `otakuvault-cache` (Next incremental cache), `otakuvault-media` (uploads; public at `img.otakuvault.app`). Both in `enam`. |
+| D1 | `otakuvault-tag-cache` (tag cache). Its table is created by `opennextjs-cloudflare deploy` itself. |
+| Images | `IMAGES` binding, used for upload normalization. |
+| Cron Trigger | `0 * * * *` → `scheduled()` in `cloudflare/worker.ts` → `POST /api/jobs/new-episodes` with `CRON_SECRET`, through the app's own fetch handler. |
+| Worker secrets | `BETTER_AUTH_SECRET` (new value), `CRON_SECRET` (new; it was never set on Vercel), `ANILIST_RELAY_SECRET`. No OAuth secrets: OAuth isn't set up yet, so only email/password sign-in exists. |
+| CI/CD | GitHub Actions `.github/workflows/deploy.yml` (repo secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`). |
+| Staging Worker (D8) | **Not created yet.** It needs a Neon `staging` branch, which needs Neon console/API access. Until then, PR previews are unpromoted versions of the production Worker (production data). |
+| Vercel | Project `otaku-vault` (`https://otaku-vault-gold.vercel.app`) still serves and is the rollback. It also hosts the temporary AniList relay. |
+
+**Corrections to the plan below** (each is also fixed or flagged in place):
+
+1. **AniList blocks Cloudflare Workers.** Every request from a Worker gets `403 "You have been manually blocked. Please come to the principal's office."`, whatever the User-Agent (checked from a throwaway probe Worker). The inventory said "Works". Fix in place: `ANILIST_API_URL` on the Worker points at a **temporary relay** route on the Vercel project (`app/api/anilist-relay`: POST only, fixed upstream, `x-relay-secret` required, active only on Vercel with `ANILIST_RELAY_SECRET` set). Long-term fix: a local title catalog that a sync job fills off Cloudflare, so pages stop calling AniList at request time. After that, the relay is only needed by whatever still calls AniList from Cloudflare; **delete the relay, its env vars and (Phase 14) the Vercel project once nothing on Cloudflare uses it.**
+2. **There is a cron job** (`/api/jobs/new-episodes`, PR #3). The inventory said none. It runs from a Cron Trigger via a custom Worker entry (`cloudflare/worker.ts`), not a separate Worker as 15.4 suggested.
+3. **`@vercel/blob` and `sharp` stay until cutover (D5, 3.1).** Removing them would break the Vercel build of `main` the moment this branch merges, and Vercel is the rollback. `lib/storage.ts` has three drivers: `r2` (Workers, set in `wrangler.jsonc`), `blob` (Vercel, default in production elsewhere) and `local` (dev). sharp and Blob are imported lazily, so they never reach the Worker bundle. Remove them in Phase 14. As a consequence, Phase 12 step 1 (disconnect Vercel Git so its build doesn't fail) is no longer needed.
+4. **CI/CD is GitHub Actions, not Workers Builds (D7).** Workers Builds needs the Cloudflare GitHub App authorized in the dashboard, which an API token can't do. Actions also gates deploys on lint and typecheck. Don't also connect Workers Builds, or every push deploys twice.
+5. **`initOpenNextCloudflareForDev()` must not run unconditionally (3.4).** It doesn't check the Next phase, so it would start miniflare during `next build` (Vercel, CI) and make plain `pnpm dev` demand a local Hyperdrive connection string. It now runs only in `next dev` with `CF_DEV_BINDINGS=1`. Dev doesn't need bindings otherwise (Node uses `DATABASE_URL` and the local upload driver).
+6. **`opennextjs-cloudflare deploy`/`upload` need `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE`** even for a remote deploy (it starts a local platform proxy). Any dummy value works; `deploy.yml` sets one.
+7. **D1 tag-cache table (2.4):** the current OpenNext schema has `stale` and `expire` columns, and `deploy` creates the table itself. Skip the manual `CREATE TABLE`.
+8. **Vercel env vars can't be pulled.** All of them are marked Sensitive, so `vercel env pull` returns `"[SENSITIVE]"`. Values have to come from their source (Neon console, provider consoles) or be regenerated.
+9. **The Vercel production URL is `https://otaku-vault-gold.vercel.app`** (project `otaku-vault`), not `otakuvault.vercel.app`.
+10. **`wrangler types` runtime types clash with the DOM in one place:** HTMLRewriter's `Element.prepend(string | Response | ReadableStream)` merges into the DOM `Element`. `ThemeFx.tsx` uses `insertBefore` instead.
+11. **Known log noise:** each DB-backed request logs `unhandledRejection: TypeError: This socket has been closed.` from `pg-cloudflare@1.4.1` tearing down its socket after the query finished (`maxUses: 1`). Responses are correct. Recheck when `pg` updates.
+12. **Worker size:** 2.86 MiB gzipped (limit 10 MiB on Paid). Workers Paid is still needed for CPU time (password hashing).
+13. **Verified end to end** on both workers.dev and `otakuvault.app` (40 checks): public pages, `proxy.ts` redirects, sign-up/in/out, theme change, upload → Images → R2 → `img.otakuvault.app`, forum thread + reply + nested reply + vote, cron route and Cron Trigger. Smoke-test accounts are named `smoke…@example.com`, with forum threads titled `Smoke test …` in category Meta.
+
 ---
 
 ## 1. Decisions to make
@@ -49,10 +86,10 @@ Make these before you start. The recommended option is listed first, and the res
 | D2 | **Workers plan** | **Workers Paid ($5/month).** | Free plan limits: 3 MiB compressed Worker size (a Next.js app with 14 fonts, Better Auth and Drizzle will very likely exceed this) and 10 ms CPU per request (SSR plus password hashing will exceed it). Treat Paid as required. |
 | D3 | **Database connection** | **Keep Neon. Connect through Cloudflare Hyperdrive with the existing `pg` driver, with Hyperdrive query caching disabled.** No data migration. | Neon's HTTP driver (`neon-http`) can't run interactive transactions, and the app uses `db.transaction()` in 8 places (entries, pins, forum). Neon's WebSocket driver works but has the same "no global pool" rule as `pg` and gives you nothing extra. |
 | D4 | **Image processing** (replaces `sharp`) | **Cloudflare Images binding** (`env.IMAGES`): resize to 1200 px, JPEG q85, matte background, on the server. Free for 5,000 unique transformations/month, then $0.50 per 1,000. Each upload is one transformation. | **Client-side only**: the browser always re-encodes to JPEG ≤1200 px (most of the code is already in `lib/image.ts`), and the server only validates with `env.IMAGES.info()` (free). Costs nothing, but the server trusts the client's encoding. Pick this if you expect more than ~5,000 uploads a month. |
-| D5 | **Upload storage** (replaces Vercel Blob) | **R2 bucket `otakuvault-media`, served publicly at `img.yourdomain.com`.** There are no real users, so nothing is copied: R2 starts empty and `@vercel/blob` is removed outright. | Keep Vercel Blob (it's an HTTP API and works from Workers). Not worth it: it ties you to a Vercel account. |
+| D5 | **Upload storage** (replaces Vercel Blob) | **R2 bucket `otakuvault-media`, served publicly at `img.yourdomain.com`.** There are no real users, so nothing is copied: R2 starts empty. **Done, but `@vercel/blob` stays (as the `blob` driver) until Phase 14 so Vercel keeps working as the rollback** (section 0, item 3). | Keep Vercel Blob (it's an HTTP API and works from Workers). Not worth it: it ties you to a Vercel account. |
 | D6 | **Next.js cache backend** | **R2 incremental cache + D1 tag cache + Durable Object queue.** Today the app doesn't use `'use cache'` or `revalidateTag`, so this mostly serves prerendered shells. It's in place for when the store needs product caching. | Minimal option: R2 incremental cache only (what `opennextjs-cloudflare migrate` generates). Fine today, but you'll have to add the rest the first time you call `revalidateTag`/`updateTag`. |
-| D7 | **CI/CD** | **Workers Builds** (Cloudflare's Git integration). Production deploys from `main`, every other branch uploads a preview version, and PRs get a preview link. Keep the existing GitHub Actions `ci.yml` for lint and build. | **GitHub Actions deploy** (YAML in [Phase 7B](#7b-alternative-deploy-from-github-actions)). Use it if Workers Builds can't install `pnpm@12.10.1`, or if you want deploys gated on CI passing. |
-| D8 | **Preview/staging data** | **A separate `otakuvault-staging` Worker using a Neon branch and its own R2 bucket.** Use it for the parallel run and for PR testing. | Preview *versions* of the production Worker share **all production bindings and secrets**: same database, same bucket. Only use those for a last check before promoting. |
+| D7 | **CI/CD** | **Chosen instead: GitHub Actions deploy** (`.github/workflows/deploy.yml`, section 0 item 4). Originally recommended: **Workers Builds** (Cloudflare's Git integration). Production deploys from `main`, every other branch uploads a preview version, and PRs get a preview link. Keep the existing GitHub Actions `ci.yml` for lint and build. | **GitHub Actions deploy** (YAML in [Phase 7B](#7b-alternative-deploy-from-github-actions)). Use it if Workers Builds can't install `pnpm@12.10.1`, or if you want deploys gated on CI passing. |
+| D8 | **Preview/staging data** | **A separate `otakuvault-staging` Worker using a Neon branch and its own R2 bucket.** (Not created yet: needs Neon access. Section 0.) Use it for the parallel run and for PR testing. | Preview *versions* of the production Worker share **all production bindings and secrets**: same database, same bucket. Only use those for a last check before promoting. |
 | D9 | **Domain registrar** | **Cloudflare Registrar** (at-cost pricing, no markup, free WHOIS privacy). Supports `.com`, `.net`, `.org`, `.io`, `.ai`, `.app`, `.dev`, `.co`, `.me`, `.tv`, `.xyz`, `.shop`, `.store`, `.club`, `.fun`, `.online`, `.site`, and 400+ more. | **Not supported as of this writing: `.gg`, `.moe`, `.anime`**, and IDN (non-ASCII) names. For those, buy at Porkbun, Namecheap or similar, then point the nameservers at Cloudflare (Phase 9B). A domain registered with Cloudflare must keep Cloudflare nameservers. |
 | D10 | **Apex vs www** | **`yourdomain.com` canonical, `www` 301 → apex.** | `www` canonical is equally valid. Pick one, then set `BETTER_AUTH_URL`, the OAuth callbacks and Stripe to that exact origin. |
 | D11 | **Sending email** | **A dedicated transactional provider (Resend, Postmark or Amazon SES) on a subdomain like `mail.yourdomain.com`.** | **Cloudflare Email Service** (send from Workers via `env.EMAIL.send()`) is in **public beta** since 2026-04-16 and needs Workers Paid. Fine for auth emails if you accept beta status. Receiving is a separate, free product (Email Routing). |
@@ -61,7 +98,7 @@ Make these before you start. The recommended option is listed first, and the res
 
 ## 2. Dependency inventory
 
-Audited from the code on `main` at `7dcbe91`.
+Audited from the code on `main` at `7dcbe91`. Rows that turned out wrong are corrected inline (marked **Corrected**); see section 0.
 
 | What the app uses | Where | Vercel-specific? | Cloudflare equivalent | Effort |
 | --- | --- | --- | --- | --- |
@@ -80,8 +117,8 @@ Audited from the code on `main` at `7dcbe91`.
 | ISR / `revalidate*` / `'use cache'` / `cacheTag` | **not used** | n/a | R2 incremental cache + D1 tag cache + DO queue, ready for later (D6) | **S** |
 | `next/image` | **not used** (`<img>` everywhere, deliberately) | n/a | Nothing to do. If you add it later, use the `IMAGES` binding (OpenNext supports it) or a custom loader. | none |
 | `next/font/google` (14 families) | `app/fonts.ts` | No | Self-hosted at build time; needs network during the build (Workers Builds and GitHub Actions both have it). Fonts add to static assets, not Worker size. | none |
-| AniList GraphQL `fetch` | `lib/anilist.ts` | No | Works. `global_fetch_strictly_public` flag is fine (AniList is public). | none |
-| Cron jobs | **none** (no `vercel.json` crons) | n/a | Cron Triggers when you need them (see 15.4) | none |
+| AniList GraphQL `fetch` | `lib/anilist.ts`, `lib/jobs/new-episodes.ts` | No | **Corrected: blocked.** AniList returns 403 "manually blocked" to all Cloudflare Workers traffic. Temporary relay on Vercel (`app/api/anilist-relay`, `ANILIST_API_URL` + `ANILIST_RELAY_SECRET`); long-term a local catalog synced off Cloudflare. | **M–L** |
+| Cron jobs | **Corrected:** `/api/jobs/new-episodes` (PR #3), never scheduled on Vercel (`CRON_SECRET` wasn't set there) | n/a | Cron Trigger `0 * * * *` → `scheduled()` in `cloudflare/worker.ts` | **S** |
 | `vercel.json` / `vercel.ts` | **none** | n/a | `wrangler.jsonc` | n/a |
 | `@vercel/analytics`, `@vercel/speed-insights`, Edge/Global Config, `@vercel/og` | **none** | n/a | Optional: Cloudflare Web Analytics (free, no code) | none |
 | `export const runtime = "edge"` | **none** | n/a | (OpenNext doesn't support the edge runtime, so it's good there are none) | none |
@@ -194,7 +231,11 @@ pnpm dlx wrangler@latest d1 create otakuvault-tag-cache
 pnpm dlx wrangler@latest d1 create otakuvault-tag-cache-staging
 ```
 
-Note each `database_id`. OpenNext's D1 tag cache stores revalidation timestamps in a `revalidations` table. Create it on both databases:
+Note each `database_id`. OpenNext's D1 tag cache stores revalidation timestamps in a `revalidations` table.
+
+> **Corrected:** skip the commands below. `opennextjs-cloudflare deploy` runs `CREATE TABLE IF NOT EXISTS revalidations (tag TEXT NOT NULL, revalidatedAt INTEGER NOT NULL, stale INTEGER, expire INTEGER default NULL, UNIQUE(tag) ON CONFLICT REPLACE)` itself, and the two-column definition below is out of date.
+
+Original step (obsolete):
 
 ```bash
 for db in otakuvault-tag-cache otakuvault-tag-cache-staging; do
@@ -219,13 +260,15 @@ Nothing to create. The queue's Durable Object is declared in `wrangler.jsonc` an
 
 Do all of this on the `cloudflare-migration` branch. Commit as you go.
 
+> **Done** on `feat/cloudflare-migration`. The snippets in this phase are the original plan; the committed files (`wrangler.jsonc`, `open-next.config.ts`, `cloudflare/worker.ts`, `next.config.ts`, `lib/db/index.ts`, `lib/storage.ts`, `lib/site.ts`) are what runs, and differ where section 0 says so.
+
 ### 3.1 Install the adapter and Wrangler
 
 ```bash
 git switch -c cloudflare-migration
 pnpm add @opennextjs/cloudflare@latest
 pnpm add -D wrangler@latest
-pnpm remove @vercel/blob sharp   # replaced by R2 and the Images binding (3.9)
+# Corrected: keep @vercel/blob and sharp until Phase 14 (section 0, item 3)
 ```
 
 `lib/db/migrate-images.ts` (the old one-time data-URL backfill) imports `lib/storage.ts`. It still compiles after 3.9, but it can only run where there's a Worker context. There's no legacy data to backfill, so you can also delete the script and its `db:migrate-images` entry in `package.json`.
@@ -347,6 +390,8 @@ The import paths above match the OpenNext docs at the time of writing. If one fa
 The DO queue's class (`DOQueueHandler`) is exported by the generated `.open-next/worker.js`. You don't write it.
 
 ### 3.4 `next.config.ts`: enable bindings in `next dev`
+
+> **Corrected:** don't call `initOpenNextCloudflareForDev()` unconditionally as below. The committed `next.config.ts` exports a phase function and calls it only for `next dev` with `CF_DEV_BINDINGS=1` (section 0, item 5).
 
 ```ts
 // next.config.ts
@@ -806,7 +851,9 @@ NEXT_PUBLIC_SITE_URL=https://otakuvault.<account-subdomain>.workers.dev pnpm dep
 
 ## Phase 7: CI/CD and preview deployments
 
-### 7A. Workers Builds (recommended)
+### 7A. Workers Builds (not used)
+
+> Not used: deploys run from GitHub Actions (7B, section 0 item 4). Kept for reference.
 
 Do this after Phase 6, so the Workers already exist.
 
@@ -841,7 +888,9 @@ Do this after Phase 6, so the Workers already exist.
 
 > **Preview versions of `otakuvault` run with production bindings and secrets** (production database, production media bucket). Treat them as "production, unreleased". Do real feature testing on staging. Sign-in won't work on preview URLs anyway, because `BETTER_AUTH_URL` and the OAuth callbacks point elsewhere. Email/password sign-in may also fail Better Auth's origin check there.
 
-### 7B. Alternative: deploy from GitHub Actions
+### 7B. Deploy from GitHub Actions (used)
+
+> **In use.** The committed `.github/workflows/deploy.yml` differs from the YAML below: it also runs `pnpm typecheck`, sets build placeholders and the dummy `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE`, never cancels a production deploy, and skips fork PRs. `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_MEDIA_HOST` aren't needed: production builds default to `https://otakuvault.app` / `img.otakuvault.app` (`lib/site.ts`).
 
 Use this if you'd rather deploy only after lint and build pass, or if Workers Builds can't run pnpm 12.
 
@@ -990,6 +1039,8 @@ All under the zone (`yourdomain.com`) in the dashboard:
 
 ### 9E. www → apex redirect
 
+> **Done differently:** `www.otakuvault.app` is a second Workers Custom Domain (so Cloudflare manages its DNS record and certificate) instead of an `AAAA 100::` record, and the zone Redirect Rule below answers it before the Worker runs.
+
 1. **DNS → Records → Add record:** Type `AAAA`, Name `www`, IPv6 `100::`, **Proxy status: Proxied**. This placeholder record only exists so Cloudflare receives the traffic; the rule in step 2 answers it.
 2. **Rules → Overview → Create rule → Redirect Rule** → choose the template **"Redirect from WWW to root"**. If no template is offered, build it yourself:
    - When: Hostname equals `www.yourdomain.com`
@@ -1135,7 +1186,7 @@ Per-page canonicals for title pages: in `app/_components/TitleDetail.tsx`'s `gen
 
 There are no real users and no data worth keeping, so cutover is just "make the domain live and retire Vercel". There's no file copy, no URL rewrite and no maintenance window.
 
-1. **Disconnect Vercel from Git first:** Vercel → Project → **Settings → Git → Disconnect**. Otherwise Vercel also tries to build `main` after the merge, and that build would fail (no `@vercel/blob`, no `sharp`).
+1. ~~**Disconnect Vercel from Git first.**~~ **Corrected:** not needed. The branch keeps the `blob` driver and sharp, so Vercel still builds `main` after the merge and stays usable as the rollback. Keep Vercel connected until Phase 14. (It also hosts the AniList relay.)
 2. **Merge** `cloudflare-migration` into `main`. With Workers Builds connected, this deploys production.
 3. **Database migrations:** none needed (same Neon DB). If the branch added any, run `DATABASE_URL='<prod owner DIRECT url>' pnpm db:migrate` now.
 4. **Clear out test data that points at Vercel Blob** (optional, recommended). Any covers, avatars, moodboard or forum images uploaded while testing on Vercel still point at `*.public.blob.vercel-storage.com`, and they'll break once the Blob store is deleted in Phase 14. Pick one:
@@ -1182,7 +1233,9 @@ There are no real users and no data worth keeping, so cutover is just "make the 
 
 ## Phase 14: Decommission Vercel
 
-When it's safe: about **a week after cutover**, with no rollbacks.
+When it's safe: about **a week after cutover**, with no rollbacks, **and once nothing on Cloudflare calls AniList through the relay** (`ANILIST_API_URL` removed from `wrangler.jsonc`). Deleting the Vercel project deletes the relay.
+
+0. **Code cleanup (one PR):** `pnpm remove @vercel/blob sharp`; delete the `blob` driver from `lib/storage.ts` (and the Blob host check in `lib/image.ts`), `sharp: false` from `pnpm-workspace.yaml`, `app/api/anilist-relay/`, the relay header in `lib/anilist.ts`, `ANILIST_API_URL` from `wrangler.jsonc`, then `wrangler secret delete ANILIST_RELAY_SECRET`. Remove `ANILIST_RELAY_SECRET` and the Blob vars from Vercel too (or just delete the project).
 
 1. **Delete the Blob store:** Vercel → **Storage** → the Blob store → Settings → **Delete**. Nothing in the app reads from it any more. (Any leftover test rows that pointed at it show broken images; see Phase 12 step 4.)
 2. **The Vercel project:**
@@ -1350,6 +1403,11 @@ Abandoned-cart cleanup, order reconciliation and sitemap refreshes would have be
 | Stripe webhook 400 "No signatures found" | Body parsed or altered before verification. | Use `await request.text()` and `constructEventAsync` (15.2). |
 | Stripe webhook 403 | Cloudflare bot protection challenging Stripe. | WAF skip rule for the webhook path; keep Bot Fight Mode off. |
 | SPF "permerror" in DMARC reports | Two `v=spf1` TXT records on the same name. | Merge them into one record. |
+| AniList data missing on Cloudflare; logs or job report show `You have been manually blocked` | AniList blocks Cloudflare Workers egress (any User-Agent). | Keep `ANILIST_API_URL` pointed at the relay and `ANILIST_RELAY_SECRET` set on both the Worker and Vercel. Check the relay: `curl -X POST -H 'x-relay-secret: …' -d '{"query":"{ Media(id:1){id} }"}' https://otaku-vault-gold.vercel.app/api/anilist-relay`. |
+| `opennextjs-cloudflare deploy` fails: "you should use a local Postgres connection string to emulate Hyperdrive" | The deploy command starts a local platform proxy. | Set `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` to any Postgres URL (it isn't used). |
+| `unhandledRejection: TypeError: This socket has been closed.` in Worker logs | `pg-cloudflare` socket teardown after each query (`maxUses: 1`). | Harmless log noise; responses are correct. Recheck after `pg` upgrades. |
+| `tsc`: `HTMLCanvasElement` not assignable to `string \| Response \| ReadableStream` on `.prepend()` | `cloudflare-env.d.ts` runtime types merge HTMLRewriter's `Element.prepend` into the DOM. | Use `insertBefore` (or `append`) for DOM nodes. |
+| `next build` (Vercel/CI) starts miniflare or wants a Hyperdrive connection string | `initOpenNextCloudflareForDev()` called unconditionally. | Keep the call behind the `PHASE_DEVELOPMENT_SERVER` + `CF_DEV_BINDINGS=1` check in `next.config.ts`. |
 
 ---
 

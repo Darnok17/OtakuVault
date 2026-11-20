@@ -25,14 +25,16 @@ locally to `http://localhost:3000`); the redirect URIs below are derived from it
 
 ## Redirect URIs
 
+Production is **https://otakuvault.app** (Cloudflare Workers; `BETTER_AUTH_URL` is set in `wrangler.jsonc`). OAuth credentials go in as Worker secrets: `pnpm exec wrangler secret put GOOGLE_CLIENT_ID` and so on. A provider is enabled once both its ID and secret are set.
+
 Better-Auth's callback route is `/api/auth/callback/<provider>`. It is served by the existing
 catch-all at `app/api/auth/[...all]/route.ts`; no extra route files are needed.
 
 | Provider | Local | Production |
 | --- | --- | --- |
-| Google | `http://localhost:3000/api/auth/callback/google` | `https://<your-domain>/api/auth/callback/google` |
-| Discord | `http://localhost:3000/api/auth/callback/discord` | `https://<your-domain>/api/auth/callback/discord` |
-| GitHub | `http://localhost:3000/api/auth/callback/github` | `https://<your-domain>/api/auth/callback/github` |
+| Google | `http://localhost:3000/api/auth/callback/google` | `https://otakuvault.app/api/auth/callback/google` |
+| Discord | `http://localhost:3000/api/auth/callback/discord` | `https://otakuvault.app/api/auth/callback/discord` |
+| GitHub | `http://localhost:3000/api/auth/callback/github` | `https://otakuvault.app/api/auth/callback/github` |
 
 Register the exact URLs (scheme, host and path); providers reject anything that differs.
 Vercel preview deployments have changing hostnames, so either leave OAuth off on Preview or
@@ -47,7 +49,7 @@ point a stable preview domain at it and register that too.
    you are ready.
 3. **APIs & Services → Credentials → Create credentials → OAuth client ID**, type
    **Web application**.
-   - Authorized JavaScript origins: `http://localhost:3000`, `https://<your-domain>`
+   - Authorized JavaScript origins: `http://localhost:3000`, `https://otakuvault.app`
    - Authorized redirect URIs: the two Google URLs above
 4. Copy the client ID and secret into `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
 
@@ -64,7 +66,7 @@ point a stable preview domain at it and register that too.
 
 1. <https://github.com/settings/developers> → **OAuth Apps → New OAuth App** (an OAuth App, not
    a GitHub App).
-   - Homepage URL: `https://<your-domain>`
+   - Homepage URL: `https://otakuvault.app`
    - Authorization callback URL: the GitHub URL above
 2. A GitHub OAuth App accepts **one** callback URL, so create two apps: one for local
    development and one for production, each with its own ID/secret in the matching environment.
