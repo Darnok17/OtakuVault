@@ -131,7 +131,7 @@ Alternative: `git revert <bad commit>` and push to `main`. Vercel builds and dep
 
 ## Scheduled jobs (new-episode notifications)
 
-`GET` or `POST /api/jobs/new-episodes` with `Authorization: Bearer <CRON_SECRET>` checks AniList for newly aired episodes of every anime someone has marked **Watching** and notifies them. It is safe to call as often as you like (every event has a dedupe key); **hourly** is a good default. Anything AniList's rate limit cuts short is picked up on the next run. No scheduler is wired into the repo on purpose, so it works on either platform:
+`GET` or `POST /api/jobs/new-episodes` with `Authorization: Bearer <CRON_SECRET>` reads newly aired episodes from the title catalog's airing schedule (no AniList request) for every anime someone has marked **Watching** and notifies them. It is safe to call as often as you like (every event has a dedupe key); **hourly** is a good default. On Cloudflare it runs from the Worker's Cron Trigger (`cloudflare/worker.ts`). The schedule is only as fresh as the last **catalog sync** (below).
 
 **Vercel Cron.** Set `CRON_SECRET` in the project's env vars (Vercel then sends it as the bearer token automatically) and add a cron to `vercel.ts` / `vercel.json`:
 
@@ -155,6 +155,10 @@ export default {
 ```
 
 **Anything else** (GitHub Actions `schedule`, cron + curl): `curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://<your domain>/api/jobs/new-episodes`. The JSON response reports shows checked, watermarks initialized and notifications sent.
+
+## Title catalog sync
+
+Pages read titles from our own catalog tables, filled from AniList by `pnpm catalog:sync`, which `.github/workflows/catalog-sync.yml` runs hourly (repo secrets `DATABASE_URL`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`). After migration `0006_title_catalog`, run a one-off backfill (Actions → Catalog sync → mode `backfill`, then `images`). Details: [docs/catalog.md](docs/catalog.md).
 
 ---
 
