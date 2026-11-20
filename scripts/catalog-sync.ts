@@ -1,7 +1,7 @@
 // The catalog sync job. Talks to AniList directly (not through the relay: this runs on GitHub
 // Actions or a laptop, which AniList doesn't block) and writes straight to DATABASE_URL.
 //
-//   pnpm catalog:sync incremental                 the hourly run (GitHub Actions: catalog-sync.yml)
+//   pnpm catalog:sync incremental [--extras 30]   the hourly run (GitHub Actions: catalog-sync.yml)
 //   pnpm catalog:sync backfill [--min-popularity 1000] [--kinds ANIME,MANGA] [--max-pages N] [--restart]
 //   pnpm catalog:sync images [--limit 5000]       copy missing cover/banner images to R2
 //   pnpm catalog:sync probe                       one AniList request, no database (CI smoke test)
@@ -24,6 +24,7 @@ const { positionals, values } = parseArgs({
     "max-pages": { type: "string" },
     restart: { type: "boolean" },
     limit: { type: "string" },
+    extras: { type: "string" },
   },
 });
 const mode = positionals[0] ?? "incremental";
@@ -77,6 +78,7 @@ async function main(): Promise<boolean> {
       const report = await runIncremental({ source, images: store, log }, {
         minPopularity: num(values["min-popularity"]),
         imageLimit: num(values.limit),
+        extrasLimit: num(values.extras),
       });
       const failed = Object.entries(report).filter(([, r]) => !r.ok).map(([k]) => k);
       log(failed.length ? `done, failed steps: ${failed.join(", ")}` : "done");
