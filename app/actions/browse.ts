@@ -1,6 +1,6 @@
 "use server";
 
-import { browseTitles, getSeasonalPage, getTrendingPage } from "@/lib/anilist";
+import { browseTitles, getSeasonalPage, getTrendingPage } from "@/lib/catalog";
 import { DEFAULT_FILTERS, type TitlePage } from "@/lib/anilist-shared";
 import { BROWSE_MAX_PAGE, BROWSE_SECTIONS, isBrowseSectionId, parseSeasonSlug, type BrowseSection } from "@/lib/browse-sections";
 

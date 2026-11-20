@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db, entries, users } from "@/lib/db";
-import { getTitleById } from "@/lib/anilist";
+import { getTitleById } from "@/lib/catalog";
 import { entryLengthFor, type Title } from "@/lib/anilist-shared";
 import type { EntryStatus } from "@/lib/types";
 
@@ -53,7 +53,7 @@ export async function seedStarterEntries(userId: string): Promise<boolean> {
   try {
     // Never add to a collection that already has something in it.
     if ((await db.$count(entries, eq(entries.userId, userId))) > 0) return false;
-    // getTitleById also fills cached_titles, so cover art and detail pages work immediately.
+    // getTitleById adds a title the catalog lacks, so cover art and detail pages work immediately.
     const titles = await Promise.all(STARTERS.map((s) => getTitleById(s.anilistId).catch(() => null)));
     const now = Date.now();
     await db.insert(entries).values(

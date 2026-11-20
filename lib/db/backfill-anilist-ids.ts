@@ -4,12 +4,12 @@
 //
 // Run with `pnpm db:backfill-anilist` (add `-- --dry-run` to only report). Safe to re-run: only
 // entries without an anilist_id are looked at. Paced to stay under the AniList rate limit, so
-// expect about two seconds per distinct uncached title.
+// expect about two seconds per distinct title the catalog search has to ask AniList about.
 
 import "dotenv/config";
 import { eq, isNull } from "drizzle-orm";
 import { db, entries } from "./index";
-import { searchTitles } from "../anilist";
+import { searchTitles } from "../catalog";
 import { normalizeTitle } from "../entries-db";
 
 const dryRun = process.argv.includes("--dry-run");
