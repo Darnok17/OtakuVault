@@ -27,7 +27,8 @@ export default function ThemeFx() {
     const canvas = document.createElement("canvas");
     canvas.className = "mx-rain";
     canvas.setAttribute("aria-hidden", "true");
-    document.body.prepend(canvas);
+    // insertBefore, not prepend: cloudflare-env.d.ts merges HTMLRewriter's Element.prepend into the DOM types.
+    document.body.insertBefore(canvas, document.body.firstChild);
     const ctx = canvas.getContext("2d");
     if (!ctx) { canvas.remove(); return; }
 
