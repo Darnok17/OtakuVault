@@ -24,10 +24,10 @@ export async function uploadImageAction(form: FormData): Promise<UploadResult> {
   if (!MIME_TYPES.has(file.type)) return { ok: false, error: "Use a JPEG, PNG, WebP, GIF or AVIF image." };
   if (file.size === 0 || file.size > MAX_BYTES) return { ok: false, error: "That image is too large." };
 
-  let jpeg: Buffer;
+  let jpeg: Uint8Array;
   try {
-    // Decoding with sharp is the real check: the MIME type is only what the browser claims.
-    jpeg = await normalizeImage(Buffer.from(await file.arrayBuffer()));
+    // Decoding (sharp, or the Images binding on Cloudflare) is the real check: the MIME type is only what the browser claims.
+    jpeg = await normalizeImage(new Uint8Array(await file.arrayBuffer()));
   } catch {
     return { ok: false, error: "That file isn't a readable image." };
   }

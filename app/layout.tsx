@@ -8,6 +8,7 @@ import "./_themes/minimal.css";
 import "./_themes/comic-strip.css";
 import "./_themes/manga.css";
 import { fontVariables } from "./fonts";
+import { SITE_URL } from "@/lib/site";
 import { DEFAULT_THEME, THEME_INIT_SCRIPT } from "@/lib/themes";
 import InlineScript from "./_components/InlineScript";
 import SiteNav from "./_components/SiteNav";
@@ -15,6 +16,7 @@ import ThemeFx from "./_components/ThemeFx";
 import ThemeProvider from "./_components/ThemeProvider";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "OtakuVault",
   description: "Personal collection tracker for anime, manga, webtoons, and novels.",
 };

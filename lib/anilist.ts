@@ -12,6 +12,9 @@ import {
 // On a miss we fetch, cache and serve; if AniList is down we fall back to stale cache.
 
 const ENDPOINT = process.env.ANILIST_API_URL || "https://graphql.anilist.co";
+// Set when ENDPOINT is the temporary relay (app/api/anilist-relay): AniList blocks Cloudflare Workers.
+// Never sent to AniList itself.
+const RELAY_SECRET = ENDPOINT.startsWith("https://graphql.anilist.co") ? undefined : process.env.ANILIST_RELAY_SECRET;
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -39,7 +42,9 @@ async function gql<T>(query: string, variables: Record<string, unknown> = {}): P
   try {
     res = await fetch(ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: RELAY_SECRET
+        ? { "Content-Type": "application/json", Accept: "application/json", "x-relay-secret": RELAY_SECRET }
+        : { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ query, variables }),
       signal: AbortSignal.timeout(8000),
     });

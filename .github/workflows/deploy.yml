@@ -1,0 +1,62 @@
+# Deploys to Cloudflare Workers (OpenNext). See docs/cloudflare-migration-guide.md, Phase 7.
+#   push to main  → lint, typecheck, build, deploy the production Worker (otakuvault.app)
+#   pull request  → lint, typecheck, build, and a `wrangler deploy --dry-run` bundle check.
+#                   No preview URL: Cloudflare doesn't generate preview URLs for Workers that
+#                   export a Durable Object, and this one exports OpenNext's DOQueueHandler.
+#
+# Needs repo secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
+name: Deploy (Cloudflare)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  # Never cut a production deploy off halfway; superseded PR previews can go.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  deploy:
+    # Fork PRs get no secrets; skip them instead of failing.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Build-time placeholders only (nothing connects during the build). Runtime values come from
+      # wrangler.jsonc vars, Worker secrets and the HYPERDRIVE binding.
+      DATABASE_URL: postgres://ci:ci@127.0.0.1:5432/ci
+      BETTER_AUTH_SECRET: ci-placeholder-not-a-real-secret
+      # `opennextjs-cloudflare deploy/upload` starts a local platform proxy that insists on a local
+      # Hyperdrive connection string even though it never connects to it.
+      CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: postgres://unused:unused@127.0.0.1:5432/unused
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads the pnpm version from "packageManager" in package.json.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm exec opennextjs-cloudflare build
+
+      - name: Deploy production
+        if: github.event_name == 'push'
+        run: pnpm exec opennextjs-cloudflare deploy
+
+      # Bundles the Worker with the real wrangler.jsonc (bindings, size limits) without uploading.
+      - name: Check Worker bundle
+        if: github.event_name == 'pull_request'
+        run: pnpm exec wrangler deploy --dry-run --outdir .wrangler/dry-run

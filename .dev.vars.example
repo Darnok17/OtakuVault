@@ -1,0 +1,14 @@
+# Read by `pnpm preview` (wrangler dev). Copy to .dev.vars (gitignored). Names only; never commit values.
+# Real values for `next dev` live in .env (see .env.example); OpenNext loads both.
+NEXTJS_ENV=development
+BETTER_AUTH_SECRET=
+CRON_SECRET=
+# Only when ANILIST_API_URL points at the relay (production)
+ANILIST_RELAY_SECRET=
+# Optional OAuth (leave blank to disable a provider)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=

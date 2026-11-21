@@ -1,4 +1,5 @@
-# Lint + build on every push. Deploys are handled by Vercel's GitHub integration, not here.
+# Lint + build on every push. Cloudflare deploys run in deploy.yml; Vercel (until it is retired)
+# still builds from its own GitHub integration.
 name: CI
 
 on:

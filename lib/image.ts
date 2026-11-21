@@ -1,4 +1,5 @@
 import { uploadImageAction } from "@/app/actions/uploads";
+import { MEDIA_HOST } from "@/lib/site";
 
 // Client side of image uploads. The server (app/actions/uploads.ts) does the real resize and
 // JPEG encode; the browser only shrinks files that wouldn't fit in a Server Action request.
@@ -72,4 +73,6 @@ export async function uploadImageFile(file: File, kind: UploadKind, onStage?: (s
 }
 
 // Uploaded images (and legacy data URLs) are app-managed rather than user-pasted links.
-export const isStoredImage = (url: string) => url.startsWith("data:") || url.startsWith("/uploads/") || /\.public\.blob\.vercel-storage\.com\//.test(url);
+export const isStoredImage = (url: string) =>
+  url.startsWith("data:") || url.startsWith("/uploads/") || url.startsWith(`https://${MEDIA_HOST}/`) ||
+  /\.public\.blob\.vercel-storage\.com\//.test(url);

@@ -1,8 +1,17 @@
 # Deployment
 
-Production runs on **Vercel** (app + Blob image storage) with **Neon** (Postgres).
+> **Production is moving to Cloudflare Workers at https://otakuvault.app.** Cloudflare setup, resources,
+> secrets, CI (`.github/workflows/deploy.yml`), rollback and the Vercel decommission plan are in
+> [docs/cloudflare-migration-guide.md](docs/cloudflare-migration-guide.md) (start with section 0).
+> The rest of this file describes the **Vercel** deployment, which keeps running as the rollback
+> (and hosts the temporary AniList relay) until Phase 14 of that guide.
+>
+> Scheduled jobs on Cloudflare: the hourly Cron Trigger in `wrangler.jsonc` runs
+> `/api/jobs/new-episodes` through `cloudflare/worker.ts`. Nothing below needs setting up for it.
+
+Production (until cutover) runs on **Vercel** (app + Blob image storage) with **Neon** (Postgres).
 Vercel deploys automatically from GitHub: every push to `main` goes to production, every other branch/PR gets a preview deployment.
-GitHub Actions (`.github/workflows/ci.yml`) only lints and builds; it never deploys.
+GitHub Actions `ci.yml` lints and builds; `deploy.yml` deploys to Cloudflare.
 
 No `vercel.json` is needed. Vercel detects Next.js and pnpm automatically.
 

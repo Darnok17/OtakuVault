@@ -1,0 +1,61 @@
+// Cloudflare Workers config for OtakuVault (OpenNext adapter). See docs/cloudflare-migration-guide.md.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "otakuvault",
+  // Wraps OpenNext's generated .open-next/worker.js and adds the Cron Trigger handler.
+  "main": "cloudflare/worker.ts",
+  // Bump deliberately, then test with `pnpm preview`.
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+
+  // Run near the database (Neon us-east) rather than near the visitor: most requests make several queries.
+  "placement": { "mode": "smart" },
+  "observability": { "enabled": true },
+
+  // Apex and www are Workers Custom Domains (DNS records and certificates are managed by Cloudflare).
+  // A zone Redirect Rule sends www → apex with a 301 before the Worker runs.
+  "routes": [
+    { "pattern": "otakuvault.app", "custom_domain": true },
+    { "pattern": "www.otakuvault.app", "custom_domain": true }
+  ],
+  // workers.dev stays on for preview URLs; robots/canonicals point at otakuvault.app.
+  "workers_dev": true,
+  "preview_urls": true,
+
+  // OpenNext calls itself for revalidation and the cache queue. Must match "name".
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "otakuvault" }],
+
+  // Postgres (Neon) through Hyperdrive, query caching disabled (read-after-write app).
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "b5da0a0dc19a48359980b01c5072b030" }],
+
+  "r2_buckets": [
+    { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "otakuvault-cache" },
+    { "binding": "MEDIA", "bucket_name": "otakuvault-media" }
+  ],
+  "d1_databases": [
+    { "binding": "NEXT_TAG_CACHE_D1", "database_name": "otakuvault-tag-cache", "database_id": "058353cd-7060-4cbb-a2aa-4d79f1d59af4" }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "NEXT_CACHE_DO_QUEUE", "class_name": "DOQueueHandler" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DOQueueHandler"] }],
+
+  // Replaces sharp for upload normalization (lib/storage.ts).
+  "images": { "binding": "IMAGES" },
+
+  // Hourly: the new-episodes job (app/api/jobs/new-episodes) is idempotent and rate-limit tolerant.
+  "triggers": { "crons": ["0 * * * *"] },
+
+  // Non-secret runtime config. Secrets (BETTER_AUTH_SECRET, CRON_SECRET, ANILIST_RELAY_SECRET, OAuth)
+  // via `wrangler secret put`.
+  "vars": {
+    "BETTER_AUTH_URL": "https://otakuvault.app",
+    "STORAGE_DRIVER": "r2",
+    "MEDIA_BASE_URL": "https://img.otakuvault.app",
+    // TEMPORARY: AniList blocks Cloudflare Workers, so AniList calls go through the relay route on
+    // the Vercel project (app/api/anilist-relay). Needs the ANILIST_RELAY_SECRET secret.
+    "ANILIST_API_URL": "https://otaku-vault-gold.vercel.app/api/anilist-relay"
+  }
+}
