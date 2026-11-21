@@ -7,15 +7,15 @@ import { db, entries, entryStatus } from "@/lib/db";
 import { findCollectionEntry, toEntry } from "@/lib/entries-db";
 import {
   browseTitles, getRecommendations, getSeasonalLineup, getTitleById, getTitleDetails, getTrendingNow, getTypeCounts, searchTitles,
-} from "@/lib/anilist";
+} from "@/lib/catalog";
 import {
   DEFAULT_FILTERS, ENTRY_TYPES, entryLengthFor,
   type AddResult, type BrowseFilters, type BrowseSort, type BrowseStatus, type DetailsResult, type Season, type Title, type TitlePage,
 } from "@/lib/anilist-shared";
 import type { EntryStatus, EntryType } from "@/lib/types";
 
-// Thin, validated wrappers over lib/anilist. Every export here is a public endpoint, and each
-// call can trigger an upstream AniList request, so inputs are checked before anything runs.
+// Thin, validated wrappers over lib/catalog. Every export here is a public endpoint, and a
+// catalog miss can trigger a provider request, so inputs are checked before anything runs.
 
 const SEASONS = new Set<string>(["WINTER", "SPRING", "SUMMER", "FALL"]);
 const STATUSES = new Set<string>(["RELEASING", "FINISHED", "NOT_YET_RELEASED", "HIATUS"]);

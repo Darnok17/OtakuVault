@@ -38,4 +38,7 @@ jobs:
 
       - run: pnpm lint
 
+      # Catalog sync and catalog-backed reads against an in-memory Postgres (PGlite).
+      - run: pnpm test
+
       - run: pnpm build

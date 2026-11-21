@@ -1,0 +1,83 @@
+# Keeps the title catalog (lib/catalog) in sync with AniList: hourly incremental runs, plus
+# manual backfill/image runs. Runs here rather than on Cloudflare because AniList blocks Workers.
+# See docs/catalog.md.
+#
+# Needs repo secrets DATABASE_URL (Neon, pooled), CLOUDFLARE_API_TOKEN (R2 write, for image
+# copies) and CLOUDFLARE_ACCOUNT_ID. Pull requests touching the sync only run the AniList probe.
+name: Catalog sync
+
+on:
+  schedule:
+    # Off the hour: the Worker's new-episodes Cron Trigger runs at :00 and reads what this wrote.
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: incremental | backfill | images
+        default: incremental
+        type: choice
+        options: [incremental, backfill, images]
+      min_popularity:
+        description: Backfill threshold (AniList popularity)
+        default: "1000"
+      limit:
+        description: Images mode, titles per run
+        default: "5000"
+  pull_request:
+    paths:
+      - lib/catalog/**
+      - scripts/catalog-sync.ts
+      - .github/workflows/catalog-sync.yml
+
+concurrency:
+  # Never two syncs at once (they'd share AniList's rate limit); a running one isn't cancelled.
+  group: catalog-sync-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Is AniList reachable from GitHub's runners, and do our queries still parse?
+      - run: pnpm catalog:sync probe
+
+  sync:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    # A backfill of ~20k titles takes about 30 minutes at AniList's degraded rate limit.
+    timeout-minutes: ${{ inputs.mode == 'backfill' && 240 || 50 }}
+    permissions:
+      contents: read
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      MEDIA_BASE_URL: https://img.otakuvault.app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Sync
+        env:
+          MODE: ${{ inputs.mode || 'incremental' }}
+          MIN_POPULARITY: ${{ inputs.min_popularity || '1000' }}
+          LIMIT: ${{ inputs.limit || '5000' }}
+        run: |
+          case "$MODE" in
+            backfill) pnpm catalog:sync backfill --min-popularity "$MIN_POPULARITY" ;;
+            images)   pnpm catalog:sync images --limit "$LIMIT" ;;
+            *)        pnpm catalog:sync incremental ;;
+          esac
