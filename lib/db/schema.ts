@@ -1,10 +1,11 @@
 import {
   pgTable, pgEnum, text, integer, real, boolean, timestamp, jsonb, smallint, uuid,
-  index, uniqueIndex, unique, check, type AnyPgColumn,
+  index, uniqueIndex, unique, check, primaryKey, customType, type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { EntryStatus, EntryType, MoodNode, MoodWire, PinKind, PublicFields } from "@/lib/types";
 import type { NotificationType } from "@/lib/notifications-shared";
+import type { TitleExtras } from "@/lib/anilist-shared";
 
 const id = () => text("id").primaryKey().$defaultFn(() => crypto.randomUUID());
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
@@ -202,7 +203,144 @@ export const orderItems = pgTable("order_items", {
   check("order_items_quantity_positive", sql`${t.quantity} > 0`),
 ]);
 
-/* ---------- AniList cache ---------- */
+/* ---------- Title catalog (lib/catalog) ---------- */
+
+const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
+
+// Our own copy of title metadata, filled by the sync job (scripts/catalog-sync.ts) and, for a
+// title nobody synced yet, once on first request. Pages read only from here. External ids are
+// nullable so other providers can be added later; anilist_id is the only one populated today.
+export const titles = pgTable("titles", {
+  id: id(),
+  anilistId: integer("anilist_id"),
+  malId: integer("mal_id"),
+  kitsuId: integer("kitsu_id"),
+  tmdbId: integer("tmdb_id"),
+  kind: text("kind").notNull(), // "ANIME" | "MANGA"
+  entryType: entryType("entry_type").notNull(),
+  title: text("title").notNull(), // english, else romaji
+  romaji: text("romaji").notNull(),
+  english: text("english"),
+  native: text("native"),
+  synonyms: text("synonyms").array().notNull().default(sql`'{}'::text[]`),
+  format: text("format"),
+  status: text("status"),
+  country: text("country"),
+  isAdult: boolean("is_adult").notNull().default(false),
+  episodes: integer("episodes"),
+  // Episodes aired so far, for anime still airing (from the next scheduled episode).
+  airedEpisodes: integer("aired_episodes"),
+  chapters: integer("chapters"),
+  volumes: integer("volumes"),
+  duration: integer("duration"),
+  averageScore: smallint("average_score"), // 0–100
+  meanScore: smallint("mean_score"),
+  popularity: integer("popularity"),
+  // AniList's trending score as of the last trending refresh; 0 for everything not in it.
+  trending: integer("trending").notNull().default(0),
+  favourites: integer("favourites"),
+  popularityRank: integer("popularity_rank"),
+  season: text("season"),
+  seasonYear: smallint("season_year"),
+  // Fuzzy dates as yyyymmdd integers (AniList's FuzzyDateInt); missing parts are 0.
+  startDate: integer("start_date"),
+  endDate: integer("end_date"),
+  description: text("description"),
+  sourceMaterial: text("source_material"),
+  siteUrl: text("site_url"),
+  color: text("color"),
+  // Images as the provider serves them, and our copies in R2 (null until the sync copies them,
+  // and reset to null when the provider's image changes).
+  coverSource: text("cover_source"),
+  thumbSource: text("thumb_source"),
+  bannerSource: text("banner_source"),
+  cover: text("cover"),
+  banner: text("banner"),
+  // Characters, staff, relations, recommendations, streaming and external links: one extra
+  // provider request per title, so filled on first view or by the sync job's details step.
+  extras: jsonb("extras").$type<TitleExtras>(),
+  extrasFetchedAt: timestamp("extras_fetched_at", { withTimezone: true }),
+  sourceUpdatedAt: timestamp("source_updated_at", { withTimezone: true }),
+  syncedAt: timestamp("synced_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+  // Lowercased, accent-free titles and synonyms (lib/catalog/search.ts); search matches on both.
+  searchText: text("search_text").notNull().default(""),
+  search: tsvector("search").generatedAlwaysAs(sql`to_tsvector('simple', search_text)`),
+}, (t) => [
+  uniqueIndex("titles_anilist_id_idx").on(t.anilistId),
+  index("titles_mal_id_idx").on(t.malId),
+  index("titles_popularity_idx").on(t.popularity.desc().nullsLast()),
+  index("titles_entry_type_popularity_idx").on(t.entryType, t.popularity.desc().nullsLast()),
+  index("titles_trending_idx").on(t.trending.desc()).where(sql`${t.trending} > 0`),
+  index("titles_season_idx").on(t.seasonYear, t.season),
+  index("titles_start_date_idx").on(t.startDate),
+  index("titles_synced_at_idx").on(t.syncedAt),
+  index("titles_search_idx").using("gin", t.search),
+  index("titles_search_trgm_idx").using("gin", t.searchText.op("gin_trgm_ops")),
+]);
+
+export const genres = pgTable("genres", {
+  name: text("name").primaryKey(),
+});
+
+export const titleGenres = pgTable("title_genres", {
+  titleId: text("title_id").notNull().references(() => titles.id, { onDelete: "cascade" }),
+  genre: text("genre").notNull().references(() => genres.name, { onDelete: "cascade" }),
+  position: smallint("position").notNull().default(0), // the provider's order
+}, (t) => [primaryKey({ columns: [t.titleId, t.genre] }), index("title_genres_genre_idx").on(t.genre)]);
+
+// AniList tags (Isekai, Shounen, …). Spoiler and adult tags are kept but flagged.
+export const tags = pgTable("tags", {
+  name: text("name").primaryKey(),
+  category: text("category"),
+  isAdult: boolean("is_adult").notNull().default(false),
+});
+
+export const titleTags = pgTable("title_tags", {
+  titleId: text("title_id").notNull().references(() => titles.id, { onDelete: "cascade" }),
+  tag: text("tag").notNull().references(() => tags.name, { onDelete: "cascade" }),
+  rank: smallint("rank").notNull().default(0),
+  isSpoiler: boolean("is_spoiler").notNull().default(false),
+}, (t) => [primaryKey({ columns: [t.titleId, t.tag] }), index("title_tags_tag_idx").on(t.tag)]);
+
+export const studios = pgTable("studios", {
+  id: id(),
+  anilistId: integer("anilist_id"),
+  name: text("name").notNull(),
+  isAnimationStudio: boolean("is_animation_studio").notNull().default(false),
+}, (t) => [uniqueIndex("studios_anilist_id_idx").on(t.anilistId)]);
+
+export const titleStudios = pgTable("title_studios", {
+  titleId: text("title_id").notNull().references(() => titles.id, { onDelete: "cascade" }),
+  studioId: text("studio_id").notNull().references(() => studios.id, { onDelete: "cascade" }),
+  isMain: boolean("is_main").notNull().default(false),
+  position: smallint("position").notNull().default(0),
+}, (t) => [primaryKey({ columns: [t.titleId, t.studioId] }), index("title_studios_studio_idx").on(t.studioId)]);
+
+// Known episode air times, a window around now kept current by the sync job. The new-episodes
+// job reads the newest episode whose air time has passed.
+export const airingSchedule = pgTable("airing_schedule", {
+  titleId: text("title_id").notNull().references(() => titles.id, { onDelete: "cascade" }),
+  episode: integer("episode").notNull(),
+  airingAt: timestamp("airing_at", { withTimezone: true }).notNull(),
+}, (t) => [primaryKey({ columns: [t.titleId, t.episode] }), index("airing_schedule_airing_at_idx").on(t.airingAt)]);
+
+// Cursors and last-run times of the sync job's steps, one row per step.
+export const catalogSyncState = pgTable("catalog_sync_state", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").$type<Record<string, unknown>>().notNull().default({}),
+  updatedAt: updatedAt(),
+});
+
+// Request-time provider lookups that found nothing new (a search the catalog couldn't answer,
+// an id that doesn't exist), so the same miss doesn't call the provider again for a while.
+export const catalogLookups = pgTable("catalog_lookups", {
+  key: text("key").primaryKey(),
+  lookedUpAt: timestamp("looked_up_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ---------- AniList cache (superseded by the catalog; no longer read, kept until dropped) ---------- */
 
 export const cachedTitles = pgTable("cached_titles", {
   id: id(),

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { browseTitles, getSeasonalLineup, getTrendingNow } from "@/lib/anilist";
+import { browseTitles, getSeasonalLineup, getTrendingNow } from "@/lib/catalog";
 import { getRecommendationsAction, type Recommendations } from "@/app/actions/anilist";
 import { DEFAULT_FILTERS, SEASON_INFO, badgeFor, glyphFor, hueFor, hueToVar, lengthFor, seasonOf, titleHref, type BrowseFilters, type Title } from "@/lib/anilist-shared";
 import { LINEUP_SECTION, browseHref, seasonSlug } from "@/lib/browse-sections";
