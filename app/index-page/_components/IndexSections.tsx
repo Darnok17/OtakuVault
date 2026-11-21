@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { browseTitles, getTypeCounts } from "@/lib/anilist";
+import { browseTitles, getTypeCounts } from "@/lib/catalog";
 import { filtersFromParams, toUrlParams, type RawSearchParams } from "@/lib/index-filters";
 import Link from "next/link";
 import { browseHref, trendingSection } from "@/lib/browse-sections";

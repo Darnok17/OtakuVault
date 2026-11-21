@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { getTitleById, getTitleDetails, getTrendingNow } from "@/lib/anilist";
+import { getTitleById, getTitleDetails, getTrendingNow } from "@/lib/catalog";
 import { glyphFor, hueFor, hueToVar, titleHref, type Title } from "@/lib/anilist-shared";
 import HomeBoard from "./HomeBoard";
 
-// Real AniList data for the home page's feature sections. Each of these streams in behind its
-// own <Suspense> (see app/page.tsx), so the page shell is static and AniList being slow or down
-// only costs the artwork, never the page.
+// Real catalog data for the home page's feature sections. Each of these streams in behind its
+// own <Suspense> (see app/page.tsx), so the page shell is static and a slow lookup only costs the
+// artwork, never the page.
 
 // Attack on Titan, Jujutsu Kaisen, Demon Slayer, One Piece.
 const TRACK_IDS = [16498, 113415, 101922, 21];

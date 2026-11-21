@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import IndexProvider from "@/app/index-page/_components/IndexProvider";
 import { RecRow } from "@/app/index-page/_components/posters";
-import { getTitleDetails } from "@/lib/anilist";
+import { getTitleDetails } from "@/lib/catalog";
 import {
   SEASON_INFO, TITLE_ROUTES, dedupeDetails, descriptionParagraphs, titleHref, uniqueBy,
   type DetailsResult, type FuzzyDate, type TitleCharacter, type TitleDetails, type TitleStaff, type TitleVoiceActor,
@@ -19,8 +19,8 @@ import TitleActions from "./title/TitleActions";
 import TitleDescription from "./title/TitleDescription";
 
 // The detail page behind /anime/[id], /manga/[id], /webtoons/[id] and /novels/[id]. The title
-// comes from one AniList query, so the page has two streamed holes in a static shell: the title
-// itself, and the signed-in action row.
+// comes from the catalog (lib/catalog), so the page has two streamed holes in a static shell: the
+// title itself, and the signed-in action row.
 
 const NOT_AVAILABLE = "Information not currently available";
 const CAST_SHOWN = 12;
@@ -304,7 +304,7 @@ async function ActionRow({ d }: { d: TitleDetails }) {
 async function TitleContent({ type, params }: { type: EntryType; params: Params }) {
   const { id } = await params;
   const result = await lookup(type, id);
-  if (result === "error") return <p className="td-empty td-unreachable">{"> AniList is unreachable right now — try again in a moment."}</p>;
+  if (result === "error") return <p className="td-empty td-unreachable">{"> This title couldn't be loaded right now — try again in a moment."}</p>;
   if (result.status === "not-found") notFound();
   // Same id, other route (e.g. a manhwa opened under /manga): send it to the right one.
   if (result.status === "wrong-type") redirect(titleHref(result.entryType, Number(id)));

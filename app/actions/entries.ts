@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth";
 import { deleteImage, isDataImage, isOwnedUpload, uploadDataUrl } from "@/lib/storage";
 import { saveMoodboard } from "./moodboards";
 import { db, entries, entryStatus, entryType, moodboards } from "@/lib/db";
-import { getCachedTitle } from "@/lib/anilist";
+import { getCachedTitle } from "@/lib/catalog";
 import { toEntry } from "@/lib/entries-db";
 import { seedStarterEntries } from "@/lib/starter-entries";
 import type { Entry, EntryStatus, EntryType, Moodboard } from "@/lib/types";

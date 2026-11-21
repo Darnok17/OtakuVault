@@ -1,12 +1,13 @@
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { airingWatermarks, db, entries } from "@/lib/db";
-import { fetchAiringStatus } from "@/lib/anilist";
+import { getAiringStatus } from "@/lib/catalog";
 import { createNotifications, type NewNotification } from "@/lib/notifications";
 
 // The new-episodes job (app/api/jobs/new-episodes/route.ts runs it on a schedule).
 //
-// For every anime somebody has marked Watching (and that is linked to AniList), it asks AniList
-// for the newest aired episode and compares it with airing_watermarks, the newest episode
+// For every anime somebody has marked Watching (and that is linked to AniList), it reads the
+// newest aired episode from the title catalog (whose airing schedule the catalog sync keeps
+// current; no provider request here) and compares it with airing_watermarks, the newest episode
 // already announced. Anything newer is announced to each watcher whose New episodes switch is on,
 // then the watermark moves up. Dedupe keys ("episode:<anilistId>:<n>") make retries and
 // overlapping runs harmless.
@@ -39,11 +40,10 @@ export async function runNewEpisodesJob(now = new Date()): Promise<NewEpisodesRe
   const marks = new Map(
     (await db.select().from(airingWatermarks).where(inArray(airingWatermarks.anilistId, ids))).map((m) => [m.anilistId, m]),
   );
-  // Least recently checked first, so a rate-limited run still gets round to every show in turn.
-  ids.sort((a, b) => (marks.get(a)?.checkedAt.getTime() ?? 0) - (marks.get(b)?.checkedAt.getTime() ?? 0));
-
-  const { statuses, error } = await fetchAiringStatus(ids);
-  report.error = error;
+  const statuses = await getAiringStatus(ids, now);
+  const missing = ids.length - statuses.size;
+  // The sync adds every collection title to the catalog within the hour; until then, skip it.
+  if (missing) report.error = `${missing} show(s) not in the catalog yet`;
 
   for (const [anilistId, status] of statuses) {
     report.checked++;
