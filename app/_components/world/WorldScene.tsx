@@ -644,7 +644,7 @@ function World({ graph, theme, focus, reducedMotion, onFocus, layout }: Props & 
 
   return (
     <>
-      <color attach="background" args={[theme.bg]} />
+      {!(theme.style.seeThrough && theme.fx) && <color attach="background" args={[theme.bg]} />}
       <fog attach="fog" args={[theme.bg, 16 * k, 62 * k]} />
       <Dust layout={layout} theme={theme} />
       <StaticEdges graph={graph} layout={layout} theme={theme} focus={focus} />
@@ -674,7 +674,7 @@ export default function WorldScene(props: Props) {
         className="ow-canvas"
         dpr={[1, 1.75]}
         camera={{ fov: 45, near: 0.1, far: 260, position: OVERVIEW.pos }}
-        gl={{ antialias: true, powerPreference: "high-performance" }}
+        gl={{ antialias: true, powerPreference: "high-performance", alpha: true }}
         // Capture phase: the camera controls stop pointerdown from bubbling.
         onPointerDownCapture={(e) => { down.current = [e.clientX, e.clientY]; }}
         // Clicking empty space steps back out one level; releasing an orbit drag does not.

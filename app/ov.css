@@ -757,6 +757,8 @@ a.nt-title:hover{color:var(--acc-3);}
   background:var(--bg);isolation:isolate;margin-bottom:-4rem; /* cancels .td-page's bottom padding */
 }
 .ow-canvas{position:absolute!important;inset:0;touch-action:none;}
+/* Matrix: the code rain (ThemeFx, fixed behind the page) shows through the web, as on every other page. */
+[data-theme="matrix"]:not([data-fx="off"]) .ow-world{background:transparent;}
 .ow-loading{position:absolute;inset:0;display:grid;place-items:center;}
 .ow-loading-orb{
   width:64px;height:64px;border-radius:50%;border:1px solid var(--acc-3);

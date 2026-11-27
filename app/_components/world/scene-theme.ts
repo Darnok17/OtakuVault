@@ -15,6 +15,7 @@ export type SceneStyle = {
   dustOpacity: number;
   lineWidth: number; // CSS px; ink themes draw real strokes
   tint: number; // how far the core leans toward the show's own AniList colour
+  seeThrough?: boolean; // no scene background: the theme's page effect (Matrix's code rain) shows behind the web
 };
 
 export type SceneTheme = {
@@ -31,7 +32,9 @@ export type SceneTheme = {
 };
 
 const STYLES: Record<ThemeId, SceneStyle> = {
-  matrix: { glow: true, lineOpacity: 0.32, dustOpacity: 0.7, lineWidth: 1, tint: 0.65 },
+  // Phosphor on black: every accent is a green, so hubs read by their labels, and the show's own
+  // colour only warms the core a little. The code rain falls behind the web instead of dust.
+  matrix: { glow: true, lineOpacity: 0.3, dustOpacity: 0.3, lineWidth: 1, tint: 0.2, seeThrough: true },
   retro: { glow: true, lineOpacity: 0.38, dustOpacity: 0.8, lineWidth: 1, tint: 0.65 },
   rustic: { glow: false, lineOpacity: 0.62, dustOpacity: 0.45, lineWidth: 1.6, tint: 0.3 },
   // One red line: the show's colour barely registers, the ink stays black.
