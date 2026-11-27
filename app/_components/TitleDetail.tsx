@@ -13,10 +13,12 @@ import {
 import { auth } from "@/lib/auth";
 import { findCollectionEntry, toEntry } from "@/lib/entries-db";
 import { BROWSE_GENRES } from "@/lib/index-filters";
+import { buildTitleGraph } from "@/lib/title-graph";
 import type { EntryType } from "@/lib/types";
 import ShowMore from "./title/ShowMore";
 import TitleActions from "./title/TitleActions";
 import TitleDescription from "./title/TitleDescription";
+import TitleWorld from "./world/TitleWorld";
 
 // The detail page behind /anime/[id], /manga/[id], /webtoons/[id] and /novels/[id]. The title
 // comes from the catalog (lib/catalog), so the page has two streamed holes in a static shell: the
@@ -28,6 +30,7 @@ const STAFF_SHOWN = 12;
 const TAGS_SHOWN = 10;
 
 type Params = Promise<{ id: string }>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 /* ---------- Lookup ---------- */
 
@@ -301,8 +304,8 @@ async function ActionRow({ d }: { d: TitleDetails }) {
 
 /* ---------- Page ---------- */
 
-async function TitleContent({ type, params }: { type: EntryType; params: Params }) {
-  const { id } = await params;
+async function TitleContent({ type, params, searchParams }: { type: EntryType; params: Params; searchParams?: SearchParams }) {
+  const [{ id }, search] = await Promise.all([params, searchParams]);
   const result = await lookup(type, id);
   if (result === "error") return <p className="td-empty td-unreachable">{"> This title couldn't be loaded right now — try again in a moment."}</p>;
   if (result.status === "not-found") notFound();
@@ -312,14 +315,29 @@ async function TitleContent({ type, params }: { type: EntryType; params: Params 
   const d = dedupeDetails(result.details);
   const paragraphs = descriptionParagraphs(d.description);
   const staff = [...d.staff].sort((a, b) => Number(KEY_ROLE.test(b.role ?? "")) - Number(KEY_ROLE.test(a.role ?? "")));
+  const actions = (
+    <Suspense fallback={<div className="td-actions td-actions-loading" aria-hidden="true" />}>
+      <ActionRow d={d} />
+    </Suspense>
+  );
+
+  // The 3D world view, anime only while it is being built out (?world=1).
+  if (type === "anime" && search?.world === "1") {
+    return (
+      <IndexProvider>
+        <TitleWorld graph={buildTitleGraph(d)} actions={actions} listHref={titleHref(d.entryType, d.anilistId)} />
+      </IndexProvider>
+    );
+  }
 
   return (
     <IndexProvider>
       <Hero d={d} />
       <div className="td-body">
-        <Suspense fallback={<div className="td-actions td-actions-loading" aria-hidden="true" />}>
-          <ActionRow d={d} />
-        </Suspense>
+        {actions}
+        {type === "anime" && (
+          <Link className="btn btn-ghost td-world-link" href={`${titleHref(d.entryType, d.anilistId)}?world=1`}>◈ Explore as a web</Link>
+        )}
         <Stats d={d} />
         <Section title="Synopsis" kanji="あらすじ">{paragraphs.length > 0 && <TitleDescription paragraphs={paragraphs} />}</Section>
         <Metadata d={d} />
@@ -367,11 +385,11 @@ function TitleSkeleton() {
   );
 }
 
-export default function TitleDetail({ type, params }: { type: EntryType; params: Params }) {
+export default function TitleDetail({ type, params, searchParams }: { type: EntryType; params: Params; searchParams?: SearchParams }) {
   return (
     <section className="site-page active td-page" data-type={type}>
       <Suspense fallback={<TitleSkeleton />}>
-        <TitleContent type={type} params={params} />
+        <TitleContent type={type} params={params} searchParams={searchParams} />
       </Suspense>
     </section>
   );

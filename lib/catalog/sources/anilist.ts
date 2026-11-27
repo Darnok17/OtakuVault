@@ -61,7 +61,7 @@ const DETAILS_FIELDS = `${FULL_FIELDS}
   relations {
     edges {
       relationType(version: 2)
-      node { id type format countryOfOrigin title { romaji english } coverImage { large } }
+      node { id type format countryOfOrigin title { romaji english } coverImage { large } startDate { year month day } }
     }
   }
   recommendations(sort: RATING_DESC, perPage: 12) { nodes { mediaRecommendation { ${BASE_FIELDS} } } }
@@ -93,7 +93,7 @@ type RawDetails = RawMedia & {
   rankings: { rank: number; type: string; allTime: boolean | null }[] | null;
   staff: { edges: { role: string | null; node: RawPerson | null }[] } | null;
   characters: { edges: { role: string | null; node: RawPerson | null; voiceActors: (RawPerson & { languageV2: string | null })[] | null }[] } | null;
-  relations: { edges: { relationType: string | null; node: (Pick<RawMedia, "id" | "type" | "format" | "countryOfOrigin"> & { title: { romaji: string | null; english: string | null }; coverImage: { large: string | null } | null }) | null }[] } | null;
+  relations: { edges: { relationType: string | null; node: (Pick<RawMedia, "id" | "type" | "format" | "countryOfOrigin"> & { title: { romaji: string | null; english: string | null }; coverImage: { large: string | null } | null; startDate: FuzzyDate | null }) | null }[] } | null;
   recommendations: { nodes: { mediaRecommendation: RawMedia | null }[] } | null;
   streamingEpisodes: TitleExtras["streamingEpisodes"] | null;
   externalLinks: { url: string | null; site: string; language: string | null; icon: string | null; color: string | null }[] | null;
@@ -194,6 +194,7 @@ function normalizeDetails(m: RawDetails): SourceDetails {
       ? [{
           id: e.node.id, relationType: e.relationType, format: e.node.format, entryType: entryTypeOf(e.node),
           title: e.node.title.english ?? e.node.title.romaji ?? `#${e.node.id}`, cover: e.node.coverImage?.large ?? null,
+          startDate: hasDate(e.node.startDate),
         }] : [])),
     recommendations: related.filter((t) => !t.isAdult).map(toCard),
     streamingEpisodes: m.streamingEpisodes ?? [],
