@@ -9,10 +9,11 @@ import {
 } from "three";
 import { hubSize, type Hub, type HubId, type TitleGraph, type WebNode } from "@/lib/title-graph";
 import {
-  CORE_RADIUS, HUB_END, OVERVIEW, PHONE_WIDTH, cameraFor, cameraForPerson, layoutWorld, personLayout, reach,
+  CORE_RADIUS, HUB_END, OVERVIEW, PHONE_WIDTH, cameraFor, jointEnd, cameraForPerson, layoutWorld, personLayout, reach,
   type GroupLabel, type HubLayout, type V3, type Viewport, type WorldLayout,
 } from "@/lib/title-graph-layout";
 import type { ListMark } from "@/lib/types";
+import Bloom from "./bloom";
 import { DiscBatch, HaloBatch, PortraitAtlas, type DiscLook } from "./disc-batch";
 import { FatLines, type LineLook } from "./fat-lines";
 import { STATUS_TONE, markFraction, markGlyphs } from "./list-marks";
@@ -585,6 +586,22 @@ function Cluster({ hub, at, person = false, cover, layout, theme, active, select
   const tone = theme.tones[hub.tone];
   const lines = useFatLines(at.edges.length, lineLook(theme, tone, 0));
   const hotLines = useFatLines(at.edges.length, { ...lineLook(theme, tone, 0), width: theme.style.lineWidth * 1.8 });
+  // Light travelling along links: out from a person to their works, and along the stretch of the
+  // franchise you've completed (or are watching). The hovered or selected node's links pulse too
+  // (hotLines). Off under reduced motion.
+  const pulseLines = useFatLines(at.edges.length, { ...lineLook(theme, tone, 0), width: theme.style.lineWidth * 1.6 });
+  const pulseEdges = useMemo(() => {
+    if (person) return at.edges;
+    if (hub.id !== "franchise" || !marks) return [];
+    const seen = (x: number) => {
+      const m = x >= 0 ? markOf(hub.nodes[x], marks) : x === jointEnd(0) ? franchiseMark : undefined;
+      return m?.status === "completed" || m?.status === "watching";
+    };
+    return at.edges.filter(([a, b]) => seen(a) && seen(b));
+  }, [person, at, hub, marks, franchiseMark]);
+  const pulseFlash = useMemo(() => (theme.style.glow ? new Color("#ffffff") : theme.ink), [theme]);
+  const pulseStrength = reducedMotion ? 0 : theme.style.pulse;
+  const lastPulse = useRef<typeof pulseEdges | null>(null);
   const vp = useViewport();
   // Labels beyond the key nodes appear once the camera is a fifth closer than this web's framing.
   const near = useMemo(() => {
@@ -659,6 +676,15 @@ function Cluster({ hub, at, person = false, cover, layout, theme, active, select
     }
     const t = progress.current;
     lines.fade(theme.style.lineOpacity * t * (receded ? 0.25 : 1));
+    if (animating || lastPulse.current !== pulseEdges) {
+      lastPulse.current = pulseEdges;
+      pulseEdges.forEach(([a, b], k) => pulseLines.set(k, end(a), end(b)));
+      pulseLines.commit(pulseEdges.length);
+    }
+    const now = state.clock.elapsedTime;
+    pulseLines.fade(Math.min(1, theme.style.lineOpacity * 2.4) * t * (receded ? 0 : 1));
+    pulseLines.pulse(now, pulseStrength, pulseFlash, true);
+    hotLines.pulse(now, pulseStrength * 0.8, pulseFlash);
     // Captions fade with the web, and step back while one node has the stage.
     at.groups.forEach((g) => setLabelOpacity(`group:${g.id}`, t * (receded ? 0 : selectedId ? 0.4 : 1)));
     // The hovered (else selected) node's own links, drawn bolder on top.
@@ -668,7 +694,11 @@ function Cluster({ hub, at, person = false, cover, layout, theme, active, select
       lastHot.current = hot;
       const i = hot != null ? indexOfId.get(hot) : undefined;
       const es = i != null ? touching.get(i) ?? [] : [];
-      es.forEach((e, k) => hotLines.set(k, end(at.edges[e][0]), end(at.edges[e][1])));
+      // Each link runs out from the hot node, so its pulse does too.
+      es.forEach((e, k) => {
+        const [a, b] = at.edges[e];
+        if (b === i) hotLines.set(k, end(b), end(a)); else hotLines.set(k, end(a), end(b));
+      });
       hotLines.commit(es.length);
     }
     hotLines.fade(Math.min(1, theme.style.lineOpacity * 2.6) * t);
@@ -703,8 +733,13 @@ function Cluster({ hub, at, person = false, cover, layout, theme, active, select
     halos.commit(glow ? n : 0);
   });
 
-  // A changed goal means another round of animation.
-  useEffect(() => { settled.current = false; }, [active]);
+  // A changed goal means another round of animation; so do fresh line objects (a theme switch
+  // rebuilds them empty), which the next frame refills.
+  useEffect(() => {
+    settled.current = false;
+    lastHot.current = undefined;
+    lastPulse.current = null;
+  }, [active, lines, hotLines, pulseLines]);
 
   // Small webs label every node; big ones (a 60-strong cast) only their key nodes until you lean in.
   // The details web always holds back its long tail of tags.
@@ -713,6 +748,7 @@ function Cluster({ hub, at, person = false, cover, layout, theme, active, select
     <group>
       <primitive object={lines.object} />
       <primitive object={hotLines.object} />
+      <primitive object={pulseLines.object} />
       {at.groups.map((g, k) => (
         <GroupMark key={g.id} group={g} theme={theme} cover={cover} mark={g.marker ? franchiseMark : undefined}
           unstarted={!!g.marker && showProgress && !franchiseMark} register={(o) => { captions.current[k] = o; }} />
@@ -849,6 +885,7 @@ function World({ graph, theme, focus, person, marks, reducedMotion, onFocus, lay
             onPick={(node) => onFocus(p.hub.id, p.nodeId, p.person, node.id)} onGone={() => setPeople((m) => m.filter((x) => x.key !== p.key))} />
         );
       })}
+      {theme.style.bloom && theme.fx && <Bloom look={theme.style.bloom} />}
       <CameraRig layout={layout} graph={graph} focus={focus} personAt={personAt} works={person?.works ?? null} reducedMotion={reducedMotion} />
       <LabelFlush />
     </>
