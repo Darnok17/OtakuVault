@@ -20,6 +20,8 @@ const freePort = () =>
   });
 
 export async function startTestDb() {
+  // These tests cover the catalog's db mode (lib/catalog/reads.ts).
+  process.env.CATALOG_SOURCE = "db";
   const pg = await PGlite.create({ extensions: { pg_trgm } });
   const port = await freePort();
   const server = new PGLiteSocketServer({ db: pg, port, host: "127.0.0.1", maxConnections: 20 });

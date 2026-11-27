@@ -3,7 +3,7 @@ import type { FuzzyDate, MediaKind, Season, TitleExtras } from "@/lib/anilist-sh
 
 // The contract between the catalog and a metadata provider. Pages never talk to a provider:
 // the sync job (lib/catalog/sync.ts) does, plus the one-off fetch for a title the catalog
-// doesn't have yet (lib/catalog/index.ts). AniList (sources/anilist.ts) is the only provider
+// doesn't have yet (lib/catalog/reads.ts). AniList (sources/anilist.ts) is the only provider
 // today; another one implements this interface and fills its own *_id column.
 
 // A title as a provider describes it, already normalized. Fields a particular request didn't ask
