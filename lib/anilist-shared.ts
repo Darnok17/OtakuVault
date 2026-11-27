@@ -83,6 +83,17 @@ export type TitleRelation = {
 };
 export type TitleLink = { url: string; site: string; language: string | null; icon: string | null; color: string | null };
 
+// A voice actor's or staff member's other works, for the title world's person sub-web. Fetched on
+// demand (lib/catalog/live.ts getPersonWorks), never part of a title's own details.
+export type PersonWork = {
+  anilistId: number; entryType: EntryType; title: string; cover: string | null; format: string | null; year: number | null;
+  popularity: number;
+};
+// One per character voiced (in the most popular show they appear in), and one per staff credit.
+export type PersonRole = PersonWork & { character: { id: number; name: string; image: string | null; role: string | null } };
+export type PersonCredit = PersonWork & { role: string | null };
+export type PersonWorks = { id: number; name: string; image: string | null; roles: PersonRole[]; credits: PersonCredit[] };
+
 // Everything a detail page shows, assembled from a titles row and its extras. Normalized so lists
 // are always arrays and absent values are null. Bump DETAILS_VERSION when the extras' shape changes.
 export const DETAILS_VERSION = 3;

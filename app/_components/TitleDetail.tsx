@@ -11,10 +11,10 @@ import {
   type DetailsResult, type FuzzyDate, type TitleCharacter, type TitleDetails, type TitleStaff, type TitleVoiceActor,
 } from "@/lib/anilist-shared";
 import { auth } from "@/lib/auth";
-import { findCollectionEntry, toEntry } from "@/lib/entries-db";
+import { findCollectionEntry, listMarks, toEntry } from "@/lib/entries-db";
 import { BROWSE_GENRES } from "@/lib/index-filters";
-import { buildTitleGraph } from "@/lib/title-graph";
-import type { EntryType } from "@/lib/types";
+import { buildTitleGraph, markQueries, type TitleGraph } from "@/lib/title-graph";
+import type { EntryType, ListMark } from "@/lib/types";
 import ShowMore from "./title/ShowMore";
 import TitleActions from "./title/TitleActions";
 import TitleDescription from "./title/TitleDescription";
@@ -302,6 +302,19 @@ async function ActionRow({ d }: { d: TitleDetails }) {
   return <TitleActions anilistId={d.anilistId} type={d.entryType} title={d.title} userId={userId} initialEntry={row && toEntry(row)} />;
 }
 
+// The title world's "in your list" marks for this show and its franchise and similar titles.
+// Started, not awaited: the world draws at once and the marks stream in after. This page is
+// rendered per request (lookup() awaits connection()), and nothing here goes through a shared
+// cache, so one user's marks never reach another. Signed out: null, and the world is unchanged.
+async function worldMarks(graph: TitleGraph): Promise<Record<number, ListMark> | null> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return null;
+  return listMarks(session.user.id, markQueries(graph)).catch((err) => {
+    console.error("Title world: list marks failed", err);
+    return null;
+  });
+}
+
 /* ---------- Page ---------- */
 
 async function TitleContent({ type, params, searchParams }: { type: EntryType; params: Params; searchParams?: SearchParams }) {
@@ -323,9 +336,10 @@ async function TitleContent({ type, params, searchParams }: { type: EntryType; p
 
   // The 3D world view, anime only while it is being built out (?world=1).
   if (type === "anime" && search?.world === "1") {
+    const graph = buildTitleGraph(d);
     return (
       <IndexProvider>
-        <TitleWorld graph={buildTitleGraph(d)} actions={actions} listHref={titleHref(d.entryType, d.anilistId)} />
+        <TitleWorld graph={graph} marks={worldMarks(graph)} actions={actions} listHref={titleHref(d.entryType, d.anilistId)} />
       </IndexProvider>
     );
   }

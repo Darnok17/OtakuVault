@@ -1,6 +1,8 @@
 import {
-  SEASON_INFO, descriptionParagraphs, titleHref, uniqueBy, type FuzzyDate, type TitleCharacter, type TitleDetails, type TitleVoiceActor,
+  SEASON_INFO, descriptionParagraphs, titleHref, uniqueBy,
+  type FuzzyDate, type PersonWorks, type TitleCharacter, type TitleDetails, type TitleVoiceActor,
 } from "@/lib/anilist-shared";
+import type { EntryType } from "@/lib/types";
 
 // The data behind the 3D "world" on a title page: the show at the centre, hubs around it, and each
 // hub's own web of nodes. Pure and serializable — built on the server from TitleDetails and handed
@@ -15,7 +17,8 @@ export type HubId = "details" | "characters" | "cast" | "staff" | "franchise" | 
 export type NodeDetail =
   | { type: "character"; role: string | null; voiceActors: TitleVoiceActor[] }
   | { type: "person"; role: string | null; characters?: string[] }
-  | { type: "title"; relation: string | null; format: string | null; year: number | null; href: string }
+  // credit: the person's part in it, on a person web (as Frieren · Main, Director)
+  | { type: "title"; anilistId: number; entryType: EntryType; relation: string | null; format: string | null; year: number | null; href: string; credit?: string }
   | { type: "link"; url: string }
   | { type: "fact"; group: string };
 
@@ -44,6 +47,7 @@ export type Hub = {
 
 export type TitleGraph = {
   anilistId: number;
+  entryType: EntryType;
   title: string;
   romaji: string;
   english: string | null;
@@ -173,7 +177,10 @@ function franchise(d: TitleDetails): WebNode[] {
     return {
       id: `rel:${r.id}:${r.relationType}`, label: r.title, sub: [enumLabel(r.relationType), year].filter(Boolean).join(" · "),
       image: r.cover, tone: spine ? "azure" : "violet", weight: spine ? 1 : 0.5,
-      detail: { type: "title", relation: enumLabel(r.relationType), format: enumLabel(r.format), year, href: titleHref(r.entryType, r.id) },
+      detail: {
+        type: "title", anilistId: r.id, entryType: r.entryType, relation: enumLabel(r.relationType), format: enumLabel(r.format), year,
+        href: titleHref(r.entryType, r.id),
+      },
       group: spine ? "spine" : r.relationType ?? "OTHER", start: yyyymm(r.startDate),
     };
   });
@@ -183,7 +190,10 @@ function similar(d: TitleDetails): WebNode[] {
   return d.recommendations.slice(0, 24).map((t, i) => ({
     id: `sim:${t.anilistId}`, label: t.title, sub: t.startYear ? String(t.startYear) : null, image: t.thumb ?? t.cover, tone: "gold",
     weight: 1 - i / 24, group: null,
-    detail: { type: "title", relation: null, format: enumLabel(t.format), year: t.startYear ?? null, href: titleHref(t.entryType, t.anilistId) },
+    detail: {
+      type: "title", anilistId: t.anilistId, entryType: t.entryType, relation: null, format: enumLabel(t.format), year: t.startYear ?? null,
+      href: titleHref(t.entryType, t.anilistId),
+    },
   }));
 }
 
@@ -211,9 +221,59 @@ export function buildTitleGraph(d: TitleDetails): TitleGraph {
     { id: "watch", label: "Watch", kanji: "視聴", tone: "acc-3", nodes: watch(d) },
   ];
   return {
-    anilistId: d.anilistId, title: d.title, romaji: d.romaji, english: d.english, native: d.native, cover: d.cover,
+    anilistId: d.anilistId, entryType: d.entryType, title: d.title, romaji: d.romaji, english: d.english, native: d.native, cover: d.cover,
     color: d.color, score: d.averageScore, status: d.status, synopsis: descriptionParagraphs(d.description), start: yyyymm(d.startDate),
     // A hub with nothing in it is left out rather than drawn empty. Details is the core and always stays.
     hubs: hubs.filter((h) => h.id === "details" || h.nodes.length > 0),
   };
+}
+
+/* ---------- person webs ---------- */
+
+// The hubs whose nodes are people with their own web of works, and the AniList staff id behind a
+// node there (cast "va:95185", staff "staff:95185").
+export const PERSON_HUBS: Partial<Record<HubId, string>> = { cast: "va:", staff: "staff:" };
+export function personIdOf(hub: HubId, nodeId: string): number | null {
+  const prefix = PERSON_HUBS[hub];
+  if (!prefix || !nodeId.startsWith(prefix)) return null;
+  const n = Number(nodeId.slice(prefix.length));
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+const MAX_PERSON_WORKS = 30;
+
+// A person's other works as web nodes, most popular first (the layout puts those closest): for a
+// voice actor the characters they voice, for staff the titles they worked on. This show is left
+// out, it's the web you came from.
+export function personWeb(person: PersonWorks, hub: HubId, showId: number): WebNode[] {
+  const top = (popularity: number, max: number) => 0.35 + 0.65 * Math.sqrt(popularity / Math.max(max, 1));
+  const title = (w: PersonWorks["credits"][number] | PersonWorks["roles"][number], credit: string): NodeDetail => ({
+    type: "title", anilistId: w.anilistId, entryType: w.entryType, relation: null, format: enumLabel(w.format), year: w.year,
+    href: titleHref(w.entryType, w.anilistId), credit,
+  });
+  if (hub === "cast") {
+    const roles = person.roles.filter((r) => r.anilistId !== showId).slice(0, MAX_PERSON_WORKS);
+    const max = roles[0]?.popularity ?? 1;
+    return roles.map((r) => ({
+      id: `pw:${r.anilistId}:${r.character.id}`, label: r.character.name, sub: r.title, image: r.character.image ?? r.cover,
+      tone: r.character.role === "MAIN" ? "acc-1" : "rose", weight: top(r.popularity, max), group: null,
+      detail: title(r, [`as ${r.character.name}`, enumLabel(r.character.role)].filter(Boolean).join(" · ")),
+    }));
+  }
+  const credits = person.credits.filter((c) => c.anilistId !== showId).slice(0, MAX_PERSON_WORKS);
+  const max = credits[0]?.popularity ?? 1;
+  return credits.map((c) => ({
+    id: `pw:${c.anilistId}`, label: c.title, sub: c.role, image: c.cover, tone: "gold", weight: top(c.popularity, max), group: null,
+    detail: title(c, c.role ?? "Staff"),
+  }));
+}
+
+/* ---------- "in your list" ---------- */
+
+// The titles in a graph a signed-in user may already have: this show and the franchise and
+// similar webs. (Person webs ask for their own when they load.)
+export function markQueries(graph: TitleGraph): { anilistId: number; type: EntryType; names: (string | null)[] }[] {
+  const titles = graph.hubs.flatMap((h) => h.nodes.flatMap((n) =>
+    n.detail.type === "title" ? [{ anilistId: n.detail.anilistId, type: n.detail.entryType, names: [n.label] }] : []));
+  return uniqueBy([{ anilistId: graph.anilistId, type: graph.entryType, names: [graph.title, graph.romaji, graph.native] }, ...titles], (t) => t.anilistId);
 }

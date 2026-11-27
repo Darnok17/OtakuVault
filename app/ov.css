@@ -794,6 +794,10 @@ a.nt-title:hover{color:var(--acc-3);}
 }
 .ow-label-hub.is-hot span{transform:scale(1.1);}
 .ow-label-hub small{font-family:var(--font-mono),var(--font-noto-jp),monospace;font-size:10px;color:var(--fg-dim);}
+/* "In your list": a second line of glyphs under a title's name (✓ ★4.5, ▶ 3/12), in its status tone. */
+.ow-label.has-mark{display:flex;flex-direction:column;align-items:center;gap:1px;}
+.ow-label-text{max-width:160px;overflow:hidden;text-overflow:ellipsis;}
+.ow-label-mark{font-family:var(--font-mono),monospace;font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--c);}
 
 /* HUD: the title, where you are, and the list actions — the tracker stays one click away. */
 .ow-hud{
@@ -833,6 +837,22 @@ a.nt-title:hover{color:var(--acc-3);}
 .ow-card-row{display:flex;align-items:center;gap:.5rem;font-size:.85rem;}
 .ow-card-face{width:28px;height:28px;border-radius:50%;object-fit:cover;object-position:top;border:1px solid var(--c);flex-shrink:0;}
 .ow-card-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;}
+.ow-card-mark{margin:0;font-size:.8rem;color:var(--c,var(--fg));}
+.ow-card-mark-k{font-family:var(--font-mono),monospace;font-size:calc(.66rem * var(--label-scale));letter-spacing:calc(.08em * var(--label-track));text-transform:var(--label-case);color:var(--fg-dim);margin-right:.3rem;}
+.ow-card-mark.is-empty{color:var(--fg-faint);font-size:.75rem;}
+.ow-card-wait{animation:owPulse 1.6s ease-in-out infinite;}
+
+/* Franchise progress: one segment per entry, oldest first. Completed solid, watching half-filled,
+   planned / on hold / dropped as an outline in their tone, not started as a faint dashed slot. */
+.ow-progress{display:flex;flex-direction:column;gap:.4rem;}
+.ow-progress strong{color:var(--fg);}
+.ow-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+.ow-progress-bar{display:flex;gap:3px;list-style:none;margin:0;padding:0;}
+.ow-progress-bar li{flex:1;min-width:4px;height:10px;border-radius:calc(2px * var(--r-k));border:1px solid var(--c);position:relative;}
+.ow-progress-bar li[data-status="completed"]{background:var(--c);}
+.ow-progress-bar li[data-status="watching"]{background:linear-gradient(to right,var(--c) 50%,transparent 50%);}
+.ow-progress-bar li[data-status="none"]{border:1px dashed var(--fg-faint);opacity:.7;}
+.ow-progress-bar li[data-here]::after{content:"";position:absolute;left:50%;top:calc(100% + 3px);width:5px;height:5px;margin-left:-2.5px;transform:rotate(45deg);background:var(--gold);}
 
 .ow-hint{
   position:absolute;z-index:20;left:1.25rem;bottom:1rem;margin:0;pointer-events:none;
@@ -855,6 +875,7 @@ a.nt-title:hover{color:var(--acc-3);}
   .ow-title{font-size:calc(1.4rem * var(--display-scale));}
   .ow-panel{top:auto;bottom:1rem;left:1rem;right:1rem;width:auto;max-height:45%;}
   .ow-card-img{height:110px;}
+  .ow-card-person .ow-card-img{display:none;} /* the person is the disc at the web's centre; phones need the room */
   .ow-hint{display:none;}
 }
-@media (prefers-reduced-motion:reduce){.ow-loading-orb,.ow-panel{animation:none;}}
+@media (prefers-reduced-motion:reduce){.ow-loading-orb,.ow-panel,.ow-card-wait{animation:none;}}
