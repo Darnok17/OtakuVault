@@ -720,7 +720,7 @@ function Cluster({ hub, at, person = false, cover, layout, theme, active, select
     for (let k = 0; k < n; k++) {
       const i = ord[k], g = groups.current[i], look = looks[i];
       const s = g && g.visible ? g.scale.x * p[i] : 0;
-      batch.mesh.setMatrixAt(k, scratch.m.compose(live[i], cam.quaternion, scratch.s.setScalar(Math.max(s * look.half, 1e-5))));
+      batch.mesh.setMatrixAt(k, scratch.m.compose(live[i], cam.quaternion, scratch.s.setScalar(Math.max(s * look.half * 2, 1e-5)))); // the 1×1 quad spans ±look.half
       batch.write(k, look, ready[i] ? rects[i] : null);
       if (glow) {
         halos.set(i, scratch.m.compose(live[i], cam.quaternion, scratch.s.setScalar(Math.max(s * look.radius * 5, 1e-5))),
