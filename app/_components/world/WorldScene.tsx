@@ -9,9 +9,12 @@ import {
 } from "three";
 import { hubSize, type Hub, type HubId, type TitleGraph, type WebNode } from "@/lib/title-graph";
 import {
-  CORE_RADIUS, HUB_END, OVERVIEW, cameraFor, layoutWorld, reach, type GroupLabel, type HubLayout, type V3, type Viewport, type WorldLayout,
+  CORE_RADIUS, HUB_END, OVERVIEW, cameraFor, cameraForPerson, layoutWorld, personLayout, reach,
+  type GroupLabel, type HubLayout, type V3, type Viewport, type WorldLayout,
 } from "@/lib/title-graph-layout";
+import type { ListMark } from "@/lib/types";
 import { FatLines, type LineLook } from "./fat-lines";
+import { STATUS_TONE, markFraction, markGlyphs } from "./list-marks";
 import { coreColor, type SceneTheme } from "./scene-theme";
 import { useWorldHover, useWorldInsets } from "./world-store";
 
@@ -19,16 +22,25 @@ import { useWorldHover, useWorldInsets } from "./world-store";
 // file draws it, animates clusters opening and closing, moves the camera, and keeps one DOM layer
 // of labels pinned to the 3D nodes (so labels use the theme's real fonts).
 
-export type Focus = { hub: HubId | null; node: string | null };
+// person: the staff id whose web of other works is open (from the focused cast or staff node);
+// work: the node selected inside that web.
+export type Focus = { hub: HubId | null; node: string | null; person: number | null; work: string | null };
+// The open person web; works is null while it loads.
+export type PersonView = { id: number; works: WebNode[] | null };
+type Marks = Record<number, ListMark> | null;
 
 type Props = {
   graph: TitleGraph;
   theme: SceneTheme;
   focus: Focus;
+  person: PersonView | null;
+  marks: Marks; // the signed-in user's list, by AniList id; null when signed out
   reducedMotion: boolean;
-  onFocus: (hub: HubId | null, node?: string | null) => void;
+  onFocus: (hub: HubId | null, node?: string | null, person?: number | null, work?: string | null) => void;
   onBack: () => void;
 };
+
+const markOf = (node: WebNode, marks: Marks) => (node.detail.type === "title" ? marks?.[node.detail.anilistId] : undefined);
 
 const OPEN_SECONDS = 0.9;
 const NODE_RADIUS = 0.36;
@@ -65,25 +77,35 @@ function LabelFlush() {
   return null;
 }
 
-type Label = { id: string; text: string; sub?: string; kind: "core" | "hub" | "node" | "fact" | "group"; tone?: string };
+// mark: the "in your list" glyphs (✓ ★4.5), a second line under a title node's name.
+type Label = { id: string; text: string; sub?: string; mark?: string; kind: "core" | "hub" | "node" | "fact" | "group"; tone?: string };
 
-function LabelLayer({ graph, layout }: { graph: TitleGraph; layout: WorldLayout }) {
+function LabelLayer({ graph, layout, works, marks }: { graph: TitleGraph; layout: WorldLayout; works: WebNode[] | null; marks: Marks }) {
   const layer = useRef<HTMLDivElement>(null);
   const els = useRef(new Map<string, HTMLDivElement>());
   const hovered = useWorldHover((s) => s.hovered);
-  const labels = useMemo<Label[]>(() => [
-    { id: "core", text: graph.title, kind: "core" },
-    ...graph.hubs.filter((h) => h.id !== "details").map((h): Label => ({ id: `hub:${h.id}`, text: h.label, sub: `${h.kanji} · ${hubSize(h)}`, kind: "hub", tone: h.tone })),
-    ...graph.hubs.flatMap((h) => h.nodes.map((n): Label => ({ id: n.id, text: n.label, kind: n.image ? "node" : "fact" }))),
-    ...graph.hubs.flatMap((h) => layout.hubs[h.id].groups.map((g): Label => ({ id: `group:${g.id}`, text: g.label, kind: "group", tone: g.tone }))),
-  ], [graph, layout]);
+  const labels = useMemo<Label[]>(() => {
+    const node = (n: WebNode): Label => {
+      const m = markOf(n, marks);
+      return { id: n.id, text: n.label, kind: n.image ? "node" : "fact", mark: m && markGlyphs(m), tone: m && STATUS_TONE[m.status] };
+    };
+    return [
+      { id: "core", text: graph.title, kind: "core" },
+      ...graph.hubs.filter((h) => h.id !== "details").map((h): Label => ({ id: `hub:${h.id}`, text: h.label, sub: `${h.kanji} · ${hubSize(h)}`, kind: "hub", tone: h.tone })),
+      ...graph.hubs.flatMap((h) => h.nodes.map(node)),
+      ...(works ?? []).map(node),
+      ...graph.hubs.flatMap((h) => layout.hubs[h.id].groups.map((g): Label => ({ id: `group:${g.id}`, text: g.label, kind: "group", tone: g.tone }))),
+    ];
+  }, [graph, layout, works, marks]);
 
-  // Static importance per label, for the declutter pass.
+  // Static importance per label, for the declutter pass; sizes are measured again when they change.
   const ranks = useRef(new Map<string, number>());
+  const sizes = useRef(new Map<string, number[]>());
   useEffect(() => {
-    const weights = new Map(graph.hubs.flatMap((h) => h.nodes.map((n) => [n.id, n.weight] as const)));
+    const weights = new Map([...graph.hubs.flatMap((h) => h.nodes), ...(works ?? [])].map((n) => [n.id, n.weight] as const));
     ranks.current = new Map(labels.map((l) => [l.id, l.kind === "core" ? 9 : l.kind === "hub" ? 8 : l.kind === "group" ? 7 : (weights.get(l.id) ?? 0) * 5]));
-  }, [graph, labels]);
+    sizes.current.clear();
+  }, [graph, labels, works]);
 
   useEffect(() => {
     const p = new Vector3();
@@ -117,8 +139,8 @@ function LabelLayer({ graph, layout }: { graph: TitleGraph; layout: WorldLayout 
       candidates.sort((a, b) => b.rank - a.rank);
       placed.length = 0;
       for (const c of candidates) {
-        let size = sizes.get(c.id);
-        if (!size) { size = [c.el.offsetWidth, c.el.offsetHeight]; if (size[0]) sizes.set(c.id, size); }
+        let size = sizes.current.get(c.id);
+        if (!size) { size = [c.el.offsetWidth, c.el.offsetHeight]; if (size[0]) sizes.current.set(c.id, size); }
         const r = [c.x - size[0] / 2 - 4, c.y - size[1] / 2 - 2, c.x + size[0] / 2 + 4, c.y + size[1] / 2 + 2];
         if (placed.some((q) => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1])) { hide(c.id, c.el); continue; }
         placed.push(r);
@@ -133,8 +155,8 @@ function LabelLayer({ graph, layout }: { graph: TitleGraph; layout: WorldLayout 
       if (el.style.visibility !== "hidden") el.style.visibility = "hidden";
     };
     // Label sizes are measured once; web fonts arriving late change them.
-    const sizes = new Map<string, number[]>();
-    void document.fonts?.ready.then(() => sizes.clear());
+    const measured = sizes.current;
+    void document.fonts?.ready.then(() => measured.clear());
     return () => { labelSync.flush = null; };
   }, []);
 
@@ -142,9 +164,10 @@ function LabelLayer({ graph, layout }: { graph: TitleGraph; layout: WorldLayout 
     <div className="ow-labels" ref={layer} aria-hidden="true">
       {labels.map((l) => (
         <div key={l.id} ref={(el) => { if (el) els.current.set(l.id, el); else els.current.delete(l.id); }}
-          className={`ow-label ow-label-${l.kind}${hovered === l.id ? " is-hot" : ""}`}
+          className={`ow-label ow-label-${l.kind}${l.mark ? " has-mark" : ""}${hovered === l.id ? " is-hot" : ""}`}
           style={{ visibility: "hidden", ...(l.tone ? { "--c": `var(--${l.tone})` } : {}) } as CSSProperties}>
-          {l.kind === "hub" ? <><span>{l.text}</span><small>{l.sub}</small></> : l.text}
+          {l.kind === "hub" ? <><span>{l.text}</span><small>{l.sub}</small></>
+            : l.mark ? <><span className="ow-label-text">{l.text}</span><small className="ow-label-mark">{l.mark}</small></> : l.text}
         </div>
       ))}
     </div>
@@ -272,6 +295,51 @@ function Rim({ inner, theme, opacity }: { inner: number; theme: SceneTheme; opac
       <ringGeometry args={[inner, inner + w, 48]} />
       <meshBasicMaterial color={theme.ink} transparent opacity={opacity} />
     </mesh>
+  );
+}
+
+/* ---------- "in your list" rings ---------- */
+
+const TAU = Math.PI * 2;
+const DASHES = 10;
+
+// Around a disc whose title is in the user's list: a faint full track, and over it an arc in the
+// status's tone from twelve o'clock clockwise — whole when completed, progress while watching,
+// none when only planned. `unstarted` (franchise entries not in the list) draws a dashed track.
+function MarkRing({ inner, mark, unstarted, theme, opacity }: {
+  inner: number; mark?: ListMark; unstarted?: boolean; theme: SceneTheme; opacity: number;
+}) {
+  if (!mark && !unstarted) return null;
+  const r0 = inner + Math.max(0.04, inner * 0.1);
+  const w = Math.max(0.05, inner * 0.13) * (theme.style.glow ? 1 : Math.min(1.4, theme.style.lineWidth / 1.4));
+  if (!mark) {
+    const arc = TAU / DASHES;
+    return (
+      <>
+        {Array.from({ length: DASHES }, (_, k) => (
+          <mesh key={k}>
+            <ringGeometry args={[r0, r0 + w * 0.6, 8, 1, k * arc, arc * 0.5]} />
+            <meshBasicMaterial color={theme.dim} transparent opacity={0.7 * opacity} />
+          </mesh>
+        ))}
+      </>
+    );
+  }
+  const color = theme.tones[STATUS_TONE[mark.status]];
+  const f = markFraction(mark);
+  return (
+    <>
+      <mesh>
+        <ringGeometry args={[r0, r0 + w, 64]} />
+        <meshBasicMaterial color={color} transparent opacity={(f >= 1 ? 0 : 0.28) * opacity} />
+      </mesh>
+      {f > 0 && (
+        <mesh>
+          <ringGeometry args={[r0, r0 + w, 64, 1, Math.PI / 2 - TAU * f, TAU * f]} />
+          <meshBasicMaterial color={color} transparent opacity={opacity} />
+        </mesh>
+      )}
+    </>
   );
 }
 
@@ -407,9 +475,11 @@ function Dust({ layout, theme }: { layout: WorldLayout; theme: SceneTheme }) {
 
 /* ---------- an open hub: its web of nodes ---------- */
 
-function NodeDisc({ node, always, near, theme, register, selected, someoneSelected, onPick }: {
+// receded: another web (a person's) has the stage in front of this one; only the selected node
+// stays lit. mark / unstarted: see MarkRing.
+function NodeDisc({ node, always, near, theme, register, selected, someoneSelected, receded, mark, unstarted, onPick }: {
   node: WebNode; always: boolean; near: number; theme: SceneTheme; register: (g: Group | null) => void;
-  selected: boolean; someoneSelected: boolean; onPick: () => void;
+  selected: boolean; someoneSelected: boolean; receded: boolean; mark?: ListMark; unstarted: boolean; onPick: () => void;
 }) {
   const tex = useTexture(node.image);
   const color = theme.tones[node.tone];
@@ -433,11 +503,14 @@ function NodeDisc({ node, always, near, theme, register, selected, someoneSelect
     const d = world.distanceTo(camera.position);
     const seen = Math.min(1, Math.max(0, always ? (75 - d) / 15 : (near - d) / (near * 0.15)));
     const spawn = Math.min(1, Math.max(0, (outer.current.scale.x - 0.6) / 0.4));
-    setLabelOpacity(node.id, (hovered || selected ? 1 : seen * (someoneSelected ? 0.35 : 1)) * spawn);
+    const quiet = receded && !selected ? 0 : someoneSelected ? 0.35 : 1;
+    setLabelOpacity(node.id, (selected || (hovered && !receded) ? 1 : seen * quiet) * spawn);
   });
 
-  const fade = someoneSelected && !selected ? 0.45 : 1;
+  // Unstarted franchise entries sit back a little, so what you've seen reads as the lit path.
+  const fade = (selected ? 1 : receded ? 0.12 : someoneSelected ? 0.45 : 1) * (unstarted && !selected ? 0.6 : 1);
   const ring = node.image ? radius * (selected ? 1.22 : 1.13) : radius;
+  const live = receded && !selected ? undefined : events;
 
   return (
     <group ref={(g) => { outer.current = g; register(g); }}>
@@ -451,24 +524,25 @@ function NodeDisc({ node, always, near, theme, register, selected, someoneSelect
                 <ringGeometry args={[radius, ring, 48]} />
                 <meshBasicMaterial color={color} transparent opacity={fade} />
               </mesh>
-              <Portrait radius={radius} tex={tex} fallback={theme.faint} opacity={fade} events={events} />
+              <Portrait radius={radius} tex={tex} fallback={theme.faint} opacity={fade} events={live} />
             </>
           ) : (
-            <mesh {...events}>
+            <mesh {...live}>
               <circleGeometry args={[radius, 32]} />
               <meshBasicMaterial color={color} transparent opacity={fade} />
             </mesh>
           )}
+          <MarkRing inner={ring} mark={mark} unstarted={unstarted} theme={theme} opacity={unstarted ? Math.min(1, fade / 0.6) : fade} />
         </group>
-        <object3D ref={labelRef} position={[0, -ring * 1.2 - 0.14, 0]} />
+        <object3D ref={labelRef} position={[0, -ring * 1.2 - 0.14 - (mark || unstarted ? 0.1 : 0), 0]} />
       </Billboard>
     </group>
   );
 }
 
 // A sub-cluster's caption, and for some (this show on the franchise path) a small ring marker.
-function GroupMark({ group, theme, cover, register }: {
-  group: GroupLabel; theme: SceneTheme; cover: string | null; register: (g: Group | null) => void;
+function GroupMark({ group, theme, cover, mark, unstarted, register }: {
+  group: GroupLabel; theme: SceneTheme; cover: string | null; mark?: ListMark; unstarted: boolean; register: (g: Group | null) => void;
 }) {
   const labelRef = useLabelAnchor(`group:${group.id}`);
   const tex = useTexture(group.marker ? cover : null);
@@ -483,19 +557,23 @@ function GroupMark({ group, theme, cover, register }: {
           </mesh>
           <Portrait radius={0.34} tex={tex} fallback={theme.tones[group.tone]} opacity={1} />
           <Rim inner={0.42} theme={theme} opacity={1} />
+          <MarkRing inner={0.42} mark={mark} unstarted={unstarted} theme={theme} opacity={1} />
         </Billboard>
       )}
     </group>
   );
 }
 
-function Cluster({ hub, cover, layout, theme, active, focus, reducedMotion, onPick, onGone }: {
-  hub: Hub; cover: string | null; layout: WorldLayout; theme: SceneTheme; active: boolean; focus: Focus; reducedMotion: boolean;
+// A web of nodes opening out of its hub: one of the title's hubs, or a person's web of works
+// (`person`, laid out by personLayout with the person's node as its hub). `selectedId` is the
+// node that has the stage; `receded` steps the whole web back behind a person web opened from it.
+function Cluster({ hub, at, person = false, cover, layout, theme, active, selectedId, receded = false, marks, franchiseMark, reducedMotion, onPick, onGone }: {
+  hub: Hub; at: HubLayout; person?: boolean; cover: string | null; layout: WorldLayout; theme: SceneTheme; active: boolean;
+  selectedId: string | null; receded?: boolean; marks: Marks; franchiseMark?: ListMark; reducedMotion: boolean;
   onPick: (node: WebNode) => void; onGone: () => void;
 }) {
-  const at: HubLayout = layout.hubs[hub.id];
   const groups = useRef<(Group | null)[]>([]);
-  const marks = useRef<(Group | null)[]>([]);
+  const captions = useRef<(Group | null)[]>([]);
   const progress = useRef(reducedMotion ? 1 : 0);
   const settled = useRef(false);
   const lastHot = useRef<string | null | undefined>(undefined);
@@ -518,11 +596,12 @@ function Cluster({ hub, cover, layout, theme, active, focus, reducedMotion, onPi
   const vp = useViewport();
   // Labels beyond the key nodes appear once the camera is a fifth closer than this web's framing.
   const near = useMemo(() => {
-    const v = cameraFor(layout, hub.id, null, vp);
+    const v = person ? cameraForPerson(at, null, vp) : cameraFor(layout, hub.id, null, vp);
     return Math.hypot(v.pos[0] - v.target[0], v.pos[1] - v.target[1], v.pos[2] - v.target[2]) * 0.8;
-  }, [layout, hub.id, vp]);
+  }, [layout, at, person, hub.id, vp]);
   const n = hub.nodes.length;
-  const selectedId = focus.hub === hub.id ? focus.node : null;
+  // Signed in, the franchise web also shows what you haven't started.
+  const showProgress = !person && hub.id === "franchise" && marks != null;
   const end = (x: number) => (x >= 0 ? live[x] : x === HUB_END ? from : jointLive[-2 - x]);
 
   useFrame((_, dt) => {
@@ -540,18 +619,19 @@ function Cluster({ hub, cover, layout, theme, active, focus, reducedMotion, onPi
       }
       const tj = ease(t * 1.2);
       jointTargets.forEach((p, j) => jointLive[j].lerpVectors(from, p, tj));
-      groupTargets.forEach((p, k) => { const g = marks.current[k]; if (g) { g.position.lerpVectors(from, p, tj); g.scale.setScalar(Math.max(tj, 0.001)); } });
+      groupTargets.forEach((p, k) => { const g = captions.current[k]; if (g) { g.position.lerpVectors(from, p, tj); g.scale.setScalar(Math.max(tj, 0.001)); } });
       at.edges.forEach(([a, b], e) => lines.set(e, end(a), end(b)));
       lines.commit(at.edges.length);
-      lines.fade(theme.style.lineOpacity * t);
       settled.current = progress.current === goal;
       if (!active && progress.current === 0) onGone();
     }
     const t = progress.current;
+    lines.fade(theme.style.lineOpacity * t * (receded ? 0.25 : 1));
     // Captions fade with the web, and step back while one node has the stage.
-    at.groups.forEach((g) => setLabelOpacity(`group:${g.id}`, t * (selectedId ? 0.4 : 1)));
+    at.groups.forEach((g) => setLabelOpacity(`group:${g.id}`, t * (receded ? 0 : selectedId ? 0.4 : 1)));
     // The hovered (else selected) node's own links, drawn bolder on top.
-    const hot = useWorldHover.getState().hovered ?? selectedId;
+    const hovered = useWorldHover.getState().hovered;
+    const hot = (receded ? null : hovered) ?? selectedId;
     if (animating || hot !== lastHot.current) {
       lastHot.current = hot;
       const i = hot != null ? indexOfId.get(hot) : undefined;
@@ -573,12 +653,14 @@ function Cluster({ hub, cover, layout, theme, active, focus, reducedMotion, onPi
       <primitive object={lines.object} />
       <primitive object={hotLines.object} />
       {at.groups.map((g, k) => (
-        <GroupMark key={g.id} group={g} theme={theme} cover={cover} register={(o) => { marks.current[k] = o; }} />
+        <GroupMark key={g.id} group={g} theme={theme} cover={cover} mark={g.marker ? franchiseMark : undefined}
+          unstarted={!!g.marker && showProgress && !franchiseMark} register={(o) => { captions.current[k] = o; }} />
       ))}
       {hub.nodes.map((node, i) => (
         <NodeDisc key={node.id} node={node} always={!node.anchor && (node.weight >= 0.7 || !crowded)} near={near} theme={theme}
           register={(g) => { groups.current[i] = g; }}
-          selected={selectedId === node.id} someoneSelected={selectedId != null} onPick={() => onPick(node)} />
+          selected={selectedId === node.id} someoneSelected={selectedId != null} receded={receded}
+          mark={markOf(node, marks)} unstarted={showProgress && !markOf(node, marks)} onPick={() => onPick(node)} />
       ))}
     </group>
   );
@@ -593,7 +675,9 @@ function useViewport(): Viewport {
   return useMemo(() => ({ width: size.width, height: size.height, insets: insets ?? undefined }), [size, insets]);
 }
 
-function CameraRig({ layout, graph, focus, reducedMotion }: { layout: WorldLayout; graph: TitleGraph; focus: Focus; reducedMotion: boolean }) {
+function CameraRig({ layout, graph, focus, personAt, works, reducedMotion }: {
+  layout: WorldLayout; graph: TitleGraph; focus: Focus; personAt: HubLayout | null; works: WebNode[] | null; reducedMotion: boolean;
+}) {
   const controls = useRef<ComponentRef<typeof CameraControls>>(null);
   const idle = useRef(0);
   const size = useViewport();
@@ -609,10 +693,12 @@ function CameraRig({ layout, graph, focus, reducedMotion }: { layout: WorldLayou
     if (!c) return;
     const hub = focus.hub ? graph.hubs.find((h) => h.id === focus.hub) : null;
     const index = hub && focus.node ? hub.nodes.findIndex((n) => n.id === focus.node) : -1;
-    const view = cameraFor(layout, focus.hub, index >= 0 ? index : null, size);
+    // A person web once it's loaded; until then the camera waits on the person's own node.
+    const work = personAt && works && focus.work ? works.findIndex((w) => w.id === focus.work) : -1;
+    const view = personAt ? cameraForPerson(personAt, work >= 0 ? work : null, size) : cameraFor(layout, focus.hub, index >= 0 ? index : null, size);
     idle.current = 0;
     void c.setLookAt(...view.pos, ...view.target, !reducedMotion);
-  }, [focus.hub, focus.node, layout, graph, reducedMotion, size]);
+  }, [focus.hub, focus.node, focus.work, personAt, works, layout, graph, reducedMotion, size]);
 
   // A slow drift around the orb when nobody is touching it on the overview.
   useFrame(({ scene }, dt) => {
@@ -636,10 +722,24 @@ function CameraRig({ layout, graph, focus, reducedMotion }: { layout: WorldLayou
 
 /* ---------- scene ---------- */
 
-function World({ graph, theme, focus, reducedMotion, onFocus, layout }: Props & { layout: WorldLayout }) {
+// A person web as mounted: kept (with its nodes and layout) while it folds back after closing.
+type MountedPerson = { key: string; hub: Hub; at: HubLayout; nodeId: string; person: number };
+
+function World({ graph, theme, focus, person, marks, reducedMotion, onFocus, layout, personAt }: Props & { layout: WorldLayout; personAt: HubLayout | null }) {
   // Clusters stay mounted while they fold back up, then leave.
   const [mounted, setMounted] = useState<HubId[]>(focus.hub ? [focus.hub] : []);
   if (focus.hub && !mounted.includes(focus.hub)) setMounted([...mounted, focus.hub]);
+  const openPerson = useMemo<MountedPerson | null>(() => {
+    const hub = focus.hub ? graph.hubs.find((h) => h.id === focus.hub) : null;
+    if (!hub || !person?.works || !personAt || !focus.node) return null;
+    return {
+      key: `${hub.id}:${person.id}`, at: personAt, nodeId: focus.node, person: person.id,
+      hub: { id: hub.id, label: hub.label, kanji: hub.kanji, tone: hub.tone, nodes: person.works },
+    };
+  }, [focus.hub, focus.node, graph, person, personAt]);
+  const [people, setPeople] = useState<MountedPerson[]>(openPerson ? [openPerson] : []);
+  if (openPerson && !people.some((p) => p.key === openPerson.key)) setPeople([...people.filter((p) => p.key !== openPerson.key), openPerson]);
+  const franchiseMark = marks?.[graph.anilistId];
   const k = useThree((s) => reach(s.size.width / Math.max(s.size.height, 1)));
 
   return (
@@ -655,11 +755,21 @@ function World({ graph, theme, focus, reducedMotion, onFocus, layout }: Props & 
       {mounted.map((id) => {
         const hub = graph.hubs.find((h) => h.id === id)!;
         return (
-          <Cluster key={id} hub={hub} cover={graph.cover} layout={layout} theme={theme} active={focus.hub === id} focus={focus} reducedMotion={reducedMotion}
+          <Cluster key={id} hub={hub} at={layout.hubs[id]} cover={graph.cover} layout={layout} theme={theme} active={focus.hub === id}
+            selectedId={focus.hub === id ? focus.node : null} receded={focus.hub === id && focus.person != null} marks={marks}
+            franchiseMark={franchiseMark} reducedMotion={reducedMotion}
             onPick={(node) => onFocus(id, node.id)} onGone={() => setMounted((m) => m.filter((x) => x !== id))} />
         );
       })}
-      <CameraRig layout={layout} graph={graph} focus={focus} reducedMotion={reducedMotion} />
+      {people.map((p) => {
+        const active = openPerson?.key === p.key;
+        return (
+          <Cluster key={p.key} hub={p.hub} at={p.at} person cover={graph.cover} layout={layout} theme={theme} active={active}
+            selectedId={active ? focus.work : null} marks={marks} reducedMotion={reducedMotion}
+            onPick={(node) => onFocus(p.hub.id, p.nodeId, p.person, node.id)} onGone={() => setPeople((m) => m.filter((x) => x.key !== p.key))} />
+        );
+      })}
+      <CameraRig layout={layout} graph={graph} focus={focus} personAt={personAt} works={person?.works ?? null} reducedMotion={reducedMotion} />
       <LabelFlush />
     </>
   );
@@ -668,6 +778,13 @@ function World({ graph, theme, focus, reducedMotion, onFocus, layout }: Props & 
 export default function WorldScene(props: Props) {
   const down = useRef<[number, number] | null>(null);
   const layout = useMemo(() => layoutWorld(props.graph), [props.graph]);
+  const { focus, person, graph } = props;
+  // Where the open person web sits: out in front of their node in the cast or staff web.
+  const personAt = useMemo(() => {
+    const hub = focus.hub ? graph.hubs.find((h) => h.id === focus.hub) : null;
+    const index = hub && focus.node ? hub.nodes.findIndex((n) => n.id === focus.node) : -1;
+    return hub && index >= 0 && person?.works ? personLayout(layout.hubs[hub.id], index, person.works.length) : null;
+  }, [layout, graph, focus.hub, focus.node, person]);
   return (
     <>
       <Canvas
@@ -683,9 +800,9 @@ export default function WorldScene(props: Props) {
           if (e.type === "click" && d && Math.hypot(e.clientX - d[0], e.clientY - d[1]) < 5) props.onBack();
         }}
       >
-        <World {...props} layout={layout} />
+        <World {...props} layout={layout} personAt={personAt} />
       </Canvas>
-      <LabelLayer graph={props.graph} layout={layout} />
+      <LabelLayer graph={props.graph} layout={layout} works={person?.works ?? null} marks={props.marks} />
     </>
   );
 }

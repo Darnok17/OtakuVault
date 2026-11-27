@@ -524,3 +524,42 @@ export function cameraFor(layout: WorldLayout, hubId: HubId | null, nodeIndex: n
   // Seen from outside the cluster, a little from above, as close as fits everything.
   return fitView(viewPoints(layout, hub.id), hub.center, norm(add(hub.normal, scale(v, 0.18))), vp, true, 10);
 }
+
+/* ---------- person webs ---------- */
+
+// A voice actor's or staff member's other works, opened from their node in the cast or staff web:
+// rings around a centre a little in front of the person (along the hub's normal, so the camera
+// flies past them into it, as it does from a hub into its cluster). Most popular on the inner
+// ring, from the top, clockwise. Shaped like a HubLayout with the person as its "hub", so the
+// scene draws it with the same cluster code.
+const PERSON_OFFSET = 2.6;
+const PERSON_RING0 = 2.1;
+const PERSON_RING_STEP = 1.45;
+const PERSON_SPACING = 1.35; // arc length between neighbours on a ring
+
+export function personLayout(at: HubLayout, nodeIndex: number, count: number): HubLayout {
+  const pos = at.nodes[nodeIndex];
+  const normal = at.normal;
+  const center = add(pos, scale(normal, PERSON_OFFSET));
+  const [u, v] = frame(normal);
+  const toWorld = (p: V3): V3 => add(add(add(center, scale(u, p[0])), scale(v, p[1])), scale(normal, p[2]));
+  const local: V3[] = [];
+  for (let ring = 0; local.length < count; ring++) {
+    const r = PERSON_RING0 + ring * PERSON_RING_STEP;
+    const m = Math.min(Math.max(6, Math.floor((TAU * r) / PERSON_SPACING)), count - local.length);
+    // Each ring turned half a step from the last, so its nodes sit in the inner ring's gaps.
+    for (let j = 0; j < m; j++) local.push(polar(r, Math.PI / 2 - ((j + (ring % 2) * 0.5) / m) * TAU, -ring * 0.35 + ripple(j, 0.12)));
+  }
+  const nodes = local.map(toWorld);
+  return { id: at.id, pos, normal, center, nodes, joints: [], edges: nodes.map((_, i) => [HUB_END, i]), groups: [], satellites: [] };
+}
+
+// The person web framed whole (the person's own node included), or closed on one of its works.
+export function cameraForPerson(web: HubLayout, workIndex: number | null, vp: Viewport = DEFAULT_VIEWPORT): CameraView {
+  const [u, v] = frame(web.normal);
+  if (workIndex != null && web.nodes[workIndex]) {
+    const p = web.nodes[workIndex];
+    return { pos: add(add(p, scale(web.normal, 8.5)), scale(v, 1)), target: add(p, scale(u, 1.6)) };
+  }
+  return fitView([...web.nodes, web.pos], web.center, norm(add(web.normal, scale(v, 0.18))), vp, true, 8);
+}

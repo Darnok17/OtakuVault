@@ -20,6 +20,9 @@ export type Entry = {
   anilistId?: number;
 };
 
+// What the title world shows on a disc for a title already in the signed-in user's collection.
+export type ListMark = { status: EntryStatus; rating: number; progress: number; total: number };
+
 export type MoodNodeType =
   | "note" | "image" | "quote" | "link"
   | "character" | "episode" | "bubble" | "custom";

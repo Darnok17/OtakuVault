@@ -1,7 +1,7 @@
 import type { EntryType } from "@/lib/types";
 import {
   DEFAULT_FILTERS, DETAILS_VERSION, ENTRY_TYPES, TAG_GENRES,
-  type BrowseFilters, type DetailsResult, type FuzzyDate, type MediaKind, type Season, type Title, type TitleDetails, type TitlePage,
+  type BrowseFilters, type DetailsResult, type FuzzyDate, type MediaKind, type PersonCredit, type PersonRole, type PersonWork, type PersonWorks, type Season, type Title, type TitleDetails, type TitlePage,
 } from "@/lib/anilist-shared";
 import { typeVars } from "./sources/anilist";
 import { cached } from "./edge-cache";
@@ -437,4 +437,76 @@ export async function getAiringStatus(anilistIds: number[]): Promise<Map<number,
     }
   }
   return statuses;
+}
+
+/* ---------- People (the title world's person sub-webs) ---------- */
+
+const PERSON_MAX = 30;
+const PERSON_MEDIA = `id type format countryOfOrigin isAdult popularity startDate { year } title { romaji english } coverImage { large }`;
+const PERSON_QUERY = `
+  query ($id: Int, $perPage: Int) {
+    Staff(id: $id) {
+      id name { full } image { large }
+      characterMedia(page: 1, perPage: $perPage, sort: POPULARITY_DESC) {
+        edges { characterRole characters { id name { full } image { large } } node { ${PERSON_MEDIA} } }
+      }
+      staffMedia(page: 1, perPage: $perPage, sort: POPULARITY_DESC) {
+        edges { staffRole node { ${PERSON_MEDIA} } }
+      }
+    }
+  }`;
+
+type RawPersonMedia = Pick<RawMedia, "id" | "type" | "format" | "countryOfOrigin" | "popularity" | "title"> & {
+  isAdult: boolean | null; startDate: { year: number | null } | null; coverImage: { large: string | null } | null;
+};
+type RawStaffWorks = {
+  id: number; name: { full: string | null } | null; image: { large: string | null } | null;
+  characterMedia: { edges: { characterRole: string | null; characters: ({ id: number; name: { full: string | null }; image: { large: string | null } | null } | null)[] | null; node: RawPersonMedia | null }[] } | null;
+  staffMedia: { edges: { staffRole: string | null; node: RawPersonMedia | null }[] } | null;
+};
+
+const personWork = (m: RawPersonMedia): PersonWork => ({
+  anilistId: m.id, entryType: entryTypeOf(m), title: m.title.english ?? m.title.romaji ?? `#${m.id}`,
+  cover: m.coverImage?.large ?? null, format: m.format, year: m.startDate?.year ?? null, popularity: m.popularity ?? 0,
+});
+
+function normalizePerson(p: RawStaffWorks): PersonWorks {
+  // AniList already sorts by the show's popularity, so the first show a character turns up in is
+  // the one to fly to; later seasons of the same role are left out.
+  const roles: PersonRole[] = [];
+  const seen = new Set<number>();
+  for (const e of p.characterMedia?.edges ?? []) {
+    if (!e.node || e.node.isAdult) continue;
+    for (const c of e.characters ?? []) {
+      if (!c || seen.has(c.id)) continue;
+      seen.add(c.id);
+      roles.push({ ...personWork(e.node), character: { id: c.id, name: c.name.full ?? "Unknown", image: c.image?.large ?? null, role: e.characterRole } });
+    }
+  }
+  // Several credits on one show (Director, Storyboard (eps 1, 5)) make one work.
+  const credits = new Map<number, PersonCredit>();
+  for (const e of p.staffMedia?.edges ?? []) {
+    if (!e.node || e.node.isAdult) continue;
+    const hit = credits.get(e.node.id);
+    if (hit) hit.role = [hit.role, e.staffRole].filter(Boolean).join(", ") || null;
+    else credits.set(e.node.id, { ...personWork(e.node), role: e.staffRole });
+  }
+  return {
+    id: p.id, name: p.name?.full ?? "Unknown", image: p.image?.large ?? null,
+    roles: roles.slice(0, PERSON_MAX * 2), credits: [...credits.values()].slice(0, PERSON_MAX * 2),
+  };
+}
+
+// A person's other works: one Staff query per person per TTL.details, cached like title details
+// (unknown ids as null). Fetched only when someone opens that person's web.
+export async function getPersonWorks(personId: number): Promise<PersonWorks | null> {
+  return cached(`person:v1:${personId}`, TTL.details, async () => {
+    try {
+      const { Staff } = await gql<{ Staff: RawStaffWorks | null }>(PERSON_QUERY, { id: personId, perPage: 50 });
+      return Staff ? normalizePerson(Staff) : null;
+    } catch (err) {
+      if (err instanceof AniListNotFound) return null;
+      throw err;
+    }
+  });
 }

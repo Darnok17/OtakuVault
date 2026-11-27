@@ -1,6 +1,6 @@
 import { cache } from "react";
 import type { EntryType } from "@/lib/types";
-import type { BrowseFilters, DetailsResult, Season, Title, TitlePage } from "@/lib/anilist-shared";
+import type { BrowseFilters, DetailsResult, PersonWorks, Season, Title, TitlePage } from "@/lib/anilist-shared";
 import * as live from "./live";
 import * as reads from "./reads";
 
@@ -65,6 +65,12 @@ export function getTitleById(anilistId: number): Promise<Title> {
 // Wrapped in cache() so metadata and the page share one lookup.
 export const getTitleDetails = cache((anilistId: number, type: EntryType): Promise<DetailsResult> =>
   fromDb() ? reads.getTitleDetails(anilistId, type) : live.getTitleDetails(anilistId, type));
+
+// A voice actor's or staff member's other works (the title world's person webs). People aren't
+// part of the catalog tables, so both modes ask AniList through the live layer and its cache.
+export function getPersonWorks(personId: number): Promise<PersonWorks | null> {
+  return live.getPersonWorks(personId);
+}
 
 export function getRecommendations(sourceIds: number[]): Promise<Title[]> {
   return fromDb() ? reads.getRecommendations(sourceIds) : live.getRecommendations(sourceIds);

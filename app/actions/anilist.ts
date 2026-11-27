@@ -4,15 +4,15 @@ import { headers } from "next/headers";
 import { and, desc, eq, gt } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db, entries, entryStatus } from "@/lib/db";
-import { findCollectionEntry, toEntry } from "@/lib/entries-db";
+import { findCollectionEntry, listMarks, toEntry } from "@/lib/entries-db";
 import {
-  browseTitles, getRecommendations, getSeasonalLineup, getTitleById, getTitleDetails, getTrendingNow, getTypeCounts, searchTitles,
+  browseTitles, getPersonWorks, getRecommendations, getSeasonalLineup, getTitleById, getTitleDetails, getTrendingNow, getTypeCounts, searchTitles,
 } from "@/lib/catalog";
 import {
   DEFAULT_FILTERS, ENTRY_TYPES, entryLengthFor,
-  type AddResult, type BrowseFilters, type BrowseSort, type BrowseStatus, type DetailsResult, type Season, type Title, type TitlePage,
+  type AddResult, type BrowseFilters, type PersonWorks, type BrowseSort, type BrowseStatus, type DetailsResult, type Season, type Title, type TitlePage,
 } from "@/lib/anilist-shared";
-import type { EntryStatus, EntryType } from "@/lib/types";
+import type { EntryStatus, EntryType, ListMark } from "@/lib/types";
 
 // Thin, validated wrappers over lib/catalog. Every export here is a public endpoint, and a
 // catalog miss can trigger a provider request, so inputs are checked before anything runs.
@@ -70,6 +70,16 @@ export async function getTitleByIdAction(anilistId: number): Promise<Title> {
 export async function getTitleDetailsAction(anilistId: number, type: EntryType): Promise<DetailsResult> {
   if (!isEntryType(type)) throw new Error("Invalid type");
   return getTitleDetails(posInt(anilistId, "anilistId", 10_000_000), type);
+}
+
+// The title world's person web: a voice actor's or staff member's other works, plus, for a
+// signed-in user, which of them are in their collection. Called when the web is opened, so the
+// title page itself never carries it. Uncached per user: the marks are this session's alone.
+export async function getPersonWorksAction(personId: number): Promise<{ person: PersonWorks | null; marks: Record<number, ListMark> | null }> {
+  const [person, userId] = await Promise.all([getPersonWorks(posInt(personId, "personId", 10_000_000)), sessionUserId()]);
+  if (!person || !userId) return { person, marks: null };
+  const works = [...person.roles, ...person.credits];
+  return { person, marks: await listMarks(userId, works.map((w) => ({ anilistId: w.anilistId, type: w.entryType, names: [w.title] }))) };
 }
 
 export async function browseTitlesAction(filters: BrowseFilters, page = 1): Promise<TitlePage> {
