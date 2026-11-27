@@ -18,7 +18,9 @@ const media = (id: number) => ({
 
 let calls: { url: string; headers: Record<string, string>; body: { query: string; variables: Record<string, unknown> } }[];
 const realFetch = globalThis.fetch;
-const saved = { ...process.env };
+const saved: Record<string, string | undefined> = { ...process.env };
+// Typed loosely: cloudflare-env.d.ts pins the wrangler.jsonc values.
+const env = process.env as Record<string, string | undefined>;
 
 function answer(respond: (body: { query: string; variables: Record<string, unknown> }) => Response) {
   globalThis.fetch = (async (url: string, init: RequestInit) => {
@@ -31,20 +33,23 @@ function answer(respond: (body: { query: string; variables: Record<string, unkno
 beforeEach(() => {
   calls = [];
   clearMemoryCache();
-  delete process.env.CATALOG_SOURCE;
-  delete process.env.DATABASE_URL;
-  process.env.ANILIST_API_URL = "https://relay.example/api/anilist-relay";
-  process.env.ANILIST_RELAY_SECRET = "s3cret";
+  delete env.CATALOG_SOURCE;
+  delete env.DATABASE_URL;
+  env.ANILIST_API_URL = "https://relay.example/api/anilist-relay";
+  env.ANILIST_RELAY_SECRET = "s3cret";
 });
 afterEach(() => {
   globalThis.fetch = realFetch;
-  process.env = { ...saved };
+  for (const k of ["CATALOG_SOURCE", "DATABASE_URL", "ANILIST_API_URL", "ANILIST_RELAY_SECRET"]) {
+    if (saved[k] === undefined) delete env[k];
+    else env[k] = saved[k];
+  }
 });
 
 describe("catalog, anilist mode", () => {
   it("is the default", () => {
     assert.equal(catalogMode(), "anilist");
-    process.env.CATALOG_SOURCE = "db";
+    env.CATALOG_SOURCE = "db";
     assert.equal(catalogMode(), "db");
   });
 
@@ -61,7 +66,7 @@ describe("catalog, anilist mode", () => {
   });
 
   it("never sends the relay secret to AniList itself", async () => {
-    process.env.ANILIST_API_URL = "";
+    env.ANILIST_API_URL = "";
     answer(() => Response.json({ data: { Page: { pageInfo: { total: 0, hasNextPage: false }, media: [] } } }));
     await browseTitles(DEFAULT_FILTERS, 1);
     assert.equal(calls[0].url, "https://graphql.anilist.co");
