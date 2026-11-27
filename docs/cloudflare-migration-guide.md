@@ -49,6 +49,7 @@ The migration was carried out on branch `feat/cloudflare-migration` (base `main`
 | Custom domains | `otakuvault.app` and `www.otakuvault.app` (Workers Custom Domains, declared in `wrangler.jsonc` `routes`). `www` → apex is a zone Redirect Rule (301, path and query kept). |
 | Zone settings | SSL **Full (strict)**, Always Use HTTPS **on**, minimum TLS **1.2**. HSTS still off (turn on after a stable week, Phase 12). The zone had **no DNS records** before the migration (no email records to keep). |
 | Hyperdrive | `otakuvault-db` → production Neon `main` branch, direct (non-pooler) host, **caching disabled**. Uses the existing owner role (the "simpler alternative" in 2.1); no `hyperdrive_user` role was created. |
+| Hyperdrive (Nov 2026) | **Now `otakuvault-db-supabase` (`895c11810ce64e1a9b342db88d0cc386`)** → Supabase free project, session pooler `aws-1-us-west-2.pooler.supabase.com:5432` (the direct host is IPv6-only), caching disabled. Moved because the Neon free plan ran out of compute (`53000`, seen through Hyperdrive as `Network connection lost`). The Neon config above is kept. See [Database move to Supabase](#database-move-to-supabase-nov-2026). |
 | R2 | `otakuvault-cache` (Next incremental cache), `otakuvault-media` (uploads; public at `img.otakuvault.app`). Both in `enam`. |
 | D1 | `otakuvault-tag-cache` (tag cache). Its table is created by `opennextjs-cloudflare deploy` itself. |
 | Images | `IMAGES` binding, used for upload normalization. |
@@ -1452,3 +1453,23 @@ Abandoned-cart cleanup, order reconciliation and sitemap refreshes would have be
 - Webhook signature verification: <https://docs.stripe.com/webhooks#verify-official-libraries>
 - Stripe on Workers (Cloudflare blog): <https://blog.cloudflare.com/announcing-stripe-support-in-workers>
 - Custom email domain: <https://docs.stripe.com/get-started/account/email-domain>
+
+## Database move to Supabase (Nov 2026)
+
+- **Why:** the Neon free plan's monthly compute quota ran out (`53000 Your account or project has
+  exceeded the quota`; through Hyperdrive every query failed with `Network connection lost`), so
+  sign-in, sign-up and every catalog read failed.
+- **What:** a new free Supabase project. All migrations in `drizzle/` applied with
+  `DATABASE_URL='<session pooler URI>' pnpm db:migrate`, plus `drizzle/seeds/products.sql`. New
+  Hyperdrive config `otakuvault-db-supabase`, caching disabled, wired in `wrangler.jsonc`.
+- **Use the session pooler (port 5432)**, not the transaction pooler (6543; Hyperdrive pools
+  itself) and not the direct host (IPv6-only on the free plan).
+- **Data:** the Supabase database started empty. Accounts and collections created on Neon are
+  not there yet; Neon unlocks at its monthly reset (2026-12-01 00:00 UTC) and its data can then
+  be copied over (for example `pg_dump --data-only` of the user tables from Neon, restored into
+  Supabase, after resolving any conflicts with accounts made in the meantime). The first account
+  created on Supabase becomes admin (`lib/auth.ts`).
+- **Titles** come live from AniList meanwhile (`CATALOG_SOURCE=anilist`, docs/catalog.md), so
+  the catalog tables on Supabase are empty and nothing fills them until the sync is resumed.
+- **Back to Neon:** put `b5da0a0dc19a48359980b01c5072b030` back in `wrangler.jsonc` and deploy.
+

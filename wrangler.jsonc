@@ -27,9 +27,11 @@
   // OpenNext calls itself for revalidation and the cache queue. Must match "name".
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "otakuvault" }],
 
-  // Postgres (Supabase, since Nov 2026; was Neon) through Hyperdrive, query caching disabled
-  // (read-after-write app).
-  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "b5da0a0dc19a48359980b01c5072b030" }],
+  // Postgres through Hyperdrive, query caching disabled (read-after-write app).
+  // Since Nov 2026: Supabase free project, session pooler (aws-1-us-west-2, port 5432), config
+  // "otakuvault-db-supabase". The previous Neon config "otakuvault-db"
+  // (b5da0a0dc19a48359980b01c5072b030) is kept; switching back is a one-line id change.
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "895c11810ce64e1a9b342db88d0cc386" }],
 
   "r2_buckets": [
     { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "otakuvault-cache" },
