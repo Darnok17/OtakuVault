@@ -6,6 +6,7 @@ import Link from "next/link";
 import { addToCollectionFromAnilist } from "@/app/actions/anilist";
 import { updateEntryAction } from "@/app/actions/entries";
 import { useIndex } from "@/app/index-page/_components/IndexProvider";
+import { announceEntry } from "@/lib/entry-events";
 import { syncEntry } from "@/lib/store";
 import type { Entry, EntryStatus, EntryType } from "@/lib/types";
 
@@ -68,6 +69,7 @@ export default function TitleActions({ anilistId, type, title, userId, initialEn
       const res = await addToCollectionFromAnilist(anilistId, type, status);
       if (res.status === "signin") return notify("Your session expired — log in again", { login: true });
       setEntry(res.entry);
+      announceEntry(anilistId, res.entry);
       if (res.status === "exists") return notify(`${title} is already in your collection`);
       if (userId) syncEntry(userId, res.entry);
       notify(`Added ${title} to your collection`);
@@ -84,6 +86,7 @@ export default function TitleActions({ anilistId, type, title, userId, initialEn
     try {
       const saved = await updateEntryAction({ ...entry, status });
       setEntry(saved);
+      announceEntry(anilistId, saved);
       if (userId) syncEntry(userId, saved);
       notify(`Moved to ${statusLabel(status, type)}`);
     } catch {

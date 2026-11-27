@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { hubSize, personIdOf, personWeb, type Hub, type HubId, type TitleGraph, type WebNode } from "@/lib/title-graph";
 import type { EntryType, ListMark } from "@/lib/types";
-import { STATUS_TONE, markLine, statusText } from "./list-marks";
+import { ENTRY_SAVED, type EntrySaved } from "@/lib/entry-events";
+import { STATUS_TONE, entryMark, markLine, statusGlyph, statusText } from "./list-marks";
 import { usePrefersReducedMotion, useSceneTheme } from "./scene-theme";
 import { useWorldHover, useWorldInsets, useWorldPeople, type PersonState } from "./world-store";
 import type { Focus, PersonView } from "./WorldScene";
@@ -37,6 +38,9 @@ function hasWebGL() {
   return webglSupport;
 }
 const noSubscribe = () => () => {};
+
+// Phones get the compact HUD and the bottom sheet; matches PHONE_WIDTH and the CSS breakpoint.
+const isPhone = () => window.matchMedia("(max-width:720px)").matches;
 
 const tone = (t: string) => ({ "--c": `var(--${t})` }) as CSSProperties;
 
@@ -199,6 +203,40 @@ function PersonCard({ node, hub, state, works, marks, onBack, onRetry }: {
   );
 }
 
+/* ---------- HUD ---------- */
+
+type Crumb = { key: string; label: string; go: () => void };
+
+// One line, always. On phones the middle levels fold into "…" (a step up to the last hidden one),
+// leaving the show and the two deepest levels; every label truncates rather than wraps.
+function Crumbs({ crumbs }: { crumbs: Crumb[] }) {
+  const hidden = crumbs.slice(1, -2);
+  return (
+    <nav className="ov-crumbs ow-crumbs" aria-label="Web position">
+      {crumbs.map((c, i) => {
+        const last = i === crumbs.length - 1;
+        const mid = i > 0 && i < crumbs.length - 2;
+        return (
+          <Fragment key={c.key}>
+            {i === 1 && hidden.length > 0 && (
+              <span className="ow-crumb ow-crumb-more">
+                <span className="ow-crumb-sep" aria-hidden="true">/</span>
+                <button type="button" className="ow-crumb-label" onClick={hidden[hidden.length - 1].go}
+                  aria-label={`Up to ${hidden[hidden.length - 1].label}`}>…</button>
+              </span>
+            )}
+            <span className={`ow-crumb${mid ? " is-mid" : ""}${i === 0 ? " is-root" : ""}`}>
+              {i > 0 && <span className="ow-crumb-sep" aria-hidden="true">/</span>}
+              {last ? <span className="ow-crumb-label" aria-current="location">{c.label}</span>
+                : <button type="button" className="ow-crumb-label" onClick={c.go}>{c.label}</button>}
+            </span>
+          </Fragment>
+        );
+      })}
+    </nav>
+  );
+}
+
 /* ---------- world ---------- */
 
 export default function TitleWorld({ graph, marks: marksPromise, actions, listHref }: {
@@ -217,6 +255,17 @@ export default function TitleWorld({ graph, marks: marksPromise, actions, listHr
     marksPromise.then((marks) => { if (live) setPageMarks({ from: marksPromise, marks }); }, () => {});
     return () => { live = false; };
   }, [marksPromise]);
+
+  // Saved from the HUD's list actions this visit: they win over what the page loaded with.
+  const [liveMarks, setLiveMarks] = useState<Record<number, ListMark>>({});
+  useEffect(() => {
+    const onSaved = (e: Event) => {
+      const { anilistId, entry } = (e as CustomEvent<EntrySaved>).detail;
+      setLiveMarks((m) => ({ ...m, [anilistId]: entryMark(entry) }));
+    };
+    window.addEventListener(ENTRY_SAVED, onSaved);
+    return () => window.removeEventListener(ENTRY_SAVED, onSaved);
+  }, []);
 
   // Focus is read from the URL; unknown hubs, nodes or works (stale links) fall back a level.
   const hub = graph.hubs.find((h) => h.id === params.get("hub")) ?? null;
@@ -239,8 +288,9 @@ export default function TitleWorld({ graph, marks: marksPromise, actions, listHr
   const marks = useMemo<Marks>(() => {
     const page = pageMarks?.from === marksPromise ? pageMarks.marks : null;
     const extra = personState?.status === "ready" ? personState.marks : null;
-    return page || extra ? { ...page, ...extra } : null;
-  }, [pageMarks, marksPromise, personState]);
+    // Live saves only ever come from a signed-in user, so they never turn marks on when signed out.
+    return page || extra ? { ...page, ...extra, ...liveMarks } : null;
+  }, [pageMarks, marksPromise, personState, liveMarks]);
 
   // Native pushState: Next syncs useSearchParams from it without a server round trip.
   const setFocus = useCallback((h: HubId | null, n: string | null = null, p: number | null = null, w: string | null = null) => {
@@ -276,11 +326,20 @@ export default function TitleWorld({ graph, marks: marksPromise, actions, listHr
     const measure = () => {
       const box = world.getBoundingClientRect();
       let top = 0, right = 0, bottom = 0;
-      world.querySelectorAll(".ow-hud-main, .ow-hud-side").forEach((el) => { top = Math.max(top, el.getBoundingClientRect().bottom - box.top); });
-      const panel = world.querySelector(".ow-panel")?.getBoundingClientRect();
-      // A panel spanning most of the width (phones) sits at the bottom; otherwise on the right.
-      if (panel && panel.width > box.width * 0.6) bottom = box.bottom - panel.top;
-      else if (panel) right = box.right - panel.left;
+      // The phone HUD's opened action menu floats over the web (position:absolute), so it isn't
+      // part of these boxes and doesn't push the camera around while it's open.
+      world.querySelectorAll(".ow-hud-main, .ow-hud-side").forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.height) top = Math.max(top, r.bottom - box.top);
+      });
+      const el = world.querySelector<HTMLElement>(".ow-panel");
+      const panel = el?.getBoundingClientRect();
+      // A panel spanning most of the width (the phone sheet) sits at the bottom; frame against its
+      // peek height, not its expanded one or wherever a drag left it, so the web stays put.
+      if (el && panel && panel.width > box.width * 0.6) {
+        const peek = parseFloat(getComputedStyle(el).getPropertyValue("--peek")) || el.offsetHeight;
+        bottom = Math.min(el.offsetHeight, peek);
+      } else if (panel) right = box.right - panel.left;
       setInsets({ top: top + 12, right: right + 16, bottom: Math.max(bottom + 12, 36), left: 16 });
     };
     // Fires once on observe, then whenever the HUD, the panel or the page resizes.
@@ -297,8 +356,87 @@ export default function TitleWorld({ graph, marks: marksPromise, actions, listHr
       ? hub.nodes.filter((n) => !n.anchor).map((n) => ({ id: n.id, label: `${n.label}${n.sub ? `, ${n.sub}` : ""}`, go: () => setFocus(hub.id, n.id) }))
       : graph.hubs.map((h) => ({ id: h.id === "details" ? "core" : `hub:${h.id}`, label: `${h.id === "details" ? graph.title : h.label}, ${hubSize(h)} nodes`, go: () => setFocus(h.id) }));
 
+  // Breadcrumbs, one per level; the current one isn't a link.
+  const crumbs: Crumb[] = [
+    { key: "title", label: graph.title, go: () => setFocus(null) },
+    ...(hub ? [{ key: "hub", label: hub.label, go: () => setFocus(hub.id) }] : []),
+    ...(node ? [{ key: "node", label: node.label, go: () => setFocus(hub!.id, node.id) }] : []),
+    ...(node && focus.person != null ? [{ key: "web", label: hub!.id === "cast" ? "Roles" : "Works", go: () => setFocus(hub!.id, node.id, focus.person) }] : []),
+    ...(work ? [{ key: "work", label: work.label, go: () => {} }] : []),
+  ];
+
+  // This show's own mark, live: what the phone HUD's list button shows.
+  const hereMark = marks?.[graph.anilistId];
+
+  // The phone HUD's action menu. Closes on a click outside it or Esc (an open status dropdown
+  // inside it gets Esc first).
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!actionsOpen) return;
+    const close = (e: PointerEvent) => {
+      const t = e.target as Element;
+      if (!actionsRef.current?.contains(t) && !t.closest?.(".ow-hud-toggle")) setActionsOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [actionsOpen]);
+  const onActionsKey = (e: React.KeyboardEvent) => {
+    if (e.key !== "Escape" || !actionsOpen || !isPhone()) return;
+    e.preventDefault(); // not a step back out of the web
+    if (actionsRef.current?.querySelector("[aria-expanded=true]")) return;
+    setActionsOpen(false);
+    document.querySelector<HTMLElement>(".ow-hud-toggle")?.focus();
+  };
+
+  // The phone sheet: peeking by default, and back to peeking whenever the focus moves on.
+  const focusKey = `${focus.hub}|${focus.node}|${focus.person}|${focus.work}`;
+  const [sheet, setSheet] = useState({ key: focusKey, open: false });
+  const sheetOpen = sheet.key === focusKey && sheet.open;
+  const setSheetOpen = (open: boolean) => setSheet({ key: focusKey, open });
+  const sheetRef = useRef<HTMLElement>(null);
+  const handleRef = useRef<HTMLButtonElement>(null);
+  const drag = useRef<{ y: number; t: number; base: number; max: number; at: number } | null>(null);
+  const dragged = useRef(false);
+  const onSheetKey = (e: React.KeyboardEvent) => {
+    if (e.key !== "Escape" || !sheetOpen || !isPhone() || e.defaultPrevented) return;
+    e.preventDefault(); // collapse first; the next Esc steps out of the web
+    setSheetOpen(false);
+    handleRef.current?.focus();
+  };
+  // Dragging the handle moves the sheet with the finger; letting go settles it open or peeking,
+  // by where it was dropped and how fast it was flicked.
+  const onDragStart = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const el = sheetRef.current;
+    if (!el || !isPhone()) return;
+    const peek = parseFloat(getComputedStyle(el).getPropertyValue("--peek")) || 0;
+    const max = Math.max(0, el.offsetHeight - peek);
+    const base = sheetOpen ? 0 : max;
+    drag.current = { y: e.clientY, t: e.timeStamp, base, max, at: base };
+    dragged.current = false;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onDragMove = (e: React.PointerEvent) => {
+    const d = drag.current, el = sheetRef.current;
+    if (!d || !el) return;
+    const dy = e.clientY - d.y;
+    if (Math.abs(dy) > 6) dragged.current = true;
+    if (!dragged.current) return;
+    d.at = Math.min(Math.max(d.base + dy, 0), d.max);
+    el.style.transition = "none";
+    el.style.transform = `translateY(${d.at}px)`;
+  };
+  const onDragEnd = (e: React.PointerEvent) => {
+    const d = drag.current, el = sheetRef.current;
+    drag.current = null;
+    if (!d || !el || !dragged.current) return;
+    const v = (e.clientY - d.y) / Math.max(e.timeStamp - d.t, 1); // px/ms, + is down
+    el.style.transition = "";
+    el.style.transform = "";
+    setSheetOpen(v < -0.4 ? true : v > 0.4 ? false : d.at < d.max / 2);
+  };
+
   const level = work ? 4 : focus.person != null ? 3 : node ? 2 : hub ? 1 : 0;
-  const webName = hub?.id === "cast" ? "Roles" : "Works";
 
   return (
     <div className="ow-world" ref={worldRef} data-level={level}>
@@ -314,22 +452,26 @@ export default function TitleWorld({ graph, marks: marksPromise, actions, listHr
         <WorldLoading />
       )}
 
-      <div className="ow-hud">
+      <div className="ow-hud" data-actions={actionsOpen || undefined}>
         <div className="ow-hud-main">
-          <nav className="ov-crumbs ow-crumbs" aria-label="Web position">
-            <button type="button" onClick={() => setFocus(null)} aria-current={!hub ? "location" : undefined}>{graph.title}</button>
-            {hub && <><span aria-hidden="true">/</span><button type="button" onClick={() => setFocus(hub.id)} aria-current={!node ? "location" : undefined}>{hub.label}</button></>}
-            {node && (focus.person != null
-              ? <><span aria-hidden="true">/</span><button type="button" onClick={() => setFocus(hub!.id, node.id)}>{node.label}</button></>
-              : <><span aria-hidden="true">/</span><span aria-current="location">{node.label}</span></>)}
-            {focus.person != null && (work
-              ? <><span aria-hidden="true">/</span><button type="button" onClick={() => setFocus(hub!.id, node!.id, focus.person)}>{webName}</button>
-                <span aria-hidden="true">/</span><span aria-current="location">{work.label}</span></>
-              : <><span aria-hidden="true">/</span><span aria-current="location">{webName}</span></>)}
-          </nav>
-          <h1 className="ow-title">{graph.romaji}</h1>
+          <Crumbs crumbs={crumbs} />
+          <div className="ow-hud-titlebar">
+            <h1 className="ow-title">{graph.romaji}</h1>
+            {/* Phones: the list actions fold away behind this one button, which shows the status. */}
+            <button type="button" className="btn btn-ghost ow-hud-toggle" aria-expanded={actionsOpen} aria-controls="ow-hud-actions"
+              onClick={() => setActionsOpen(!actionsOpen)}>
+              {hereMark ? <span style={tone(STATUS_TONE[hereMark.status])}>{statusGlyph(hereMark.status)} {statusText(hereMark.status, graph.entryType)}</span> : "Your list"}
+              <span aria-hidden="true"> ▾</span>
+            </button>
+          </div>
           {(graph.english && graph.english !== graph.romaji) && <div className="ow-title-sub">{graph.english}</div>}
-          <div className="ow-hud-actions">{actions}</div>
+          <div className="ow-hud-actions" id="ow-hud-actions" ref={actionsRef} onKeyDown={onActionsKey}>
+            {actions}
+            <div className="ow-hud-more">
+              {graph.score != null && <span className="td-chip">★ {graph.score}%</span>}
+              <Link className="btn btn-ghost" href={listHref}>List view</Link>
+            </div>
+          </div>
         </div>
         <div className="ow-hud-side">
           {graph.score != null && <span className="td-chip">★ {graph.score}%</span>}
@@ -338,13 +480,25 @@ export default function TitleWorld({ graph, marks: marksPromise, actions, listHr
       </div>
 
       {hub && (
-        <aside className="ow-panel" aria-live="polite">
-          {work ? <NodeCard node={work} hub={hub} marks={marks} onOpenPerson={null} />
-            : node && focus.person != null ? (
-              <PersonCard node={node} hub={hub} state={personState} works={works} marks={marks} onBack={back} onRetry={() => loadPerson(focus.person!)} />
-            ) : node ? (
-              <NodeCard node={node} hub={hub} marks={marks} onOpenPerson={personId != null ? () => setFocus(hub.id, node.id, personId) : null} />
-            ) : <HubCard hub={hub} graph={graph} marks={marks} />}
+        // Desktop: a panel on the right. Phones: a bottom sheet that peeks (tag and title) and
+        // expands by swipe, tap, or keyboard focus reaching anything below the fold.
+        <aside className="ow-panel" ref={sheetRef} data-sheet={sheetOpen ? "open" : "peek"} aria-label="Details"
+          onKeyDown={onSheetKey} onFocus={(e) => { if (e.target !== handleRef.current && !sheetOpen && isPhone()) setSheetOpen(true); }}>
+          <button type="button" className="ow-sheet-handle" ref={handleRef} aria-expanded={sheetOpen} aria-controls="ow-sheet-body"
+            aria-label={sheetOpen ? "Collapse details" : "Expand details"}
+            onClick={() => { if (dragged.current) dragged.current = false; else setSheetOpen(!sheetOpen); }}
+            onPointerDown={onDragStart} onPointerMove={onDragMove} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}>
+            <span aria-hidden="true" />
+          </button>
+          <div className="ow-sheet-body" id="ow-sheet-body" aria-live="polite"
+            onClick={(e) => { if (!sheetOpen && isPhone() && !(e.target as HTMLElement).closest("a, button")) setSheetOpen(true); }}>
+            {work ? <NodeCard node={work} hub={hub} marks={marks} onOpenPerson={null} />
+              : node && focus.person != null ? (
+                <PersonCard node={node} hub={hub} state={personState} works={works} marks={marks} onBack={back} onRetry={() => loadPerson(focus.person!)} />
+              ) : node ? (
+                <NodeCard node={node} hub={hub} marks={marks} onOpenPerson={personId != null ? () => setFocus(hub.id, node.id, personId) : null} />
+              ) : <HubCard hub={hub} graph={graph} marks={marks} />}
+          </div>
         </aside>
       )}
 

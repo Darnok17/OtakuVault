@@ -9,6 +9,9 @@ import type { Tone } from "@/lib/title-graph";
 // theme (and live when the theme changes). Each theme also gets a scene "style": glowing additive
 // light on dark themes, flat ink on the paper ones.
 
+// Post-processing bloom (bloom.tsx), only on the glowing themes and only with effects on.
+export type SceneBloom = { strength: number; radius: number; threshold: number };
+
 export type SceneStyle = {
   glow: boolean; // additive halos and blending; off on light themes, where they wash out
   lineOpacity: number;
@@ -16,6 +19,8 @@ export type SceneStyle = {
   lineWidth: number; // CSS px; ink themes draw real strokes
   tint: number; // how far the core leans toward the show's own AniList colour
   seeThrough?: boolean; // no scene background: the theme's page effect (Matrix's code rain) shows behind the web
+  bloom?: SceneBloom;
+  pulse: number; // how strongly light pulses along the links (0 = none)
 };
 
 export type SceneTheme = {
@@ -34,13 +39,14 @@ export type SceneTheme = {
 const STYLES: Record<ThemeId, SceneStyle> = {
   // Phosphor on black: every accent is a green, so hubs read by their labels, and the show's own
   // colour only warms the core a little. The code rain falls behind the web instead of dust.
-  matrix: { glow: true, lineOpacity: 0.3, dustOpacity: 0.3, lineWidth: 1, tint: 0.2, seeThrough: true },
-  retro: { glow: true, lineOpacity: 0.38, dustOpacity: 0.8, lineWidth: 1, tint: 0.65 },
-  rustic: { glow: false, lineOpacity: 0.62, dustOpacity: 0.45, lineWidth: 1.6, tint: 0.3 },
+  matrix: { glow: true, lineOpacity: 0.3, dustOpacity: 0.3, lineWidth: 1, tint: 0.2, seeThrough: true,
+    bloom: { strength: 0.45, radius: 0.35, threshold: 0.8 }, pulse: 1 },
+  retro: { glow: true, lineOpacity: 0.38, dustOpacity: 0.8, lineWidth: 1, tint: 0.65, bloom: { strength: 0.4, radius: 0.4, threshold: 0.7 }, pulse: 1 },
+  rustic: { glow: false, lineOpacity: 0.62, dustOpacity: 0.45, lineWidth: 1.6, tint: 0.3, pulse: 0.7 },
   // One red line: the show's colour barely registers, the ink stays black.
-  minimal: { glow: false, lineOpacity: 0.5, dustOpacity: 0.25, lineWidth: 1.3, tint: 0.1 },
-  "comic-strip": { glow: false, lineOpacity: 0.8, dustOpacity: 0.4, lineWidth: 2.2, tint: 0.4 },
-  manga: { glow: false, lineOpacity: 0.7, dustOpacity: 0.35, lineWidth: 1.8, tint: 0.15 },
+  minimal: { glow: false, lineOpacity: 0.5, dustOpacity: 0.25, lineWidth: 1.3, tint: 0.1, pulse: 0.6 },
+  "comic-strip": { glow: false, lineOpacity: 0.8, dustOpacity: 0.4, lineWidth: 2.2, tint: 0.4, pulse: 0.8 },
+  manga: { glow: false, lineOpacity: 0.7, dustOpacity: 0.35, lineWidth: 1.8, tint: 0.15, pulse: 0.7 },
 };
 
 // WCAG contrast between two colours (three.js keeps them linear, which is what the formula wants).
