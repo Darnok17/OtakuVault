@@ -77,12 +77,15 @@ export type FuzzyDate = { year: number | null; month: number | null; day: number
 export type TitleVoiceActor = { id: number; name: string; image: string | null; language: string | null };
 export type TitleCharacter = { id: number; name: string; role: string | null; image: string | null; voiceActors: TitleVoiceActor[] };
 export type TitleStaff = { id: number; name: string; role: string | null; image: string | null };
-export type TitleRelation = { id: number; relationType: string | null; entryType: EntryType; format: string | null; title: string; cover: string | null };
+export type TitleRelation = {
+  id: number; relationType: string | null; entryType: EntryType; format: string | null; title: string; cover: string | null;
+  startDate: FuzzyDate | null; // orders the franchise timeline in the title world
+};
 export type TitleLink = { url: string; site: string; language: string | null; icon: string | null; color: string | null };
 
 // Everything a detail page shows, assembled from a titles row and its extras. Normalized so lists
 // are always arrays and absent values are null. Bump DETAILS_VERSION when the extras' shape changes.
-export const DETAILS_VERSION = 2;
+export const DETAILS_VERSION = 3;
 
 export type TitleDetails = {
   v: number;

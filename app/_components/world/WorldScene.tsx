@@ -4,14 +4,16 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, t
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Billboard, CameraControls } from "@react-three/drei";
 import {
-  AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, Color, EdgesGeometry, IcosahedronGeometry,
-  NormalBlending, SRGBColorSpace, TextureLoader, Vector3,
-  type Camera, type Group, type LineBasicMaterial, type LineSegments, type Object3D, type Texture,
+  AdditiveBlending, CanvasTexture, Color, EdgesGeometry, Fog, IcosahedronGeometry, SRGBColorSpace, TextureLoader, Vector3,
+  type Camera, type Group, type Object3D, type Texture,
 } from "three";
-import type { Hub, HubId, TitleGraph, WebNode } from "@/lib/title-graph";
-import { CORE_RADIUS, OVERVIEW, cameraFor, layoutWorld, reach, type V3, type WorldLayout } from "@/lib/title-graph-layout";
+import { hubSize, type Hub, type HubId, type TitleGraph, type WebNode } from "@/lib/title-graph";
+import {
+  CORE_RADIUS, HUB_END, OVERVIEW, cameraFor, layoutWorld, reach, type GroupLabel, type HubLayout, type V3, type Viewport, type WorldLayout,
+} from "@/lib/title-graph-layout";
+import { FatLines, type LineLook } from "./fat-lines";
 import { coreColor, type SceneTheme } from "./scene-theme";
-import { useWorldHover } from "./world-store";
+import { useWorldHover, useWorldInsets } from "./world-store";
 
 // The 3D half of the title world. Everything is laid out once (lib/title-graph-layout.ts); this
 // file draws it, animates clusters opening and closing, moves the camera, and keeps one DOM layer
@@ -63,25 +65,40 @@ function LabelFlush() {
   return null;
 }
 
-type Label = { id: string; text: string; sub?: string; kind: "core" | "hub" | "node" | "fact"; tone?: string };
+type Label = { id: string; text: string; sub?: string; kind: "core" | "hub" | "node" | "fact" | "group"; tone?: string };
 
-function LabelLayer({ graph }: { graph: TitleGraph }) {
+function LabelLayer({ graph, layout }: { graph: TitleGraph; layout: WorldLayout }) {
   const layer = useRef<HTMLDivElement>(null);
   const els = useRef(new Map<string, HTMLDivElement>());
   const hovered = useWorldHover((s) => s.hovered);
   const labels = useMemo<Label[]>(() => [
     { id: "core", text: graph.title, kind: "core" },
-    ...graph.hubs.filter((h) => h.id !== "details").map((h): Label => ({ id: `hub:${h.id}`, text: h.label, sub: `${h.kanji} · ${h.nodes.length}`, kind: "hub", tone: h.tone })),
+    ...graph.hubs.filter((h) => h.id !== "details").map((h): Label => ({ id: `hub:${h.id}`, text: h.label, sub: `${h.kanji} · ${hubSize(h)}`, kind: "hub", tone: h.tone })),
     ...graph.hubs.flatMap((h) => h.nodes.map((n): Label => ({ id: n.id, text: n.label, kind: n.image ? "node" : "fact" }))),
-  ], [graph]);
+    ...graph.hubs.flatMap((h) => layout.hubs[h.id].groups.map((g): Label => ({ id: `group:${g.id}`, text: g.label, kind: "group", tone: g.tone }))),
+  ], [graph, layout]);
+
+  // Static importance per label, for the declutter pass.
+  const ranks = useRef(new Map<string, number>());
+  useEffect(() => {
+    const weights = new Map(graph.hubs.flatMap((h) => h.nodes.map((n) => [n.id, n.weight] as const)));
+    ranks.current = new Map(labels.map((l) => [l.id, l.kind === "core" ? 9 : l.kind === "hub" ? 8 : l.kind === "group" ? 7 : (weights.get(l.id) ?? 0) * 5]));
+  }, [graph, labels]);
 
   useEffect(() => {
     const p = new Vector3();
+    // Placed labels this frame, as [left, top, right, bottom], and who was shown last frame.
+    const placed: number[][] = [];
+    const shown = new Set<string>();
+    type Candidate = { id: string; el: HTMLDivElement; x: number; y: number; o: number; rank: number };
+    const candidates: Candidate[] = [];
     labelSync.flush = () => {
       const cam = labelSync.camera;
       const box = layer.current;
       if (!cam || !box) return;
       const w = box.clientWidth, h = box.clientHeight;
+      const hot = useWorldHover.getState().hovered;
+      candidates.length = 0;
       for (const [id, el] of els.current) {
         const a = anchors.get(id);
         let show = !!a && a.opacity > 0.02;
@@ -90,12 +107,34 @@ function LabelLayer({ graph }: { graph: TitleGraph }) {
           p.setFromMatrixPosition(a!.obj.matrixWorld).project(cam);
           show = p.z < 1 && Math.abs(p.x) < 1.1 && Math.abs(p.y) < 1.1;
         }
-        if (!show) { if (el.style.visibility !== "hidden") el.style.visibility = "hidden"; continue; }
-        el.style.visibility = "";
-        el.style.opacity = a!.opacity.toFixed(2);
-        el.style.transform = `translate3d(${((p.x + 1) / 2) * w}px,${((1 - p.y) / 2) * h}px,0) translate(-50%,-50%)`;
+        if (!show) { hide(id, el); continue; }
+        // Hover first, then whatever is most opaque and most important; a label already up keeps
+        // its place against an equal newcomer, so they don't flicker as the camera drifts.
+        const rank = (id === hot ? 100 : 0) + a!.opacity * 10 + (ranks.current.get(id) ?? 0) + (shown.has(id) ? 0.5 : 0);
+        candidates.push({ id, el, x: ((p.x + 1) / 2) * w, y: ((1 - p.y) / 2) * h, o: a!.opacity, rank });
+      }
+      // Greedy declutter: a label that would overlap one already placed waits until there's room.
+      candidates.sort((a, b) => b.rank - a.rank);
+      placed.length = 0;
+      for (const c of candidates) {
+        let size = sizes.get(c.id);
+        if (!size) { size = [c.el.offsetWidth, c.el.offsetHeight]; if (size[0]) sizes.set(c.id, size); }
+        const r = [c.x - size[0] / 2 - 4, c.y - size[1] / 2 - 2, c.x + size[0] / 2 + 4, c.y + size[1] / 2 + 2];
+        if (placed.some((q) => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1])) { hide(c.id, c.el); continue; }
+        placed.push(r);
+        shown.add(c.id);
+        c.el.style.visibility = "";
+        c.el.style.opacity = c.o.toFixed(2);
+        c.el.style.transform = `translate3d(${c.x}px,${c.y}px,0) translate(-50%,-50%)`;
       }
     };
+    const hide = (id: string, el: HTMLDivElement) => {
+      shown.delete(id);
+      if (el.style.visibility !== "hidden") el.style.visibility = "hidden";
+    };
+    // Label sizes are measured once; web fonts arriving late change them.
+    const sizes = new Map<string, number[]>();
+    void document.fonts?.ready.then(() => sizes.clear());
     return () => { labelSync.flush = null; };
   }, []);
 
@@ -210,13 +249,39 @@ function Halo({ color, size, opacity, theme }: { color: Color; size: number; opa
   );
 }
 
+// Fat line segments as a scene object, rebuilt when their look changes and sized to the canvas.
+function useFatLines(segments: number, look: LineLook, positions?: ArrayLike<number>) {
+  const { color, opacity, width, additive } = look;
+  const lines = useMemo(() => new FatLines(segments, { color, opacity, width, additive }, positions),
+    [segments, color, opacity, width, additive, positions]);
+  useEffect(() => () => lines.dispose(), [lines]);
+  const size = useThree((s) => s.size);
+  useEffect(() => { lines.resize(size.width, size.height); }, [lines, size]);
+  return lines;
+}
+
+const lineLook = (theme: SceneTheme, color: Color, opacity = theme.style.lineOpacity): LineLook =>
+  ({ color, opacity, width: theme.style.lineWidth, additive: theme.style.glow });
+
+// The ink outline the paper themes draw around every disc; glowing themes use halos instead.
+function Rim({ inner, theme, opacity }: { inner: number; theme: SceneTheme; opacity: number }) {
+  if (theme.style.glow) return null;
+  const w = Math.max(0.035, inner * 0.09) * (theme.style.lineWidth / 1.6);
+  return (
+    <mesh>
+      <ringGeometry args={[inner, inner + w, 48]} />
+      <meshBasicMaterial color={theme.ink} transparent opacity={opacity} />
+    </mesh>
+  );
+}
+
 /* ---------- the core: the show itself ---------- */
 
 function Core({ graph, theme, focus, onPick }: { graph: TitleGraph; theme: SceneTheme; focus: Focus; onPick: () => void }) {
   const shell = useRef<Group>(null);
   const tex = useTexture(graph.cover);
   const color = useMemo(() => coreColor(theme, graph.color), [theme, graph.color]);
-  const edges = useMemo(() => new EdgesGeometry(new IcosahedronGeometry(CORE_RADIUS * 1.45, 1)), []);
+  const shellPositions = useMemo(() => new EdgesGeometry(new IcosahedronGeometry(CORE_RADIUS * 1.45, 1)).getAttribute("position").array, []);
   const vertices = useMemo(() => new IcosahedronGeometry(CORE_RADIUS * 1.45, 1), []);
   const hovered = useWorldHover((s) => s.hovered === "core");
   const events = useNodeEvents("core", onPick);
@@ -224,6 +289,7 @@ function Core({ graph, theme, focus, onPick }: { graph: TitleGraph; theme: Scene
   // While another hub is open the core sits right behind its web: fade it back.
   const recede = focus.hub != null && focus.hub !== "details";
   const o = recede ? 0.18 : 1;
+  const shellLines = useFatLines(shellPositions.length / 6, lineLook(theme, color, (theme.style.glow ? 0.55 : 0.85) * o), shellPositions);
 
   useFrame((_, dt) => {
     setLabelOpacity("core", approach(labelOpacity("core"), focus.hub ? 0 : 1, dt));
@@ -237,9 +303,7 @@ function Core({ graph, theme, focus, onPick }: { graph: TitleGraph; theme: Scene
   return (
     <group>
       <group ref={shell}>
-        <lineSegments geometry={edges}>
-          <lineBasicMaterial color={color} transparent opacity={(theme.style.glow ? 0.55 : 0.8) * o} />
-        </lineSegments>
+        <primitive object={shellLines.object} />
         <points geometry={vertices}>
           <pointsMaterial map={halo()} color={color} size={0.22} sizeAttenuation transparent opacity={o} depthWrite={false} />
         </points>
@@ -250,6 +314,7 @@ function Core({ graph, theme, focus, onPick }: { graph: TitleGraph; theme: Scene
           <ringGeometry args={[CORE_RADIUS * 0.9, CORE_RADIUS, 64]} />
           <meshBasicMaterial color={color} transparent opacity={o} />
         </mesh>
+        <Rim inner={CORE_RADIUS} theme={theme} opacity={o} />
         <Portrait radius={CORE_RADIUS * 0.9} tex={tex} fallback={color} opacity={o} events={recede ? undefined : events} />
         <object3D ref={labelRef} position={[0, -CORE_RADIUS * 1.6, 0]} />
       </Billboard>
@@ -284,6 +349,9 @@ function HubNode({ hub, at, theme, focus, onPick }: { hub: Hub; at: WorldLayout[
         <Billboard>
           <Halo color={color} size={2.4} opacity={dimmed ? 0.08 : 0.5} theme={theme} />
         </Billboard>
+        <Billboard>
+          <Rim inner={0.42} theme={theme} opacity={dimmed ? 0.2 : 1} />
+        </Billboard>
         <mesh {...(dimmed ? {} : events)}>
           <sphereGeometry args={[0.42, 32, 16]} />
           <meshBasicMaterial color={color} transparent opacity={dimmed ? 0.2 : 1} />
@@ -305,7 +373,7 @@ function HubNode({ hub, at, theme, focus, onPick }: { hub: Hub; at: WorldLayout[
 
 // Core → hub spokes and each hub's satellite web: drawn once, never animated.
 function StaticEdges({ graph, layout, theme, focus }: { graph: TitleGraph; layout: WorldLayout; theme: SceneTheme; focus: Focus }) {
-  const geometry = useMemo(() => {
+  const positions = useMemo(() => {
     const pts: number[] = [];
     for (const hub of graph.hubs) {
       if (hub.id === "details") continue;
@@ -314,16 +382,10 @@ function StaticEdges({ graph, layout, theme, focus }: { graph: TitleGraph; layou
       at.satellites.forEach((s) => pts.push(...at.pos, ...s));
       at.satellites.forEach((s, i) => { const n = at.satellites[(i + 1) % at.satellites.length]; pts.push(...s, ...n); });
     }
-    const g = new BufferGeometry();
-    g.setAttribute("position", new BufferAttribute(new Float32Array(pts), 3));
-    return g;
+    return new Float32Array(pts);
   }, [graph, layout]);
-  return (
-    <lineSegments geometry={geometry}>
-      <lineBasicMaterial color={theme.dim} transparent opacity={theme.style.lineOpacity * (focus.hub ? 0.3 : 1)}
-        blending={theme.style.glow ? AdditiveBlending : NormalBlending} depthWrite={false} />
-    </lineSegments>
-  );
+  const lines = useFatLines(positions.length / 6, lineLook(theme, theme.dim, theme.style.lineOpacity * (focus.hub ? 0.3 : 1)), positions);
+  return <primitive object={lines.object} />;
 }
 
 function Dust({ layout, theme }: { layout: WorldLayout; theme: SceneTheme }) {
@@ -345,8 +407,8 @@ function Dust({ layout, theme }: { layout: WorldLayout; theme: SceneTheme }) {
 
 /* ---------- an open hub: its web of nodes ---------- */
 
-function NodeDisc({ node, clusterSize, theme, register, selected, someoneSelected, onPick }: {
-  node: WebNode; clusterSize: number; theme: SceneTheme; register: (g: Group | null) => void;
+function NodeDisc({ node, always, near, theme, register, selected, someoneSelected, onPick }: {
+  node: WebNode; always: boolean; near: number; theme: SceneTheme; register: (g: Group | null) => void;
   selected: boolean; someoneSelected: boolean; onPick: () => void;
 }) {
   const tex = useTexture(node.image);
@@ -356,7 +418,8 @@ function NodeDisc({ node, clusterSize, theme, register, selected, someoneSelecte
   const labelRef = useLabelAnchor(node.id);
   const outer = useRef<Group | null>(null);
   const inner = useRef<Group>(null);
-  const radius = NODE_RADIUS * (node.image ? 0.8 + node.weight * 0.6 : 0.3 + node.weight * 0.25);
+  // Anchors (the characters a cast web hangs from) are small: they're the hooks, not the subject.
+  const radius = node.anchor ? 0.24 : NODE_RADIUS * (node.image ? 0.8 + node.weight * 0.6 : 0.3 + node.weight * 0.25);
   const camera = useThree((s) => s.camera);
   const world = useMemo(() => new Vector3(), []);
 
@@ -364,98 +427,157 @@ function NodeDisc({ node, clusterSize, theme, register, selected, someoneSelecte
     const g = inner.current;
     if (!g || !outer.current) return;
     g.scale.setScalar(approach(g.scale.x, hovered || selected ? 1.3 : 1, dt, 10));
-    // Labels: small webs label everything; big ones (a 60-strong cast) only their key nodes until
-    // you lean in. Hover and selection always win; nodes still flying out stay quiet.
+    // Labels: key nodes from afar, the rest once you lean in past the hub's framed distance.
+    // Hover and selection always win; nodes still flying out stay quiet.
     outer.current.getWorldPosition(world);
     const d = world.distanceTo(camera.position);
-    const always = node.weight >= 0.7 || clusterSize <= 30;
-    const seen = Math.min(1, Math.max(0, always ? (75 - d) / 15 : (10 - d) / 3));
+    const seen = Math.min(1, Math.max(0, always ? (75 - d) / 15 : (near - d) / (near * 0.15)));
     const spawn = Math.min(1, Math.max(0, (outer.current.scale.x - 0.6) / 0.4));
     setLabelOpacity(node.id, (hovered || selected ? 1 : seen * (someoneSelected ? 0.35 : 1)) * spawn);
   });
 
   const fade = someoneSelected && !selected ? 0.45 : 1;
+  const ring = node.image ? radius * (selected ? 1.22 : 1.13) : radius;
 
   return (
     <group ref={(g) => { outer.current = g; register(g); }}>
       <Billboard>
         <group ref={inner}>
           <Halo color={color} size={radius * 5} opacity={(selected ? 0.6 : 0.3) * fade} theme={theme} />
+          <Rim inner={ring} theme={theme} opacity={fade} />
           {node.image ? (
             <>
               <mesh>
-                <ringGeometry args={[radius, radius * (selected ? 1.22 : 1.13), 48]} />
+                <ringGeometry args={[radius, ring, 48]} />
                 <meshBasicMaterial color={color} transparent opacity={fade} />
               </mesh>
               <Portrait radius={radius} tex={tex} fallback={theme.faint} opacity={fade} events={events} />
             </>
           ) : (
             <mesh {...events}>
-              <sphereGeometry args={[radius, 24, 12]} />
+              <circleGeometry args={[radius, 32]} />
               <meshBasicMaterial color={color} transparent opacity={fade} />
             </mesh>
           )}
         </group>
-        <object3D ref={labelRef} position={[0, -radius * 1.35 - 0.14, 0]} />
+        <object3D ref={labelRef} position={[0, -ring * 1.2 - 0.14, 0]} />
       </Billboard>
     </group>
   );
 }
 
-function Cluster({ hub, layout, theme, active, focus, reducedMotion, onPick, onGone }: {
-  hub: Hub; layout: WorldLayout; theme: SceneTheme; active: boolean; focus: Focus; reducedMotion: boolean;
+// A sub-cluster's caption, and for some (this show on the franchise path) a small ring marker.
+function GroupMark({ group, theme, cover, register }: {
+  group: GroupLabel; theme: SceneTheme; cover: string | null; register: (g: Group | null) => void;
+}) {
+  const labelRef = useLabelAnchor(`group:${group.id}`);
+  const tex = useTexture(group.marker ? cover : null);
+  return (
+    <group ref={register}>
+      <object3D ref={labelRef} />
+      {group.marker && (
+        <Billboard position={[0, 0.75, 0]}>
+          <mesh>
+            <ringGeometry args={[0.34, 0.42, 40]} />
+            <meshBasicMaterial color={theme.tones[group.tone]} transparent opacity={0.95} />
+          </mesh>
+          <Portrait radius={0.34} tex={tex} fallback={theme.tones[group.tone]} opacity={1} />
+          <Rim inner={0.42} theme={theme} opacity={1} />
+        </Billboard>
+      )}
+    </group>
+  );
+}
+
+function Cluster({ hub, cover, layout, theme, active, focus, reducedMotion, onPick, onGone }: {
+  hub: Hub; cover: string | null; layout: WorldLayout; theme: SceneTheme; active: boolean; focus: Focus; reducedMotion: boolean;
   onPick: (node: WebNode) => void; onGone: () => void;
 }) {
-  const at = layout.hubs[hub.id];
+  const at: HubLayout = layout.hubs[hub.id];
   const groups = useRef<(Group | null)[]>([]);
+  const marks = useRef<(Group | null)[]>([]);
   const progress = useRef(reducedMotion ? 1 : 0);
   const settled = useRef(false);
-  const lines = useRef<LineSegments>(null);
+  const lastHot = useRef<string | null | undefined>(undefined);
   const from = useMemo(() => v3(at.pos), [at]);
   const targets = useMemo(() => at.nodes.map(v3), [at]);
   const live = useMemo(() => at.nodes.map(() => new Vector3()), [at]);
-  const geometry = useMemo(() => {
-    const g = new BufferGeometry();
-    g.setAttribute("position", new BufferAttribute(new Float32Array((at.nodes.length + at.plexus.length) * 6), 3));
-    return g;
+  const jointTargets = useMemo(() => at.joints.map(v3), [at]);
+  const jointLive = useMemo(() => at.joints.map(() => new Vector3()), [at]);
+  const groupTargets = useMemo(() => at.groups.map((g) => v3(g.at)), [at]);
+  // Which edges touch each node, for lighting up a hovered or selected node's links.
+  const touching = useMemo(() => {
+    const m = new Map<number, number[]>();
+    at.edges.forEach(([a, b], e) => { for (const x of [a, b]) if (x >= 0) m.set(x, [...(m.get(x) ?? []), e]); });
+    return m;
   }, [at]);
+  const indexOfId = useMemo(() => new Map(hub.nodes.map((n, i) => [n.id, i])), [hub]);
+  const tone = theme.tones[hub.tone];
+  const lines = useFatLines(at.edges.length, lineLook(theme, tone, 0));
+  const hotLines = useFatLines(at.edges.length, { ...lineLook(theme, tone, 0), width: theme.style.lineWidth * 1.8 });
+  const vp = useViewport();
+  // Labels beyond the key nodes appear once the camera is a fifth closer than this web's framing.
+  const near = useMemo(() => {
+    const v = cameraFor(layout, hub.id, null, vp);
+    return Math.hypot(v.pos[0] - v.target[0], v.pos[1] - v.target[1], v.pos[2] - v.target[2]) * 0.8;
+  }, [layout, hub.id, vp]);
   const n = hub.nodes.length;
+  const selectedId = focus.hub === hub.id ? focus.node : null;
+  const end = (x: number) => (x >= 0 ? live[x] : x === HUB_END ? from : jointLive[-2 - x]);
 
   useFrame((_, dt) => {
     const goal = active ? 1 : 0;
-    if (progress.current === goal && settled.current) return;
-    progress.current = reducedMotion ? goal : Math.min(1, Math.max(0, progress.current + (active ? dt : -dt * 1.6) / OPEN_SECONDS));
-    const t = progress.current;
-    // Nodes leave the hub in order of importance, each slightly after the last.
-    for (let i = 0; i < n; i++) {
-      const local = ease(t * 1.35 - (i / Math.max(n, 1)) * 0.35);
-      live[i].lerpVectors(from, targets[i], local);
-      const g = groups.current[i];
-      if (g) { g.position.copy(live[i]); g.scale.setScalar(Math.max(local, 0.001)); g.visible = local > 0.01; }
+    const animating = !(progress.current === goal && settled.current);
+    if (animating) {
+      progress.current = reducedMotion ? goal : Math.min(1, Math.max(0, progress.current + (active ? dt : -dt * 1.6) / OPEN_SECONDS));
+      const t = progress.current;
+      // Nodes leave the hub in order of importance, each slightly after the last.
+      for (let i = 0; i < n; i++) {
+        const local = ease(t * 1.35 - (i / Math.max(n, 1)) * 0.35);
+        live[i].lerpVectors(from, targets[i], local);
+        const g = groups.current[i];
+        if (g) { g.position.copy(live[i]); g.scale.setScalar(Math.max(local, 0.001)); g.visible = local > 0.01; }
+      }
+      const tj = ease(t * 1.2);
+      jointTargets.forEach((p, j) => jointLive[j].lerpVectors(from, p, tj));
+      groupTargets.forEach((p, k) => { const g = marks.current[k]; if (g) { g.position.lerpVectors(from, p, tj); g.scale.setScalar(Math.max(tj, 0.001)); } });
+      at.edges.forEach(([a, b], e) => lines.set(e, end(a), end(b)));
+      lines.commit(at.edges.length);
+      lines.fade(theme.style.lineOpacity * t);
+      settled.current = progress.current === goal;
+      if (!active && progress.current === 0) onGone();
     }
-    const pos = geometry.getAttribute("position") as BufferAttribute;
-    let k = 0;
-    for (let i = 0; i < n; i++) { pos.setXYZ(k++, from.x, from.y, from.z); pos.setXYZ(k++, live[i].x, live[i].y, live[i].z); }
-    for (const [a, b] of at.plexus) { pos.setXYZ(k++, live[a].x, live[a].y, live[a].z); pos.setXYZ(k++, live[b].x, live[b].y, live[b].z); }
-    pos.needsUpdate = true;
-    geometry.computeBoundingSphere();
-    if (lines.current) (lines.current.material as LineBasicMaterial).opacity = theme.style.lineOpacity * t;
-    settled.current = progress.current === goal;
-    if (!active && progress.current === 0) onGone();
+    const t = progress.current;
+    // Captions fade with the web, and step back while one node has the stage.
+    at.groups.forEach((g) => setLabelOpacity(`group:${g.id}`, t * (selectedId ? 0.4 : 1)));
+    // The hovered (else selected) node's own links, drawn bolder on top.
+    const hot = useWorldHover.getState().hovered ?? selectedId;
+    if (animating || hot !== lastHot.current) {
+      lastHot.current = hot;
+      const i = hot != null ? indexOfId.get(hot) : undefined;
+      const es = i != null ? touching.get(i) ?? [] : [];
+      es.forEach((e, k) => hotLines.set(k, end(at.edges[e][0]), end(at.edges[e][1])));
+      hotLines.commit(es.length);
+    }
+    hotLines.fade(Math.min(1, theme.style.lineOpacity * 2.6) * t);
   });
 
   // A changed goal means another round of animation.
   useEffect(() => { settled.current = false; }, [active]);
 
-  const selectedId = focus.hub === hub.id ? focus.node : null;
+  // Small webs label every node; big ones (a 60-strong cast) only their key nodes until you lean in.
+  // The details web always holds back its long tail of tags.
+  const crowded = hub.id === "details" || hubSize(hub) > 30;
   return (
     <group>
-      <lineSegments ref={lines} geometry={geometry}>
-        <lineBasicMaterial color={theme.tones[hub.tone]} transparent opacity={0}
-          blending={theme.style.glow ? AdditiveBlending : NormalBlending} depthWrite={false} />
-      </lineSegments>
+      <primitive object={lines.object} />
+      <primitive object={hotLines.object} />
+      {at.groups.map((g, k) => (
+        <GroupMark key={g.id} group={g} theme={theme} cover={cover} register={(o) => { marks.current[k] = o; }} />
+      ))}
       {hub.nodes.map((node, i) => (
-        <NodeDisc key={node.id} node={node} clusterSize={n} theme={theme} register={(g) => { groups.current[i] = g; }}
+        <NodeDisc key={node.id} node={node} always={!node.anchor && (node.weight >= 0.7 || !crowded)} near={near} theme={theme}
+          register={(g) => { groups.current[i] = g; }}
           selected={selectedId === node.id} someoneSelected={selectedId != null} onPick={() => onPick(node)} />
       ))}
     </group>
@@ -464,29 +586,50 @@ function Cluster({ hub, layout, theme, active, focus, reducedMotion, onPick, onG
 
 /* ---------- camera ---------- */
 
+// The canvas size plus the overlays' measured reach into it: what cameraFor frames against.
+function useViewport(): Viewport {
+  const size = useThree((s) => s.size);
+  const insets = useWorldInsets((s) => s.insets);
+  return useMemo(() => ({ width: size.width, height: size.height, insets: insets ?? undefined }), [size, insets]);
+}
+
 function CameraRig({ layout, graph, focus, reducedMotion }: { layout: WorldLayout; graph: TitleGraph; focus: Focus; reducedMotion: boolean }) {
   const controls = useRef<ComponentRef<typeof CameraControls>>(null);
   const idle = useRef(0);
-  const aspect = useThree((s) => s.size.width / Math.max(s.size.height, 1));
+  const size = useViewport();
+  const aspect = size.width / Math.max(size.height, 1);
+  // Zooming out may go a little past the furthest framed view, whatever the screen.
+  const maxView = useMemo(() => Math.max(...graph.hubs.map((h) => {
+    const v = cameraFor(layout, h.id, null, size);
+    return Math.hypot(v.pos[0] - v.target[0], v.pos[1] - v.target[1], v.pos[2] - v.target[2]);
+  })), [graph, layout, size]);
 
   useEffect(() => {
     const c = controls.current;
     if (!c) return;
     const hub = focus.hub ? graph.hubs.find((h) => h.id === focus.hub) : null;
     const index = hub && focus.node ? hub.nodes.findIndex((n) => n.id === focus.node) : -1;
-    const view = cameraFor(layout, focus.hub, index >= 0 ? index : null, aspect);
+    const view = cameraFor(layout, focus.hub, index >= 0 ? index : null, size);
     idle.current = 0;
     void c.setLookAt(...view.pos, ...view.target, !reducedMotion);
-  }, [focus.hub, focus.node, layout, graph, reducedMotion, aspect]);
+  }, [focus.hub, focus.node, layout, graph, reducedMotion, size]);
 
   // A slow drift around the orb when nobody is touching it on the overview.
-  useFrame((_, dt) => {
+  useFrame(({ scene }, dt) => {
     idle.current += dt;
-    if (!reducedMotion && !focus.hub && idle.current > 4 && controls.current) controls.current.azimuthAngle += dt * 0.05;
+    const c = controls.current;
+    if (!reducedMotion && !focus.hub && idle.current > 4 && c) c.azimuthAngle += dt * 0.05;
+    // Fog keeps its depth relative to what's framed: a 60-strong cast seen from far back
+    // shouldn't drown in it, and the overview keeps its designed falloff.
+    if (c && scene.fog instanceof Fog) {
+      const k = reach(aspect);
+      scene.fog.near = Math.max(16 * k, c.distance * 0.85);
+      scene.fog.far = Math.max(62 * k, c.distance * 2.8);
+    }
   });
 
   return (
-    <CameraControls ref={controls} makeDefault smoothTime={0.55} minDistance={2.5} maxDistance={45 * reach(aspect)}
+    <CameraControls ref={controls} makeDefault smoothTime={0.55} minDistance={2.5} maxDistance={Math.max(45 * reach(aspect), maxView * 1.4)}
       onStart={() => { idle.current = -1e9; }} onEnd={() => { idle.current = 0; }} />
   );
 }
@@ -512,7 +655,7 @@ function World({ graph, theme, focus, reducedMotion, onFocus, layout }: Props & 
       {mounted.map((id) => {
         const hub = graph.hubs.find((h) => h.id === id)!;
         return (
-          <Cluster key={id} hub={hub} layout={layout} theme={theme} active={focus.hub === id} focus={focus} reducedMotion={reducedMotion}
+          <Cluster key={id} hub={hub} cover={graph.cover} layout={layout} theme={theme} active={focus.hub === id} focus={focus} reducedMotion={reducedMotion}
             onPick={(node) => onFocus(id, node.id)} onGone={() => setMounted((m) => m.filter((x) => x !== id))} />
         );
       })}
@@ -542,7 +685,7 @@ export default function WorldScene(props: Props) {
       >
         <World {...props} layout={layout} />
       </Canvas>
-      <LabelLayer graph={props.graph} />
+      <LabelLayer graph={props.graph} layout={layout} />
     </>
   );
 }

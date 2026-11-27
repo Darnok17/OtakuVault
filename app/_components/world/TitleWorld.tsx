@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { Hub, HubId, TitleGraph, WebNode } from "@/lib/title-graph";
+import { hubSize, type Hub, type HubId, type TitleGraph, type WebNode } from "@/lib/title-graph";
 import { usePrefersReducedMotion, useSceneTheme } from "./scene-theme";
-import { useWorldHover } from "./world-store";
+import { useWorldHover, useWorldInsets } from "./world-store";
 import type { Focus } from "./WorldScene";
 
 // The title page as a world: the 3D web (WorldScene, client-only and lazy) plus the DOM layers
@@ -71,7 +71,7 @@ function NodeCard({ node, hub }: { node: WebNode; hub: Hub }) {
       )}
       {d.type === "title" && (
         <>
-          {d.format && <p className="ow-card-sub">{d.format}</p>}
+          {(d.format || d.year) && <p className="ow-card-sub">{[d.format, d.year].filter(Boolean).join(" · ")}</p>}
           <div className="ow-card-actions">
             {/* Into the other show's own world — the web links outward. */}
             <Link className="btn btn-primary" href={`${d.href}?world=1`}>Fly to its world</Link>
@@ -105,7 +105,7 @@ function HubCard({ hub, graph }: { hub: Hub; graph: TitleGraph }) {
     <article className="ow-card bp-node" style={tone(hub.tone)}>
       <span className="bp-tag">{hub.kanji}</span>
       <h2 className="ow-card-title">{hub.label}</h2>
-      <p className="ow-card-sub">{hub.nodes.length} in this web — pick one to look closer.</p>
+      <p className="ow-card-sub">{hubSize(hub)} in this web — pick one to look closer.</p>
     </article>
   );
 }
@@ -151,13 +151,36 @@ export default function TitleWorld({ graph, actions, listHref }: { graph: TitleG
     return () => window.removeEventListener("keydown", onKey);
   }, [back]);
 
+  // Measure how far the HUD and the focus panel reach over the canvas; the camera frames around them.
+  const worldRef = useRef<HTMLDivElement>(null);
+  const setInsets = useWorldInsets((s) => s.setInsets);
+  useEffect(() => {
+    const world = worldRef.current;
+    if (!world) return;
+    const measure = () => {
+      const box = world.getBoundingClientRect();
+      let top = 0, right = 0, bottom = 0;
+      world.querySelectorAll(".ow-hud-main, .ow-hud-side").forEach((el) => { top = Math.max(top, el.getBoundingClientRect().bottom - box.top); });
+      const panel = world.querySelector(".ow-panel")?.getBoundingClientRect();
+      // A panel spanning most of the width (phones) sits at the bottom; otherwise on the right.
+      if (panel && panel.width > box.width * 0.6) bottom = box.bottom - panel.top;
+      else if (panel) right = box.right - panel.left;
+      setInsets({ top: top + 12, right: right + 16, bottom: Math.max(bottom + 12, 36), left: 16 });
+    };
+    // Fires once on observe, then whenever the HUD, the panel or the page resizes.
+    const ro = new ResizeObserver(measure);
+    ro.observe(world);
+    world.querySelectorAll(".ow-hud-main, .ow-hud-side, .ow-panel").forEach((el) => ro.observe(el));
+    return () => ro.disconnect();
+  }, [focus.hub, focus.node, setInsets]);
+
   // The nodes a keyboard or screen-reader user can reach from the current level.
   const reachable = hub
-    ? hub.nodes.map((n) => ({ id: n.id, label: `${n.label}${n.sub ? `, ${n.sub}` : ""}`, go: () => setFocus(hub.id, n.id) }))
-    : graph.hubs.map((h) => ({ id: h.id === "details" ? "core" : `hub:${h.id}`, label: `${h.id === "details" ? graph.title : h.label}, ${h.nodes.length} nodes`, go: () => setFocus(h.id) }));
+    ? hub.nodes.filter((n) => !n.anchor).map((n) => ({ id: n.id, label: `${n.label}${n.sub ? `, ${n.sub}` : ""}`, go: () => setFocus(hub.id, n.id) }))
+    : graph.hubs.map((h) => ({ id: h.id === "details" ? "core" : `hub:${h.id}`, label: `${h.id === "details" ? graph.title : h.label}, ${hubSize(h)} nodes`, go: () => setFocus(h.id) }));
 
   return (
-    <div className="ow-world" data-level={node ? 2 : hub ? 1 : 0}>
+    <div className="ow-world" ref={worldRef} data-level={node ? 2 : hub ? 1 : 0}>
       {webgl === false ? (
         <div className="ow-fallback">
           <p>Your browser can&apos;t draw the 3D web (WebGL is off or unsupported).</p>

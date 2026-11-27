@@ -13,7 +13,8 @@ export type SceneStyle = {
   glow: boolean; // additive halos and blending; off on light themes, where they wash out
   lineOpacity: number;
   dustOpacity: number;
-  shell: "plexus" | "ink"; // the core's geodesic: glowing wireframe or ink outline
+  lineWidth: number; // CSS px; ink themes draw real strokes
+  tint: number; // how far the core leans toward the show's own AniList colour
 };
 
 export type SceneTheme = {
@@ -24,18 +25,34 @@ export type SceneTheme = {
   fg: Color;
   dim: Color;
   faint: Color;
+  ink: Color; // outlines on the paper themes
   tones: Record<Tone, Color>;
   style: SceneStyle;
 };
 
 const STYLES: Record<ThemeId, SceneStyle> = {
-  terminal: { glow: true, lineOpacity: 0.32, dustOpacity: 0.7, shell: "plexus" },
-  retro: { glow: true, lineOpacity: 0.38, dustOpacity: 0.8, shell: "plexus" },
-  rustic: { glow: false, lineOpacity: 0.45, dustOpacity: 0.45, shell: "ink" },
-  minimal: { glow: false, lineOpacity: 0.3, dustOpacity: 0.25, shell: "ink" },
-  "comic-strip": { glow: false, lineOpacity: 0.6, dustOpacity: 0.4, shell: "ink" },
-  manga: { glow: false, lineOpacity: 0.55, dustOpacity: 0.35, shell: "ink" },
+  matrix: { glow: true, lineOpacity: 0.32, dustOpacity: 0.7, lineWidth: 1, tint: 0.65 },
+  retro: { glow: true, lineOpacity: 0.38, dustOpacity: 0.8, lineWidth: 1, tint: 0.65 },
+  rustic: { glow: false, lineOpacity: 0.62, dustOpacity: 0.45, lineWidth: 1.6, tint: 0.3 },
+  // One red line: the show's colour barely registers, the ink stays black.
+  minimal: { glow: false, lineOpacity: 0.5, dustOpacity: 0.25, lineWidth: 1.3, tint: 0.1 },
+  "comic-strip": { glow: false, lineOpacity: 0.8, dustOpacity: 0.4, lineWidth: 2.2, tint: 0.4 },
+  manga: { glow: false, lineOpacity: 0.7, dustOpacity: 0.35, lineWidth: 1.8, tint: 0.15 },
 };
+
+// WCAG contrast between two colours (three.js keeps them linear, which is what the formula wants).
+const luminance = (c: Color) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+function contrast(a: Color, b: Color) {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+// Pulls a colour toward the text colour until it stands out from the background: the paper
+// themes' golds and pinks are made for fills, not for 1-2px strokes on cream.
+function legible(c: Color, bg: Color, fg: Color, min = 3) {
+  const out = c.clone();
+  for (let i = 0; i < 12 && contrast(out, bg) < min; i++) out.lerp(fg, 0.15);
+  return out;
+}
 
 const TONES: Tone[] = ["acc-1", "acc-2", "acc-3", "gold", "azure", "violet", "rose", "orange"];
 
@@ -49,15 +66,17 @@ function read(): SceneTheme {
     return c;
   };
   const id = toThemeId(root.getAttribute("data-theme")) ?? DEFAULT_THEME;
+  const bg = color("bg", "#0a0a0f"), fg = color("fg", "#e8e8f0");
   return {
     id,
     dark: THEMES.find((t) => t.id === id)!.mode === "dark",
     fx: root.getAttribute("data-fx") !== "off",
-    bg: color("bg", "#0a0a0f"),
-    fg: color("fg", "#e8e8f0"),
-    dim: color("fg-dim", "#7a7a9a"),
+    bg,
+    fg,
+    dim: legible(color("fg-dim", "#7a7a9a"), bg, fg, 2.5),
     faint: color("fg-faint", "#5a5a7a"),
-    tones: Object.fromEntries(TONES.map((t) => [t, color(t, "#00d4aa")])) as Record<Tone, Color>,
+    ink: fg.clone().lerp(bg, 0.12),
+    tones: Object.fromEntries(TONES.map((t) => [t, legible(color(t, "#00d4aa"), bg, fg)])) as Record<Tone, Color>,
     style: STYLES[id],
   };
 }
@@ -80,7 +99,7 @@ export function useSceneTheme(): SceneTheme | null {
 export function coreColor(theme: SceneTheme, showColor: string | null): Color {
   const base = theme.tones["acc-3"].clone();
   if (!showColor) return base;
-  try { return base.lerp(new Color(showColor), theme.dark ? 0.65 : 0.4); } catch { return base; }
+  try { return legible(base.lerp(new Color(showColor), theme.style.tint), theme.bg, theme.fg); } catch { return base; }
 }
 
 export function usePrefersReducedMotion() {

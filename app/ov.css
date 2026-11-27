@@ -775,6 +775,11 @@ a.nt-title:hover{color:var(--acc-3);}
   text-shadow:0 0 4px var(--bg),0 0 8px var(--bg),0 0 2px var(--bg);
 }
 .ow-label.is-hot{color:var(--fg-bright);z-index:1;}
+/* Sub-cluster captions: Japanese · 24, Direction, Genres… */
+.ow-label-group{
+  font-family:var(--font-mono),var(--font-noto-jp),monospace;font-size:calc(10.5px * var(--label-scale));font-weight:600;
+  letter-spacing:calc(.1em * var(--label-track));text-transform:var(--label-case);color:var(--c);max-width:200px;
+}
 .ow-label-fact{font-family:var(--font-mono),var(--font-noto-jp),monospace;font-size:11px;color:var(--fg-dim);}
 .ow-label-core{
   font-family:var(--font-display),var(--font-noto-jp),sans-serif;font-weight:var(--display-weight);text-transform:var(--display-case);
