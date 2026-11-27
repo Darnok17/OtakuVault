@@ -1462,6 +1462,9 @@ Abandoned-cart cleanup, order reconciliation and sitemap refreshes would have be
 - **What:** a new free Supabase project. All migrations in `drizzle/` applied with
   `DATABASE_URL='<session pooler URI>' pnpm db:migrate`, plus `drizzle/seeds/products.sql`. New
   Hyperdrive config `otakuvault-db-supabase`, caching disabled, wired in `wrangler.jsonc`.
+- **Lock out Supabase's Data API:** run `drizzle/supabase/lockdown.sql` after every migration
+  that adds tables. It revokes all `anon`/`authenticated` privileges on `public` and enables RLS
+  (no policies) on every table. The app connects as `postgres` (BYPASSRLS), so it is unaffected.
 - **Use the session pooler (port 5432)**, not the transaction pooler (6543; Hyperdrive pools
   itself) and not the direct host (IPv6-only on the free plan).
 - **Data:** the Supabase database started empty. Accounts and collections created on Neon are
