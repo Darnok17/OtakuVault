@@ -11,6 +11,11 @@ export const STATUS_TONE: Record<EntryStatus, Tone> = {
 };
 
 const GLYPH: Record<EntryStatus, string> = { completed: "✓", watching: "▶", "on-hold": "‖", "plan-to": "◇", dropped: "✕" };
+export const statusGlyph = (status: EntryStatus) => GLYPH[status];
+
+// A saved collection entry as a mark, for live updates from the HUD's list actions.
+export const entryMark = (e: { status: EntryStatus; rating: number; progressCurrent: number; progressTotal: number }): ListMark =>
+  ({ status: e.status, rating: e.rating, progress: e.progressCurrent, total: e.progressTotal });
 
 export function statusText(status: EntryStatus, type: EntryType) {
   const anime = type === "anime";

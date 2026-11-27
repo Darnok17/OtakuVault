@@ -807,10 +807,20 @@ a.nt-title:hover{color:var(--acc-3);}
 }
 .ow-hud > *{pointer-events:auto;}
 .ow-hud-main{min-width:0;max-width:min(640px,70%);}
-.ow-crumbs{margin-bottom:.35rem;}
-.ow-crumbs button{all:unset;cursor:pointer;color:var(--fg-dim);}
+/* Breadcrumbs stay on one line: labels truncate, and on phones the middle levels fold into "…". */
+.ow-crumbs{margin-bottom:.35rem;flex-wrap:nowrap;min-width:0;white-space:nowrap;}
+.ow-crumb{display:flex;align-items:center;gap:.45rem;min-width:0;flex:0 1 auto;}
+.ow-crumb[aria-hidden],.ow-crumb-sep{flex-shrink:0;}
+.ow-crumb-label{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.ow-crumb.is-root{flex-shrink:3;}
+.ow-crumb:last-child:not(.is-root){flex-shrink:0;max-width:45%;}
+.ow-crumb-more{display:none;}
+.ow-crumbs button{all:unset;cursor:pointer;color:var(--fg-dim);min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .ow-crumbs button:hover,.ow-crumbs button:focus-visible{color:var(--acc-3);}
+.ow-crumbs button:focus-visible{outline:1px solid var(--acc-3);outline-offset:2px;}
 .ow-crumbs [aria-current]{color:var(--fg);}
+.ow-hud-titlebar{display:flex;align-items:center;gap:.6rem;min-width:0;}
+.ow-hud-toggle,.ow-hud-more{display:none;}
 .ow-title{
   margin:0;font-family:var(--font-display);font-weight:var(--display-weight);text-transform:var(--display-case);
   font-size:calc(1.9rem * var(--display-scale));letter-spacing:calc(.03em * var(--display-track));line-height:1.05;color:var(--fg-bright);
@@ -820,11 +830,14 @@ a.nt-title:hover{color:var(--acc-3);}
 .ow-hud-actions .td-actions{margin:0;}
 .ow-hud-side{display:flex;align-items:center;gap:.6rem;flex-shrink:0;}
 
-/* Focus card: the moodboard node look, on a floating panel. */
+/* Focus card: the moodboard node look, on a floating panel (a bottom sheet on phones, below). */
 .ow-panel{
   position:absolute;z-index:30;right:1.25rem;top:8.5rem;width:min(330px,calc(100% - 2.5rem));max-height:calc(100% - 11rem);
   display:flex;animation:owIn .35s var(--ease-out);
 }
+.ow-sheet-handle{display:none;}
+.ow-sheet-body{display:flex;flex:1;min-width:0;min-height:0;}
+.ow-sheet-body > .ow-card{width:100%;}
 @keyframes owIn{from{opacity:0;transform:translateX(12px);}}
 .ow-card.bp-node{height:auto;max-height:100%;overflow:auto;gap:.5rem;padding:16px 16px 14px;box-shadow:var(--shadow-elev-2);}
 .ow-card-img{display:block;width:100%;height:180px;border-radius:calc(6px * var(--r-k));object-fit:cover;object-position:top;flex-shrink:0;}
@@ -870,12 +883,52 @@ a.nt-title:hover{color:var(--acc-3);}
 .td-world-link{margin:.2rem 0 1.2rem;}
 
 @media (max-width:720px){
-  .ow-hud{flex-direction:column;padding:.8rem 1rem;}
-  .ow-hud-main{max-width:100%;}
-  .ow-title{font-size:calc(1.4rem * var(--display-scale));}
-  .ow-panel{top:auto;bottom:1rem;left:1rem;right:1rem;width:auto;max-height:45%;}
+  /* Compact HUD: one line of crumbs, one line of title plus the list button; the list actions,
+     score and List view fold into a menu that floats over the web (and so never moves the camera). */
+  .ow-hud{flex-direction:column;gap:0;padding:.55rem .75rem .9rem;}
+  .ow-hud-main{max-width:100%;width:100%;}
+  .ow-hud-side,.ow-title-sub{display:none;}
+  .ow-crumbs{margin-bottom:.25rem;}
+  .ow-crumb.is-mid{display:none;}
+  .ow-crumb-more{display:flex;}
+  .ow-crumb.is-root .ow-crumb-label{max-width:9.5rem;}
+  .ow-hud-titlebar{justify-content:space-between;}
+  .ow-title{font-size:calc(1.15rem * var(--display-scale));flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ow-hud-toggle{display:inline-flex;align-items:center;gap:.35rem;flex-shrink:0;padding:.35rem .65rem;font-size:calc(.68rem * var(--label-scale));white-space:nowrap;max-width:48%;}
+  .ow-hud-toggle > span:first-child{color:var(--c,inherit);overflow:hidden;text-overflow:ellipsis;}
+  .ow-hud-actions{
+    display:none;position:absolute;top:calc(100% - .5rem);left:.75rem;right:.75rem;margin:0;max-height:60vh;overflow:auto;
+    background:var(--surface-elevated);border:1px solid var(--border-strong);border-radius:calc(10px * var(--r-k));box-shadow:var(--shadow-elev-2);
+  }
+  .ow-hud[data-actions] .ow-hud-actions{display:block;animation:owDrop .18s var(--ease-out);}
+  .ow-hud-actions .td-actions{padding:.7rem .7rem .4rem;min-height:0;gap:.45rem;}
+  .ow-hud-actions .td-actions .btn{padding:.45rem .75rem;}
+  .ow-hud-more{display:flex;align-items:center;gap:.5rem;padding:.3rem .7rem .7rem;}
+
+  /* Bottom sheet: peeks with the card's tag and title; swipe the handle, tap the card, or tab
+     into it to expand. --peek is what the camera frames against (TitleWorld measures it). */
+  .ow-panel{
+    --peek:94px;top:auto;bottom:0;left:.5rem;right:.5rem;width:auto;max-height:72%;
+    transform:translateY(max(0px,calc(100% - var(--peek))));transition:transform .32s var(--ease-out);animation:owFade .3s ease-out;
+  }
+  .ow-panel[data-sheet="open"]{transform:none;}
+  .ow-sheet-handle{
+    all:unset;display:block;position:absolute;z-index:1;top:0;left:0;right:0;height:26px;cursor:grab;touch-action:none;
+  }
+  .ow-sheet-handle > span{display:block;width:38px;height:4px;margin:9px auto 0;border-radius:2px;background:var(--fg-faint);}
+  .ow-sheet-handle:focus-visible > span{background:var(--acc-3);outline:2px solid var(--acc-3);outline-offset:3px;}
+  .ow-panel .ow-card.bp-node{padding-top:26px;border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom:none;}
+  .ow-panel[data-sheet="peek"] .ow-card.bp-node{overflow:hidden;cursor:pointer;}
+  .ow-panel .ow-card > .bp-tag{order:-2;}
+  .ow-panel .ow-card > .ow-card-title{order:-1;}
+  .ow-panel[data-sheet="peek"] .ow-card-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;}
   .ow-card-img{height:110px;}
   .ow-card-person .ow-card-img{display:none;} /* the person is the disc at the web's centre; phones need the room */
   .ow-hint{display:none;}
 }
-@media (prefers-reduced-motion:reduce){.ow-loading-orb,.ow-panel,.ow-card-wait{animation:none;}}
+@keyframes owFade{from{opacity:0;}}
+@keyframes owDrop{from{opacity:0;transform:translateY(-6px);}}
+@media (prefers-reduced-motion:reduce){
+  .ow-loading-orb,.ow-panel,.ow-card-wait,.ow-hud-actions{animation:none!important;}
+  .ow-panel{transition:none;}
+}

@@ -435,7 +435,7 @@ export const reach = (aspect: number) => Math.min(Math.max(1.35 / aspect, 1), 2.
 export function safeArea(vp: Viewport, panel: boolean) {
   const phone = vp.width <= PHONE_WIDTH;
   const inset = { ...(vp.insets ?? (phone
-    ? { top: 175, bottom: panel ? 165 : 30, left: 14, right: 14 }
+    ? { top: 92, bottom: panel ? 106 : 36, left: 16, right: 16 } // compact HUD; the sheet peeking
     : { top: 150, bottom: 40, left: 30, right: panel ? 370 : 30 })) };
   // Overlays can't take more than 60% of either axis (a phone's HUD plus a long synopsis would):
   // past that the web is framed partly under them rather than shrunk to a speck.
