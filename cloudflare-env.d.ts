@@ -11,6 +11,7 @@ interface __BaseEnv_CloudflareEnv {
 	BETTER_AUTH_URL: "https://otakuvault.app";
 	STORAGE_DRIVER: "r2";
 	MEDIA_BASE_URL: "https://img.otakuvault.app";
+	CATALOG_SOURCE: "anilist";
 	ANILIST_API_URL: "https://otaku-vault-gold.vercel.app/api/anilist-relay";
 	NEXTJS_ENV: string;
 	BETTER_AUTH_SECRET: string;
@@ -37,7 +38,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "BETTER_AUTH_URL" | "STORAGE_DRIVER" | "MEDIA_BASE_URL" | "ANILIST_API_URL" | "NEXTJS_ENV" | "BETTER_AUTH_SECRET" | "CRON_SECRET" | "ANILIST_RELAY_SECRET" | "GOOGLE_CLIENT_ID" | "GOOGLE_CLIENT_SECRET" | "DISCORD_CLIENT_ID" | "DISCORD_CLIENT_SECRET" | "GITHUB_CLIENT_ID" | "GITHUB_CLIENT_SECRET">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "BETTER_AUTH_URL" | "STORAGE_DRIVER" | "MEDIA_BASE_URL" | "CATALOG_SOURCE" | "ANILIST_API_URL" | "NEXTJS_ENV" | "BETTER_AUTH_SECRET" | "CRON_SECRET" | "ANILIST_RELAY_SECRET" | "GOOGLE_CLIENT_ID" | "GOOGLE_CLIENT_SECRET" | "DISCORD_CLIENT_ID" | "DISCORD_CLIENT_SECRET" | "GITHUB_CLIENT_ID" | "GITHUB_CLIENT_SECRET">> {}
 }
 declare module "*.txt" {
 	const value: string;
