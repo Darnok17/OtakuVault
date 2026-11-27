@@ -750,3 +750,104 @@ a.nt-title:hover{color:var(--acc-3);}
 
 .pd-restock{display:flex;flex-direction:column;align-items:flex-start;gap:.6rem;margin:.2rem 0 .4rem;}
 .pd-restock-on{background:none;border:0;padding:0;cursor:pointer;font:inherit;font-weight:600;}
+
+/* ── Title world: the 3D web view of a title (app/_components/world) ── */
+.ow-world{
+  position:relative;height:calc(100svh - var(--nav-h,63px));min-height:560px;overflow:hidden;
+  background:var(--bg);isolation:isolate;margin-bottom:-4rem; /* cancels .td-page's bottom padding */
+}
+.ow-canvas{position:absolute!important;inset:0;touch-action:none;}
+.ow-loading{position:absolute;inset:0;display:grid;place-items:center;}
+.ow-loading-orb{
+  width:64px;height:64px;border-radius:50%;border:1px solid var(--acc-3);
+  box-shadow:0 0 40px rgb(from var(--acc-3) r g b / .35);animation:owPulse 1.6s ease-in-out infinite;
+}
+@keyframes owPulse{50%{transform:scale(.8);opacity:.5;}}
+.ow-fallback{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:1rem;padding:2rem;text-align:center;color:var(--fg-dim);}
+
+/* Labels: one DOM layer over the canvas, pinned to 3D anchors each frame (WorldScene LabelLayer),
+   so they use the theme's own fonts. Kanji fall back to Noto Sans JP. */
+.ow-labels{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
+.ow-label{
+  position:absolute;left:0;top:0;will-change:transform,opacity;
+  font-family:var(--font-body),var(--font-noto-jp),sans-serif;font-size:12px;line-height:1.2;color:var(--fg);white-space:nowrap;
+  max-width:160px;overflow:hidden;text-overflow:ellipsis;
+  text-shadow:0 0 4px var(--bg),0 0 8px var(--bg),0 0 2px var(--bg);
+}
+.ow-label.is-hot{color:var(--fg-bright);z-index:1;}
+.ow-label-fact{font-family:var(--font-mono),var(--font-noto-jp),monospace;font-size:11px;color:var(--fg-dim);}
+.ow-label-core{
+  font-family:var(--font-display),var(--font-noto-jp),sans-serif;font-weight:var(--display-weight);text-transform:var(--display-case);
+  font-size:calc(17px * var(--display-scale));letter-spacing:calc(.04em * var(--display-track));color:var(--fg-bright);max-width:280px;
+}
+.ow-label-hub{display:flex;flex-direction:column;align-items:center;gap:1px;}
+.ow-label-hub span{
+  font-family:var(--font-display),var(--font-noto-jp),sans-serif;font-weight:var(--display-weight);text-transform:var(--display-case);
+  font-size:calc(15px * var(--display-scale));letter-spacing:calc(.06em * var(--display-track));color:var(--c);transition:transform .2s;
+}
+.ow-label-hub.is-hot span{transform:scale(1.1);}
+.ow-label-hub small{font-family:var(--font-mono),var(--font-noto-jp),monospace;font-size:10px;color:var(--fg-dim);}
+
+/* HUD: the title, where you are, and the list actions — the tracker stays one click away. */
+.ow-hud{
+  position:absolute;top:0;left:0;right:0;z-index:30;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;
+  padding:1rem 1.25rem;pointer-events:none;
+  background:linear-gradient(to bottom,rgb(from var(--bg) r g b / .85),rgb(from var(--bg) r g b / 0));
+}
+.ow-hud > *{pointer-events:auto;}
+.ow-hud-main{min-width:0;max-width:min(640px,70%);}
+.ow-crumbs{margin-bottom:.35rem;}
+.ow-crumbs button{all:unset;cursor:pointer;color:var(--fg-dim);}
+.ow-crumbs button:hover,.ow-crumbs button:focus-visible{color:var(--acc-3);}
+.ow-crumbs [aria-current]{color:var(--fg);}
+.ow-title{
+  margin:0;font-family:var(--font-display);font-weight:var(--display-weight);text-transform:var(--display-case);
+  font-size:calc(1.9rem * var(--display-scale));letter-spacing:calc(.03em * var(--display-track));line-height:1.05;color:var(--fg-bright);
+}
+.ow-title-sub{color:var(--fg-dim);font-size:.85rem;margin-top:.15rem;}
+.ow-hud-actions{margin-top:.7rem;}
+.ow-hud-actions .td-actions{margin:0;}
+.ow-hud-side{display:flex;align-items:center;gap:.6rem;flex-shrink:0;}
+
+/* Focus card: the moodboard node look, on a floating panel. */
+.ow-panel{
+  position:absolute;z-index:30;right:1.25rem;top:8.5rem;width:min(330px,calc(100% - 2.5rem));max-height:calc(100% - 11rem);
+  display:flex;animation:owIn .35s var(--ease-out);
+}
+@keyframes owIn{from{opacity:0;transform:translateX(12px);}}
+.ow-card.bp-node{height:auto;max-height:100%;overflow:auto;gap:.5rem;padding:16px 16px 14px;box-shadow:var(--shadow-elev-2);}
+.ow-card-img{display:block;width:100%;height:180px;border-radius:calc(6px * var(--r-k));object-fit:cover;object-position:top;flex-shrink:0;}
+.ow-card .bp-tag{font-family:var(--font-mono),var(--font-noto-jp),monospace;}
+.ow-card-title{margin:0;font-family:var(--font-display);font-weight:var(--display-weight);text-transform:var(--display-case);font-size:calc(1.35rem * var(--display-scale));line-height:1.1;color:var(--fg-bright);}
+.ow-card-sub{margin:0;color:var(--fg-dim);font-size:.8rem;}
+.ow-card-scroll{overflow:auto;font-size:.85rem;line-height:1.55;}
+.ow-card-scroll p{margin:0 0 .6rem;}
+.ow-card-list{display:flex;flex-direction:column;gap:.35rem;}
+.ow-card-row{display:flex;align-items:center;gap:.5rem;font-size:.85rem;}
+.ow-card-face{width:28px;height:28px;border-radius:50%;object-fit:cover;object-position:top;border:1px solid var(--c);flex-shrink:0;}
+.ow-card-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;}
+
+.ow-hint{
+  position:absolute;z-index:20;left:1.25rem;bottom:1rem;margin:0;pointer-events:none;
+  font-family:var(--font-mono);font-size:calc(.66rem * var(--label-scale));letter-spacing:calc(.08em * var(--label-track));
+  text-transform:var(--label-case);color:var(--fg-faint);
+}
+
+/* Keyboard / screen-reader node list: hidden until something in it has focus. */
+.ow-a11y{position:absolute;z-index:40;left:1.25rem;bottom:2.6rem;max-height:50%;overflow:auto;}
+.ow-a11y ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;}
+.ow-a11y button{all:unset;cursor:pointer;display:block;padding:.3rem .6rem;font-size:.8rem;color:var(--fg);background:var(--surface-elevated);border:1px solid var(--border);border-radius:calc(6px * var(--r-k));}
+.ow-a11y button:focus-visible{outline:2px solid var(--acc-3);outline-offset:1px;}
+.ow-a11y:not(:focus-within){clip-path:inset(50%);width:1px;height:1px;overflow:hidden;}
+
+.td-world-link{margin:.2rem 0 1.2rem;}
+
+@media (max-width:720px){
+  .ow-hud{flex-direction:column;padding:.8rem 1rem;}
+  .ow-hud-main{max-width:100%;}
+  .ow-title{font-size:calc(1.4rem * var(--display-scale));}
+  .ow-panel{top:auto;bottom:1rem;left:1rem;right:1rem;width:auto;max-height:45%;}
+  .ow-card-img{height:110px;}
+  .ow-hint{display:none;}
+}
+@media (prefers-reduced-motion:reduce){.ow-loading-orb,.ow-panel{animation:none;}}
