@@ -112,11 +112,13 @@ function NodeCard({ node, hub, marks, onOpenPerson }: { node: WebNode; hub: Hub;
 }
 
 // The franchise in story order, this show included, each entry coloured by how far you've got.
-type Stop = { id: string; label: string; start: number | null; mark: ListMark | undefined; here?: boolean };
+type Stop = { id: string; label: string; type: EntryType; start: number | null; mark: ListMark | undefined; here?: boolean };
 function franchiseStops(hub: Hub, graph: TitleGraph, marks: Record<number, ListMark>): Stop[] {
   const stops: Stop[] = [
-    { id: "here", label: graph.title, start: graph.start, mark: marks[graph.anilistId], here: true },
-    ...hub.nodes.map((n) => ({ id: n.id, label: n.label, start: n.start ?? null, mark: markOf(n, marks) })),
+    { id: "here", label: graph.title, type: graph.entryType, start: graph.start, mark: marks[graph.anilistId], here: true },
+    ...hub.nodes.map((n) => ({
+      id: n.id, label: n.label, type: n.detail.type === "title" ? n.detail.entryType : graph.entryType, start: n.start ?? null, mark: markOf(n, marks),
+    })),
   ];
   // Undated entries last; ties keep the web's order.
   return stops.map((s, i) => [s, i] as const)
@@ -136,8 +138,8 @@ function FranchiseProgress({ hub, graph, marks }: { hub: Hub; graph: TitleGraph;
       <ol className="ow-progress-bar" aria-label="Your progress through the franchise, oldest first">
         {stops.map((s) => (
           <li key={s.id} data-status={s.mark?.status ?? "none"} data-here={s.here || undefined} style={s.mark ? tone(STATUS_TONE[s.mark.status]) : undefined}
-            title={`${s.label}: ${s.mark ? statusText(s.mark.status, "anime") : "not started"}`}>
-            <span className="ow-sr">{s.label}: {s.mark ? statusText(s.mark.status, "anime") : "not started"}</span>
+            title={`${s.label}: ${s.mark ? statusText(s.mark.status, s.type) : "not started"}`}>
+            <span className="ow-sr">{s.label}: {s.mark ? statusText(s.mark.status, s.type) : "not started"}</span>
           </li>
         ))}
       </ol>
@@ -175,7 +177,7 @@ function PersonCard({ node, hub, state, works, marks, onBack, onRetry }: {
   const inList = works && marks ? works.filter((w) => markOf(w, marks)).length : 0;
   const what = hub.id === "cast" ? "other roles" : "other works";
   return (
-    <article className="ow-card bp-node" style={tone(node.tone)}>
+    <article className="ow-card ow-card-person bp-node" style={tone(node.tone)}>
       <span className="bp-tag">{hub.id === "cast" ? "Voice roles" : "Credits"}</span>
       {node.image && <CardImg className="ow-card-img" src={node.image} />}
       <h2 className="ow-card-title">{node.label}</h2>

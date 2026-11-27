@@ -301,7 +301,7 @@ function Rim({ inner, theme, opacity }: { inner: number; theme: SceneTheme; opac
 /* ---------- "in your list" rings ---------- */
 
 const TAU = Math.PI * 2;
-const DASHES = 10;
+const DASHES = 14;
 
 // Around a disc whose title is in the user's list: a faint full track, and over it an arc in the
 // status's tone from twelve o'clock clockwise — whole when completed, progress while watching,
@@ -318,8 +318,8 @@ function MarkRing({ inner, mark, unstarted, theme, opacity }: {
       <>
         {Array.from({ length: DASHES }, (_, k) => (
           <mesh key={k}>
-            <ringGeometry args={[r0, r0 + w * 0.6, 8, 1, k * arc, arc * 0.5]} />
-            <meshBasicMaterial color={theme.dim} transparent opacity={0.7 * opacity} />
+            <ringGeometry args={[r0, r0 + Math.min(w * 0.45, 0.045), 6, 1, k * arc, arc * 0.45]} />
+            <meshBasicMaterial color={theme.dim} transparent opacity={0.5 * opacity} />
           </mesh>
         ))}
       </>
@@ -550,7 +550,7 @@ function GroupMark({ group, theme, cover, mark, unstarted, register }: {
     <group ref={register}>
       <object3D ref={labelRef} />
       {group.marker && (
-        <Billboard position={[0, 0.75, 0]}>
+        <Billboard position={[0, mark || unstarted ? 0.88 : 0.75, 0]}>
           <mesh>
             <ringGeometry args={[0.34, 0.42, 40]} />
             <meshBasicMaterial color={theme.tones[group.tone]} transparent opacity={0.95} />

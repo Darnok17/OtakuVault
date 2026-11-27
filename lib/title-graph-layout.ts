@@ -453,8 +453,9 @@ export function safeArea(vp: Viewport, panel: boolean) {
   };
 }
 
-// Room each node needs around its point: disc radius sideways, plus its label below.
-const PAD = { side: 0.75, top: 0.6, bottom: 0.95 };
+// Room each node needs around its point: disc radius sideways, plus its label below (two lines
+// when the title is in the user's list: the name, then its status glyphs).
+const PAD = { side: 0.75, top: 0.6, bottom: 1.2 };
 
 // The closest camera, looking along -dir, that fits every point inside the safe area. For a
 // fixed distance the sideways shift that fits is a linear constraint per point, so this is a

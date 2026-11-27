@@ -875,6 +875,7 @@ a.nt-title:hover{color:var(--acc-3);}
   .ow-title{font-size:calc(1.4rem * var(--display-scale));}
   .ow-panel{top:auto;bottom:1rem;left:1rem;right:1rem;width:auto;max-height:45%;}
   .ow-card-img{height:110px;}
+  .ow-card-person .ow-card-img{display:none;} /* the person is the disc at the web's centre; phones need the room */
   .ow-hint{display:none;}
 }
 @media (prefers-reduced-motion:reduce){.ow-loading-orb,.ow-panel,.ow-card-wait{animation:none;}}
