@@ -1,5 +1,5 @@
-# Keeps the title catalog (lib/catalog) in sync with AniList: hourly incremental runs, plus
-# manual backfill/image runs. Runs here rather than on Cloudflare because AniList blocks Workers.
+# Keeps the title catalog (lib/catalog) in sync with AniList: incremental runs (hourly when the
+# schedule is on; it is paused, see below), plus manual backfill/image runs. Runs here rather than on Cloudflare because AniList blocks Workers.
 # See docs/catalog.md.
 #
 # Needs repo secrets DATABASE_URL (Neon, pooled), CLOUDFLARE_API_TOKEN (R2 write, for image
@@ -7,9 +7,13 @@
 name: Catalog sync
 
 on:
-  schedule:
-    # Off the hour: the Worker's new-episodes Cron Trigger runs at :00 and reads what this wrote.
-    - cron: "17 * * * *"
+  # PAUSED (Nov 2026): production reads titles straight from AniList (CATALOG_SOURCE=anilist in
+  # wrangler.jsonc) while the catalog database is offline, so hourly syncs would only burn database
+  # compute. Run it by hand (workflow_dispatch) or restore this block when switching back to
+  # CATALOG_SOURCE=db; see docs/catalog.md, "Source switch".
+  # schedule:
+  #   # Off the hour: the Worker's new-episodes Cron Trigger runs at :00 and reads what this wrote.
+  #   - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       mode:

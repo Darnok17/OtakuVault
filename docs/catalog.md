@@ -1,5 +1,9 @@
 # Title catalog
 
+> **Current mode (Nov 2026): `CATALOG_SOURCE=anilist`.** The catalog database ran out of compute
+> quota, so production serves titles live from AniList and the scheduled sync is paused. Nothing
+> below was removed; see [Source switch](#source-switch) to turn it back on.
+
 OtakuVault keeps its own copy of title metadata in Postgres. Pages (browse, title pages, search,
 home rails, collection lookups, the new-episodes job) read **only** from it. AniList is called
 by the sync job, and at request time only for a title or search the catalog can't answer yet.
@@ -19,11 +23,14 @@ by the sync job, and at request time only for a title or search the catalog can'
 | `lib/catalog/source.ts` | `CatalogSource`: the provider interface (`fetchById`, `fetchDetails`, `fetchUpdatedSince`, `fetchAiring`, `search`, plus `fetchPage`/`fetchTrending`/`fetchSeason` for the sync). A second provider implements it and fills its own `*_id` column; pages don't change. |
 | `lib/catalog/sources/anilist.ts` | AniList implementation: GraphQL, normalizing, rate limiting (waits and backs off in the sync; fails fast at request time). |
 | `lib/catalog/store.ts` | Upserts into the catalog tables; row → `Title` mapping. |
-| `lib/catalog/index.ts` | What pages call (`searchTitles`, `browseTitles`, `getTitleDetails`, `getTrendingNow`, …, `getAiringStatus`). Same names and shapes the old `lib/anilist.ts` had. |
+| `lib/catalog/index.ts` | What pages call (`searchTitles`, `browseTitles`, `getTitleDetails`, `getTrendingNow`, …, `getAiringStatus`). Same names and shapes the old `lib/anilist.ts` had. Dispatches on `CATALOG_SOURCE` to one of the two below. |
+| `lib/catalog/reads.ts` | `db` mode: the catalog tables, with a one-off provider fetch for misses. |
+| `lib/catalog/live.ts` | `anilist` mode: straight from AniList (via the relay on Cloudflare), no Postgres. |
+| `lib/catalog/edge-cache.ts` | `anilist` mode's cache: per-isolate memory plus the Workers Cache API. |
 | `lib/catalog/sync.ts` | Backfill and the hourly incremental steps. |
 | `lib/catalog/images.ts` | Copies cover/banner images to R2 (sharp → WebP). |
 | `scripts/catalog-sync.ts` | CLI: `pnpm catalog:sync incremental \| backfill \| images \| probe`. |
-| `.github/workflows/catalog-sync.yml` | Hourly at :17; manual backfill/images runs; AniList probe on PRs. |
+| `.github/workflows/catalog-sync.yml` | Hourly at :17 (**schedule paused**, see below); manual backfill/images runs; AniList probe on PRs. |
 
 ## Tables (migration `0006_title_catalog`)
 
@@ -87,6 +94,26 @@ titles, inside R2's 10 GB free tier. The app only ever deletes keys under `uploa
 
 Characters', staff and streaming-episode images in `extras` are still AniList-hosted.
 
+## Source switch
+
+`CATALOG_SOURCE` (a `wrangler.jsonc` var; unset means `anilist`) decides where pages get titles.
+
+| | `anilist` (default) | `db` |
+| --- | --- | --- |
+| Reads | AniList GraphQL, through `ANILIST_API_URL` (the relay) on Cloudflare | catalog tables |
+| Postgres | never touched for titles | every page view |
+| Cache | memory + Workers Cache API: trending 30 min, seasonal/browse 3 h, search 6 h, titles/details/recs/type counts 1 day; stale copies served for 3 more days if AniList fails | the tables themselves |
+| Rate limit | 30 AniList requests/min per isolate, never waits; a 429 pauses that isolate for its Retry-After | provider only on misses |
+| New-episodes job | asks AniList for the watched shows (50 per request) | reads `airing_schedule` |
+| Images | AniList-hosted | our R2 copies where the image job ran |
+
+Search in `anilist` mode is AniList's (`SEARCH_MATCH`), not the Postgres trigram search.
+Collections, accounts, forum and so on still live in Postgres in both modes.
+
+**Back to `db`:** set `"CATALOG_SOURCE": "db"` in `wrangler.jsonc`, restore the `schedule:`
+block in `catalog-sync.yml`, run the workflow once by hand (mode `incremental`, or `backfill` on
+an empty database), then deploy. The Worker cron can go back to hourly (`0 * * * *`).
+
 ## The AniList relay
 
 The Worker still needs the relay (`ANILIST_API_URL` + `ANILIST_RELAY_SECRET`, see the migration
@@ -98,7 +125,7 @@ fallbacks once the catalog covers what people look up), remove `ANILIST_API_URL`
 
 ## Operating it
 
-- **Secrets** (GitHub repo): `DATABASE_URL` (Neon pooled string), `CLOUDFLARE_API_TOKEN`
+- **Secrets** (GitHub repo): `DATABASE_URL` (the Postgres connection string), `CLOUDFLARE_API_TOKEN`
   (needs R2 write), `CLOUDFLARE_ACCOUNT_ID`.
 - **Run now**: Actions → Catalog sync → Run workflow (mode `incremental`, `backfill` or `images`).
 - **Locally**: `DATABASE_URL=… pnpm catalog:sync incremental`. Add `CLOUDFLARE_ACCOUNT_ID`,

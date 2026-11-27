@@ -10,7 +10,7 @@
 
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
 
-  // Run near the database (Neon us-east) rather than near the visitor: most requests make several queries.
+  // Run near the database rather than near the visitor: most requests make several queries.
   "placement": { "mode": "smart" },
   "observability": { "enabled": true },
 
@@ -27,8 +27,11 @@
   // OpenNext calls itself for revalidation and the cache queue. Must match "name".
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "otakuvault" }],
 
-  // Postgres (Neon) through Hyperdrive, query caching disabled (read-after-write app).
-  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "b5da0a0dc19a48359980b01c5072b030" }],
+  // Postgres through Hyperdrive, query caching disabled (read-after-write app).
+  // Since Nov 2026: Supabase free project, session pooler (aws-1-us-west-2, port 5432), config
+  // "otakuvault-db-supabase". The previous Neon config "otakuvault-db"
+  // (b5da0a0dc19a48359980b01c5072b030) is kept; switching back is a one-line id change.
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "895c11810ce64e1a9b342db88d0cc386" }],
 
   "r2_buckets": [
     { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "otakuvault-cache" },
@@ -45,8 +48,10 @@
   // Replaces sharp for upload normalization (lib/storage.ts).
   "images": { "binding": "IMAGES" },
 
-  // Hourly: the new-episodes job (app/api/jobs/new-episodes) is idempotent and rate-limit tolerant.
-  "triggers": { "crons": ["0 * * * *"] },
+  // Every 6 hours: the new-episodes job (app/api/jobs/new-episodes), idempotent and rate-limit
+  // tolerant. With CATALOG_SOURCE=anilist it asks AniList (one request per 50 watched shows) and
+  // reads no catalog tables. Was hourly; slowed down to spare the database and the relay.
+  "triggers": { "crons": ["0 */6 * * *"] },
 
   // Non-secret runtime config. Secrets (BETTER_AUTH_SECRET, CRON_SECRET, ANILIST_RELAY_SECRET, OAuth)
   // via `wrangler secret put`.
@@ -54,9 +59,12 @@
     "BETTER_AUTH_URL": "https://otakuvault.app",
     "STORAGE_DRIVER": "r2",
     "MEDIA_BASE_URL": "https://img.otakuvault.app",
-    // TEMPORARY: AniList blocks Cloudflare Workers. Pages read the title catalog (docs/catalog.md);
-    // only catalog misses call AniList, through the relay route on the Vercel project
-    // (app/api/anilist-relay). Needs the ANILIST_RELAY_SECRET secret.
+    // Where pages get titles (lib/catalog/index.ts): "anilist" = live from AniList, cached at the
+    // edge, no Postgres; "db" = the title catalog tables (needs the catalog sync running).
+    // See docs/catalog.md, "Source switch".
+    "CATALOG_SOURCE": "anilist",
+    // TEMPORARY: AniList blocks Cloudflare Workers, so every AniList call goes through the relay
+    // route on the Vercel project (app/api/anilist-relay). Needs the ANILIST_RELAY_SECRET secret.
     "ANILIST_API_URL": "https://otaku-vault-gold.vercel.app/api/anilist-relay"
   }
 }

@@ -42,8 +42,9 @@ export async function runNewEpisodesJob(now = new Date()): Promise<NewEpisodesRe
   );
   const statuses = await getAiringStatus(ids, now);
   const missing = ids.length - statuses.size;
-  // The sync adds every collection title to the catalog within the hour; until then, skip it.
-  if (missing) report.error = `${missing} show(s) not in the catalog yet`;
+  // db mode: the sync adds every collection title to the catalog within the hour. anilist mode:
+  // AniList was unreachable or rate limited part-way. Either way they're checked next run.
+  if (missing) report.error = `${missing} show(s) not checked (not in the catalog yet, or AniList unavailable)`;
 
   for (const [anilistId, status] of statuses) {
     report.checked++;
