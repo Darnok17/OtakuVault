@@ -4,15 +4,16 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, t
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Billboard, CameraControls } from "@react-three/drei";
 import {
-  AdditiveBlending, CanvasTexture, Color, EdgesGeometry, Fog, IcosahedronGeometry, SRGBColorSpace, TextureLoader, Vector3,
+  AdditiveBlending, CanvasTexture, Color, EdgesGeometry, Fog, IcosahedronGeometry, Matrix4, SRGBColorSpace, TextureLoader, Vector3,
   type Camera, type Group, type Object3D, type Texture,
 } from "three";
 import { hubSize, type Hub, type HubId, type TitleGraph, type WebNode } from "@/lib/title-graph";
 import {
-  CORE_RADIUS, HUB_END, OVERVIEW, cameraFor, cameraForPerson, layoutWorld, personLayout, reach,
+  CORE_RADIUS, HUB_END, OVERVIEW, PHONE_WIDTH, cameraFor, cameraForPerson, layoutWorld, personLayout, reach,
   type GroupLabel, type HubLayout, type V3, type Viewport, type WorldLayout,
 } from "@/lib/title-graph-layout";
 import type { ListMark } from "@/lib/types";
+import { DiscBatch, HaloBatch, PortraitAtlas, type DiscLook } from "./disc-batch";
 import { FatLines, type LineLook } from "./fat-lines";
 import { STATUS_TONE, markFraction, markGlyphs } from "./list-marks";
 import { coreColor, type SceneTheme } from "./scene-theme";
@@ -475,28 +476,42 @@ function Dust({ layout, theme }: { layout: WorldLayout; theme: SceneTheme }) {
 
 /* ---------- an open hub: its web of nodes ---------- */
 
-// receded: another web (a person's) has the stage in front of this one; only the selected node
-// stays lit. mark / unstarted: see MarkRing.
-function NodeDisc({ node, always, near, theme, register, selected, someoneSelected, receded, mark, unstarted, onPick }: {
-  node: WebNode; always: boolean; near: number; theme: SceneTheme; register: (g: Group | null) => void;
-  selected: boolean; someoneSelected: boolean; receded: boolean; mark?: ListMark; unstarted: boolean; onPick: () => void;
-}) {
-  const tex = useTexture(node.image);
-  const color = theme.tones[node.tone];
-  const hovered = useWorldHover((s) => s.hovered === node.id);
-  const events = useNodeEvents(node.id, onPick);
-  const labelRef = useLabelAnchor(node.id);
-  const outer = useRef<Group | null>(null);
-  const inner = useRef<Group>(null);
+// How one node's disc looks right now (see DiscBatch). receded: another web (a person's) has
+// the stage in front of this one; only the selected node stays lit. Unstarted franchise entries
+// sit back a little, so what you've seen reads as the lit path.
+function discLook(node: WebNode, theme: SceneTheme, selected: boolean, someoneSelected: boolean, receded: boolean,
+  mark: ListMark | undefined, unstarted: boolean): DiscLook {
   // Anchors (the characters a cast web hangs from) are small: they're the hooks, not the subject.
   const radius = node.anchor ? 0.24 : NODE_RADIUS * (node.image ? 0.8 + node.weight * 0.6 : 0.3 + node.weight * 0.25);
+  const ring = node.image ? radius * (selected ? 1.22 : 1.13) : radius;
+  const fade = (selected ? 1 : receded ? 0.12 : someoneSelected ? 0.45 : 1) * (unstarted && !selected ? 0.6 : 1);
+  const rim = theme.style.glow ? 0 : Math.max(0.035, ring * 0.09) * (theme.style.lineWidth / 1.6);
+  const markR0 = ring + Math.max(0.04, ring * 0.1);
+  const markW = Math.max(0.05, ring * 0.13) * (theme.style.glow ? 1 : Math.min(1.4, theme.style.lineWidth / 1.4));
+  const f = mark ? markFraction(mark) : 0;
+  return {
+    radius, ring, rim, markR0, markW, markFraction: f, markTrack: f >= 1 ? 0 : 0.28, markMode: mark ? 1 : unstarted ? 2 : 0,
+    fill: node.image ? theme.faint : theme.tones[node.tone], tone: theme.tones[node.tone],
+    markColor: mark ? theme.tones[STATUS_TONE[mark.status]] : theme.dim,
+    fade, markFade: unstarted ? Math.min(1, fade / 0.6) : fade,
+    half: Math.max(mark || unstarted ? markR0 + markW : 0, ring + rim) + 0.03,
+  };
+}
+
+// A node's place in the web, minus the drawing (that's the cluster's DiscBatch): the group the
+// open/close animation moves, and the anchor its DOM label hangs from.
+function NodeLabel({ node, always, near, register, selected, someoneSelected, receded, labelY }: {
+  node: WebNode; always: boolean; near: number; register: (g: Group | null) => void;
+  selected: boolean; someoneSelected: boolean; receded: boolean; labelY: number;
+}) {
+  const hovered = useWorldHover((s) => s.hovered === node.id);
+  const labelRef = useLabelAnchor(node.id);
+  const outer = useRef<Group | null>(null);
   const camera = useThree((s) => s.camera);
   const world = useMemo(() => new Vector3(), []);
 
-  useFrame((_, dt) => {
-    const g = inner.current;
-    if (!g || !outer.current) return;
-    g.scale.setScalar(approach(g.scale.x, hovered || selected ? 1.3 : 1, dt, 10));
+  useFrame(() => {
+    if (!outer.current) return;
     // Labels: key nodes from afar, the rest once you lean in past the hub's framed distance.
     // Hover and selection always win; nodes still flying out stay quiet.
     outer.current.getWorldPosition(world);
@@ -507,34 +522,10 @@ function NodeDisc({ node, always, near, theme, register, selected, someoneSelect
     setLabelOpacity(node.id, (selected || (hovered && !receded) ? 1 : seen * quiet) * spawn);
   });
 
-  // Unstarted franchise entries sit back a little, so what you've seen reads as the lit path.
-  const fade = (selected ? 1 : receded ? 0.12 : someoneSelected ? 0.45 : 1) * (unstarted && !selected ? 0.6 : 1);
-  const ring = node.image ? radius * (selected ? 1.22 : 1.13) : radius;
-  const live = receded && !selected ? undefined : events;
-
   return (
     <group ref={(g) => { outer.current = g; register(g); }}>
       <Billboard>
-        <group ref={inner}>
-          <Halo color={color} size={radius * 5} opacity={(selected ? 0.6 : 0.3) * fade} theme={theme} />
-          <Rim inner={ring} theme={theme} opacity={fade} />
-          {node.image ? (
-            <>
-              <mesh>
-                <ringGeometry args={[radius, ring, 48]} />
-                <meshBasicMaterial color={color} transparent opacity={fade} />
-              </mesh>
-              <Portrait radius={radius} tex={tex} fallback={theme.faint} opacity={fade} events={live} />
-            </>
-          ) : (
-            <mesh {...live}>
-              <circleGeometry args={[radius, 32]} />
-              <meshBasicMaterial color={color} transparent opacity={fade} />
-            </mesh>
-          )}
-          <MarkRing inner={ring} mark={mark} unstarted={unstarted} theme={theme} opacity={unstarted ? Math.min(1, fade / 0.6) : fade} />
-        </group>
-        <object3D ref={labelRef} position={[0, -ring * 1.2 - 0.14 - (mark || unstarted ? 0.1 : 0), 0]} />
+        <object3D ref={labelRef} position={[0, labelY, 0]} />
       </Billboard>
     </group>
   );
@@ -590,6 +581,7 @@ function Cluster({ hub, at, person = false, cover, layout, theme, active, select
     return m;
   }, [at]);
   const indexOfId = useMemo(() => new Map(hub.nodes.map((n, i) => [n.id, i])), [hub]);
+  const setHovered = useWorldHover((s) => s.setHovered);
   const tone = theme.tones[hub.tone];
   const lines = useFatLines(at.edges.length, lineLook(theme, tone, 0));
   const hotLines = useFatLines(at.edges.length, { ...lineLook(theme, tone, 0), width: theme.style.lineWidth * 1.8 });
@@ -604,7 +596,47 @@ function Cluster({ hub, at, person = false, cover, layout, theme, active, select
   const showProgress = !person && hub.id === "franchise" && marks != null;
   const end = (x: number) => (x >= 0 ? live[x] : x === HUB_END ? from : jointLive[-2 - x]);
 
-  useFrame((_, dt) => {
+  // All discs in one draw call (plus one for the glowing themes' halos), portraits from one atlas.
+  const [phone] = useState(() => window.innerWidth <= PHONE_WIDTH);
+  const cells = useMemo(() => { let c = 0; return hub.nodes.map((nd) => (nd.image ? c++ : -1)); }, [hub]);
+  const atlas = useMemo(() => new PortraitAtlas(Math.max(...cells, 0) + 1, phone), [cells, phone]);
+  const rects = useMemo(() => cells.map((c) => (c >= 0 ? atlas.rect(c) : null)), [cells, atlas]);
+  const batch = useMemo(() => new DiscBatch(n, atlas.texture), [n, atlas]);
+  const halos = useMemo(() => new HaloBatch(n, halo()), [n]);
+  useEffect(() => () => { atlas.dispose(); batch.dispose(); }, [atlas, batch]);
+  useEffect(() => () => halos.dispose(), [halos]);
+  useEffect(() => { batch.setColors(theme.ink, theme.dim); }, [batch, theme]);
+  // Portraits stream into the atlas as they load; a disc shows its flat fill until then.
+  const loaded = useRef<boolean[]>([]);
+  useEffect(() => {
+    let alive = true;
+    loaded.current = hub.nodes.map(() => false);
+    hub.nodes.forEach((nd, i) => {
+      if (!nd.image) return;
+      loadTexture(nd.image).then((t) => {
+        if (!alive) return;
+        atlas.draw(cells[i], t.image as HTMLImageElement, performance.now() / 1000);
+        loaded.current[i] = true;
+      }, () => {});
+    });
+    return () => { alive = false; };
+  }, [hub, atlas, cells]);
+  const looks = useMemo(() => hub.nodes.map((node) => {
+    const mark = markOf(node, marks);
+    return discLook(node, theme, selectedId === node.id, selectedId != null, receded, mark, showProgress && !mark);
+  }), [hub, theme, selectedId, receded, marks, showProgress]);
+  // Draw order, farthest first: the discs are transparent at their edges. Instance slot k draws
+  // node order[k]; picking maps back through it.
+  const order = useRef<number[]>([]);
+  const pop = useRef<number[]>([]);
+  const depth = useRef<number[]>([]);
+  const scratch = useMemo(() => ({ m: new Matrix4(), s: new Vector3(), fwd: new Vector3(), c: new Color() }), []);
+  // Only lit nodes take the pointer: a receded web lets clicks fall through to empty space.
+  useEffect(() => {
+    batch.setFilter((slot) => !receded || hub.nodes[order.current[slot]]?.id === selectedId);
+  }, [batch, receded, selectedId, hub]);
+
+  useFrame((state, dt) => {
     const goal = active ? 1 : 0;
     const animating = !(progress.current === goal && settled.current);
     if (animating) {
@@ -640,6 +672,35 @@ function Cluster({ hub, at, person = false, cover, layout, theme, active, select
       hotLines.commit(es.length);
     }
     hotLines.fade(Math.min(1, theme.style.lineOpacity * 2.6) * t);
+
+    // Discs: billboarded, popped on hover or selection, sorted back to front.
+    const cam = state.camera;
+    cam.getWorldDirection(scratch.fwd);
+    const ord = order.current, d = depth.current, p = pop.current;
+    ord.length = n; d.length = n;
+    for (let i = 0; i < n; i++) {
+      ord[i] = i;
+      d[i] = live[i].x * scratch.fwd.x + live[i].y * scratch.fwd.y + live[i].z * scratch.fwd.z;
+      const want = hovered === hub.nodes[i].id || selectedId === hub.nodes[i].id ? 1.3 : 1;
+      p[i] = approach(p[i] ?? 1, want, dt, 10);
+    }
+    ord.sort((a, b) => d[b] - d[a]);
+    const glow = theme.style.glow && theme.fx;
+    const ready = loaded.current;
+    for (let k = 0; k < n; k++) {
+      const i = ord[k], g = groups.current[i], look = looks[i];
+      const s = g && g.visible ? g.scale.x * p[i] : 0;
+      batch.mesh.setMatrixAt(k, scratch.m.compose(live[i], cam.quaternion, scratch.s.setScalar(Math.max(s * look.half, 1e-5))));
+      batch.write(k, look, ready[i] ? rects[i] : null);
+      if (glow) {
+        halos.set(i, scratch.m.compose(live[i], cam.quaternion, scratch.s.setScalar(Math.max(s * look.radius * 5, 1e-5))),
+          scratch.c.copy(look.tone).multiplyScalar((selectedId === hub.nodes[i].id ? 0.6 : 0.3) * look.fade));
+      }
+    }
+    batch.commit();
+    batch.mesh.computeBoundingSphere(); // picking tests it first, and the nodes move
+    atlas.flush(performance.now() / 1000);
+    halos.commit(glow ? n : 0);
   });
 
   // A changed goal means another round of animation.
@@ -656,11 +717,30 @@ function Cluster({ hub, at, person = false, cover, layout, theme, active, select
         <GroupMark key={g.id} group={g} theme={theme} cover={cover} mark={g.marker ? franchiseMark : undefined}
           unstarted={!!g.marker && showProgress && !franchiseMark} register={(o) => { captions.current[k] = o; }} />
       ))}
+      <primitive object={halos.mesh} />
+      <primitive object={batch.mesh}
+        onPointerMove={(e: ThreeEvent<PointerEvent>) => {
+          const node = e.instanceId != null ? hub.nodes[order.current[e.instanceId]] : undefined;
+          if (!node) return;
+          e.stopPropagation();
+          if (useWorldHover.getState().hovered !== node.id) setHovered(node.id);
+          document.body.style.cursor = "pointer";
+        }}
+        onPointerOut={() => {
+          const h = useWorldHover.getState().hovered;
+          if (h != null && indexOfId.has(h)) setHovered(null);
+          document.body.style.cursor = "";
+        }}
+        onClick={(e: ThreeEvent<MouseEvent>) => {
+          const node = e.instanceId != null ? hub.nodes[order.current[e.instanceId]] : undefined;
+          if (!node || wasDrag(e)) return;
+          e.stopPropagation();
+          onPick(node);
+        }} />
       {hub.nodes.map((node, i) => (
-        <NodeDisc key={node.id} node={node} always={!node.anchor && (node.weight >= 0.7 || !crowded)} near={near} theme={theme}
-          register={(g) => { groups.current[i] = g; }}
-          selected={selectedId === node.id} someoneSelected={selectedId != null} receded={receded}
-          mark={markOf(node, marks)} unstarted={showProgress && !markOf(node, marks)} onPick={() => onPick(node)} />
+        <NodeLabel key={node.id} node={node} always={!node.anchor && (node.weight >= 0.7 || !crowded)} near={near}
+          register={(g) => { groups.current[i] = g; }} selected={selectedId === node.id} someoneSelected={selectedId != null}
+          receded={receded} labelY={-looks[i].ring * 1.2 - 0.14 - (looks[i].markMode ? 0.1 : 0)} />
       ))}
     </group>
   );
